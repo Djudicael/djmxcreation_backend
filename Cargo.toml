@@ -1,0 +1,4 @@
+[workspace]
+members = [
+    "djmxcreation_backend"
+]
