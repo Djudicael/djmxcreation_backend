@@ -1,0 +1,13 @@
+GET http://127.0.0.1:8080/me
+
+
+### create a todo
+PATCH http://127.0.0.1:8080/me
+content-type: application/json
+
+{
+  "description": "tata",
+  "firstName": "Judicael",
+  "lastName": "dubray",
+  "picture": "tata"
+}
