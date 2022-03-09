@@ -2,7 +2,7 @@ GET http://127.0.0.1:8080/me
 
 
 ### create a todo
-PATCH http://127.0.0.1:8080/me
+PATCH  http://127.0.0.1:8080/me/25
 content-type: application/json
 
 {
@@ -11,3 +11,18 @@ content-type: application/json
   "lastName": "dubray",
   "picture": "tata"
 }
+
+
+### create a todo
+POST  http://127.0.0.1:8080/me
+content-type: application/json
+
+{
+  "description": "tata",
+  "firstName": "Judicael",
+  "lastName": "dubray",
+  "picture": "tata"
+}
+
+### create a todo
+DELETE   http://127.0.0.1:8080/me/1

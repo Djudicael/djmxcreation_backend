@@ -22,3 +22,11 @@ https://github.com/jeremychone-channel/rust-todomvc
 https://blog.logrocket.com/file-upload-and-download-in-rust/
 
 https://github.com/zupzup/warp-upload-download-example
+
+
+### tasks
+
+- [x] About me poc
+- [] About me controller
+- [] About me Service
+- [] About me Data base
