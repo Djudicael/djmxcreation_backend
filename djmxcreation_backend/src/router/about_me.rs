@@ -40,6 +40,7 @@ pub fn about_me_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp
 
 pub async fn handler_get_about_me() -> Result<impl warp::Reply, Infallible> {
     let about = AboutMe::new(
+        Some(1),
         "Judicael".to_string(),
         "dubray".to_string(),
         Some("tata".to_string()),

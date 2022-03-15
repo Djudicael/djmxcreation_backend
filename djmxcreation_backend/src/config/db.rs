@@ -6,7 +6,7 @@ use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 pub type Db = Pool<Postgres>;
 
 // sql files
-const SQL_DIR: &str = "sql/";
+const SQL_DIR: &str = "../sql/";
 
 struct DatabaseConfiguration {
     pg_host: String,
@@ -36,37 +36,37 @@ impl DatabaseConfiguration {
 
 pub async fn init_db() -> Result<Db, sqlx::Error> {
     dotenv().unwrap();
-    let PG_HOST = env::var("PG_HOST").unwrap();
-    let PG_DB = env::var("PG_DB").unwrap();
-    let PG_USER = env::var("PG_USER").unwrap();
-    let PG_PASSWORD = env::var("PG_PASSWORD").unwrap();
+    let pg_host = env::var("PG_HOST").unwrap();
+    let pg_db = env::var("PG_DB").unwrap();
+    let pg_user = env::var("PG_USER").unwrap();
+    let pg_password = env::var("PG_PASSWORD").unwrap();
 
     let database = DatabaseConfiguration::new(
-        &PG_HOST.as_str(),
-        &PG_DB.as_str(),
-        &PG_USER.as_str(),
-        &PG_PASSWORD.as_str(),
+        &pg_host.as_str(),
+        &pg_db.as_str(),
+        &pg_user.as_str(),
+        &pg_password.as_str(),
         5,
     );
 
     // run the app sql files
-    let app_db = new_db_pool(&database).await?;
-    let mut paths: Vec<PathBuf> = fs::read_dir(SQL_DIR)?
-        .into_iter()
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
+    // let app_db = new_db_pool(&database).await?;
+    // let mut paths: Vec<PathBuf> = fs::read_dir(SQL_DIR)?
+    //     .into_iter()
+    //     .filter_map(|e| e.ok().map(|e| e.path()))
+    //     .collect();
 
-    paths.sort();
+    // paths.sort();
 
-    // execute  each file
-    for path in paths {
-        if let Some(path) = path.to_str() {
-            // only .sql and not the recreate
-            if path.ends_with(".sql") {
-                pexec(&app_db, &path).await?;
-            }
-        }
-    }
+    // // execute  each file
+    // for path in paths {
+    //     if let Some(path) = path.to_str() {
+    //         // only .sql and not the recreate
+    //         if path.ends_with(".sql") {
+    //             pexec(&app_db, &path).await?;
+    //         }
+    //     }
+    // }
 
     // returning the app db
     new_db_pool(&database).await
