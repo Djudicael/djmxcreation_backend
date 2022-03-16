@@ -2,31 +2,31 @@ use crate::domain::content::Content;
 use serde::{Deserialize, Serialize};
 #[derive(sqlx::FromRow, Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMe {
-    id: Option<i64>,
+    id: Option<i32>,
     first_name: String,
     last_name: String,
     description: Option<String>,
-    picture: Option<String>,
+    photo: Option<String>,
 }
 
 impl AboutMe {
     pub fn new(
-        id: Option<i64>,
+        id: Option<i32>,
         first_name: String,
         last_name: String,
         description: Option<String>,
-        picture: Option<String>,
+        photo: Option<String>,
     ) -> Self {
         Self {
             id,
             first_name,
             last_name,
             description,
-            picture,
+            photo,
         }
     }
 
-    pub fn id(&self) -> Option<&i64> {
+    pub fn id(&self) -> Option<&i32> {
         self.id.as_ref()
     }
 
@@ -42,7 +42,7 @@ impl AboutMe {
         self.description.as_ref()
     }
 
-    pub fn picture(&self) -> Option<&String> {
-        self.picture.as_ref()
+    pub fn photo(&self) -> Option<&String> {
+        self.photo.as_ref()
     }
 }

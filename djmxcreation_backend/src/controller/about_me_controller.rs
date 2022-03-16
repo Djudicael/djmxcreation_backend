@@ -4,17 +4,20 @@ use serde_json::json;
 use warp::hyper::StatusCode;
 
 use crate::domain::about_me::AboutMe;
+use crate::mapper::about_me_mapper::*;
+use crate::service::about_me_service::*;
 
 pub async fn handler_get_about_me() -> Result<impl warp::Reply, Infallible> {
-    let about = AboutMe::new(
-        Some(1),
-        "Judicael".to_string(),
-        "dubray".to_string(),
-        Some("tata".to_string()),
-        None,
+    let about = about_me().await.unwrap();
+    let view = to_view(
+        about.id().map(|id| *id),
+        about.first_name(),
+        about.last_name(),
+        about.description().map(|description| description.clone()),
+        about.photo().map(|photo| photo.clone()),
     );
 
-    let tmpjson = json!(about);
+    let tmpjson = json!(view);
     Ok(warp::reply::with_status(
         warp::reply::json(&tmpjson),
         StatusCode::OK,
