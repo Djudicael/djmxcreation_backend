@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AboutMeView {
-    pub id: Option<i64>,
+    pub id: Option<i32>,
     pub first_name: String,
     pub last_name: String,
     pub description: Option<String>,
@@ -12,7 +12,7 @@ pub struct AboutMeView {
 
 impl AboutMeView {
     pub fn new(
-        id: Option<i64>,
+        id: Option<i32>,
         first_name: String,
         last_name: String,
         description: Option<String>,
@@ -26,7 +26,7 @@ impl AboutMeView {
             picture,
         }
     }
-    pub fn id(&self) -> Option<&i64> {
+    pub fn id(&self) -> Option<&i32> {
         self.id.as_ref()
     }
 
