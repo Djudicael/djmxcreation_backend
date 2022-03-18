@@ -1,6 +1,8 @@
 use std::convert::Infallible;
 
 use serde_json::json;
+use warp::hyper::StatusCode;
+use warp::Filter;
 use warp::{Rejection, Reply};
 
 use crate::{app_error::Error, router::about_me::about_me_filter};
@@ -9,7 +11,7 @@ pub async fn start() -> Result<(), Error> {
     // Apis
     let apis = about_me_filter();
     // let routes = apis.recover(handle_rejection);
-    let routes = apis;
+    let routes = apis.recover(handle_rejection);
     println!("start web server");
     warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
 
@@ -17,22 +19,17 @@ pub async fn start() -> Result<(), Error> {
 }
 
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
-    // Print to server side
-    println!("ERROR - {:?}", err);
+    let (code, message) = if err.is_not_found() {
+        (StatusCode::NOT_FOUND, "Not Found".to_string())
+    } else if err.find::<warp::reject::PayloadTooLarge>().is_some() {
+        (StatusCode::BAD_REQUEST, "Payload too large".to_string())
+    } else {
+        eprintln!("unhandled error: {:?}", err);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal Server Error".to_string(),
+        )
+    };
 
-    // TODO - Call log API for capture and store
-
-    // Build user message
-    // let user_message = match err.find::<WebErrorMessage>() {
-    // 	Some(err) => err.typ.to_string(),
-    // 	None => "Unknown".to_string(),
-    // };
-
-    let result = json!({ "errorMessage": "user_message" });
-    let result = warp::reply::json(&result);
-
-    Ok(warp::reply::with_status(
-        result,
-        warp::http::StatusCode::BAD_REQUEST,
-    ))
+    Ok(warp::reply::with_status(message, code))
 }
