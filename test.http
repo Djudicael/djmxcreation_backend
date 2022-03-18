@@ -6,10 +6,10 @@ PATCH  http://127.0.0.1:8080/me/25
 content-type: application/json
 
 {
-  "description": "tata",
-  "firstName": "Judicael",
-  "lastName": "dubray",
-  "picture": "tata"
+  
+  "firstName": "Judicael2",
+  "lastName": "dubray"
+
 }
 
 

@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-
+use serde_json::Value;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AboutMeView {
     pub id: Option<i32>,
     pub first_name: String,
     pub last_name: String,
-    pub description: Option<String>,
+    pub description: Option<Value>,
     pub picture: Option<String>,
 }
 
@@ -15,7 +15,7 @@ impl AboutMeView {
         id: Option<i32>,
         first_name: String,
         last_name: String,
-        description: Option<String>,
+        description: Option<Value>,
         picture: Option<String>,
     ) -> Self {
         Self {
@@ -38,7 +38,7 @@ impl AboutMeView {
         &self.last_name
     }
 
-    pub fn description(&self) -> Option<&String> {
+    pub fn description(&self) -> Option<&Value> {
         self.description.as_ref()
     }
 }

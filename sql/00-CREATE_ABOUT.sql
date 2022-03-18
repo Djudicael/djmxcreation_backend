@@ -5,3 +5,4 @@ CREATE TABLE about(
     photo jsonb,
     description jsonb
 );
+

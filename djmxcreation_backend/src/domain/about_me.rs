@@ -1,11 +1,13 @@
 use crate::domain::content::Content;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use sqlx::types::Json;
 #[derive(sqlx::FromRow, Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMe {
     id: Option<i32>,
     first_name: String,
     last_name: String,
-    description: Option<String>,
+    description: Option<Json<Value>>,
     photo: Option<String>,
 }
 
@@ -14,7 +16,7 @@ impl AboutMe {
         id: Option<i32>,
         first_name: String,
         last_name: String,
-        description: Option<String>,
+        description: Option<Json<Value>>,
         photo: Option<String>,
     ) -> Self {
         Self {
@@ -38,7 +40,7 @@ impl AboutMe {
         &self.last_name
     }
 
-    pub fn description(&self) -> Option<&String> {
+    pub fn description(&self) ->  Option<&Json<Value>> {
         self.description.as_ref()
     }
 

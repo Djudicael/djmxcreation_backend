@@ -26,6 +26,11 @@ https://github.com/zupzup/warp-upload-download-example
 
 ### tasks
 
+- [] About me update description etc
+- [] About me update image etc
+- [] About me load image
+- [] About me gerer les erreur http
+
 - [x] About me poc
 - [] About me controller
 - [] About me Service
