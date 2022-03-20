@@ -10,4 +10,6 @@ pub enum Error {
     SqlxError(#[from] sqlx::Error),
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+    #[error(transparent)]
+    WarpError(#[from] warp::Error),
 }
