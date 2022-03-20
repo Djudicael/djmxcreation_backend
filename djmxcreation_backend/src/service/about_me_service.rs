@@ -20,6 +20,30 @@ pub async fn update_me(id: i32, about: &AboutMe) -> Result<AboutMe, Error> {
 }
 
 pub async fn add_profile_picture(id: i32, file: Part) -> Result<AboutMe, Error> {
+    let content_type = file.content_type();
+            let file_ending;
+            // Verify the type of file sent
+            match content_type {
+                Some(file_type) => match file_type {
+                    "image/jpg" => {
+                        file_ending = "jpg";
+                    }
+                    "image/jpeg" => {
+                        file_ending = "jpeg";
+                    }
+                    "image/png" => {
+                        file_ending = "png";
+                    }
+                    // v => {
+                    //     eprintln!("invalid file type found: {}", v);
+                    //     return Err(warp::reject::reject());
+                    // }
+                },
+                None => {
+                    eprintln!("file type could not be determined");
+                    // return Err(warp::reject::reject());
+                }
+            }
     let value = file
         .stream()
         .try_fold(Vec::new(), |mut vec, data| {
