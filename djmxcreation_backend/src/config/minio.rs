@@ -1,6 +1,7 @@
 
+use aws_sdk_s3::Client;
 use dotenv::dotenv;
-use s3::{creds::Credentials, Bucket, BucketConfiguration, Region};
+use s3::{creds::Credentials, Bucket, BucketConfiguration, Region, request_trait::Request};
 use std::env;
 
 use crate::app_error::Error;
@@ -40,4 +41,26 @@ pub async fn init_minio() -> Result<Bucket, Error> {
     }
 
     Ok(bucket)
+}
+
+fn get_aws_client(region: &str) -> Result<Client> {
+	// get the id/secret from env
+    dotenv().unwrap();
+    let minio_endpoint = env::var("MINIO_ENDPOINT").unwrap();
+    let minio_access_key = env::var("MINIO_ACCESS_KEY").unwrap();
+    let minio_secret_key = env::var("MINIO_SECRET_KEY").unwrap();
+
+	// build the aws cred
+	let cred = Credentials::new(Some(&minio_access_key.as_str()), Some(&minio_secret_key.as_str()), None, None, "loaded-from-custom-env");
+
+	// build the aws client
+	let region = Region::new(region.to_string());
+	let conf_builder = config::Builder::new().region(region).credentials_provider(cred).url();
+	let mut conf = conf_builder.build();
+
+    // conf
+
+	// build aws client
+	let client = Client::from_conf(conf);
+	Ok(client)
 }
