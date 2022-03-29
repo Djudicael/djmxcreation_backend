@@ -1,3 +1,4 @@
+use aws_sdk_s3::{types::SdkError, error::PutObjectError};
 use thiserror::*;
 
 #[derive(Error, Debug)]
@@ -12,4 +13,6 @@ pub enum Error {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     WarpError(#[from] warp::Error),
+    #[error(transparent)]
+    StorageUploadError(#[from] SdkError<PutObjectError>),
 }

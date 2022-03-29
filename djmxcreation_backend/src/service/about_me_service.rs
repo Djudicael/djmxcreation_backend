@@ -64,13 +64,13 @@ pub async fn add_profile_picture(id: i32, file: Part) -> Result<AboutMe, Error> 
     let file_name = file
         .filename()
         .map(|name| format!("{}.{}", uudi_v4, name.to_string()))
-        .unwrap_or(format!("{}.{}", uudi_v4, file_ending));
+        .ok_or(format!("{}.{}", uudi_v4, *file_ending.to_string()))?;
 
-    let mut stream = stream::iter(value);
+    // let mut stream = stream::iter(value);
 
-    upload_file(&file_name.as_str(), value).await?;
+    upload_file(&file_name.as_str(), &value).await?;
 
     //TODO try to validate id
-    let result = update_about_me(id, about).await?;
-    Ok(result)
+    // let result = update_about_me(id, about).await?;
+    Ok(AboutMe::default())
 }

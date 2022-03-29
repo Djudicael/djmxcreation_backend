@@ -1,14 +1,22 @@
+use aws_sdk_s3::types::ByteStream;
 use bytes::Buf;
 use futures::Stream;
 use tokio_stream::{self as stream, StreamExt};
 
-use crate::{app_error::Error, config::minio::init_minio};
+use crate::{app_error::Error, config::minio::get_aws_client};
 
-pub async fn upload_file(file_name: &str, file: std::vec::Vec<u8>) -> Result<(), Error> {
-    let bucket = init_minio().await?;
-    let mut stream = stream::iter(file);
-    stream_ref.read()
-    let status_code = bucket.put_object_stream(&mut stream_ref.read(file), "/path").await?;
+pub async fn upload_file(file_name: &str, file: &std::vec::Vec<u8>) -> Result<(), Error> {
+  
+    let client = get_aws_client("test")?;
+
+    let body = ByteStream::from(file.clone());
+    client
+        .put_object()
+        .bucket("bucket_name")
+        .key(file_name)
+        .body(body)
+        .send()
+        .await?;
     Ok(())
 }
 
