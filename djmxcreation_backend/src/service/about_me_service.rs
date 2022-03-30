@@ -24,20 +24,20 @@ pub async fn update_me(id: i32, about: &AboutMe) -> Result<AboutMe, Error> {
     Ok(result)
 }
 
-pub async fn add_profile_picture(id: i32, file: Part) -> Result<AboutMe, Error> {
+pub async fn add_profile_picture(id: i32, file: &Part) -> Result<AboutMe, Error> {
     let content_type = file.content_type();
     let file_ending;
     // Verify the type of file sent
     match content_type {
         Some(file_type) => match file_type {
             "image/jpg" => {
-                file_ending = "jpg";
+                file_ending = String::from("jpg");
             }
             "image/jpeg" => {
-                file_ending = "jpeg";
+                file_ending = String::from("jpeg");
             }
             "image/png" => {
-                file_ending = "png";
+                file_ending = String::from("png");
             } // v => {
               //     eprintln!("invalid file type found: {}", v);
               //     return Err(warp::reject::reject());
@@ -63,12 +63,12 @@ pub async fn add_profile_picture(id: i32, file: Part) -> Result<AboutMe, Error> 
 
     let file_name = file
         .filename()
-        .map(|name| format!("{}.{}", uudi_v4, name.to_string()))
-        .ok_or(format!("{}.{}", uudi_v4, *file_ending.to_string()))?;
+        .map(|name| format!("{}{}", uudi_v4, name.to_string()))
+        .unwrap_or(format!("{}.{}", uudi_v4, String::from("png")));
 
     // let mut stream = stream::iter(value);
 
-    upload_file(&file_name.as_str(), &value).await?;
+    upload_file(&"portfolio/about", &file_name.as_str(), &value).await?;
 
     //TODO try to validate id
     // let result = update_about_me(id, about).await?;
