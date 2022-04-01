@@ -24,51 +24,12 @@ pub async fn update_me(id: i32, about: &AboutMe) -> Result<AboutMe, Error> {
     Ok(result)
 }
 
-pub async fn add_profile_picture(id: i32, file: &Part) -> Result<AboutMe, Error> {
-    let content_type = file.content_type();
-    let file_ending;
-    // Verify the type of file sent
-    match content_type {
-        Some(file_type) => match file_type {
-            "image/jpg" => {
-                file_ending = String::from("jpg");
-            }
-            "image/jpeg" => {
-                file_ending = String::from("jpeg");
-            }
-            "image/png" => {
-                file_ending = String::from("png");
-            } // v => {
-              //     eprintln!("invalid file type found: {}", v);
-              //     return Err(warp::reject::reject());
-              // }
-        },
-        None => {
-            eprintln!("file type could not be determined");
-            // return Err(warp::reject::reject());
-        }
-    }
-
-    // let test = file.stream();
-    let value = file
-        .stream()
-        .try_fold(Vec::new(), |mut vec, data| {
-            vec.put(data);
-            async move { Ok(vec) }
-        })
-        .await?;
-
-    //TODO fix
-    let uudi_v4 = Uuid::new_v4().to_string();
-
-    let file_name = file
-        .filename()
-        .map(|name| format!("{}{}", uudi_v4, name.to_string()))
-        .unwrap_or(format!("{}.{}", uudi_v4, String::from("png")));
-
-    // let mut stream = stream::iter(value);
-
-    upload_file(&"portfolio/about", &file_name.as_str(), &value).await?;
+pub async fn add_profile_picture(
+    id: i32,
+    file_name: String,
+    file: &std::vec::Vec<u8>,
+) -> Result<AboutMe, Error> {
+    upload_file(&"portfolio/about", &file_name.as_str(), file).await?;
 
     //TODO try to validate id
     // let result = update_about_me(id, about).await?;

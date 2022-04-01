@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::convert::Infallible;
 
 use bytes::BufMut;
-use futures::TryStreamExt;
+use futures::{TryFutureExt, TryStreamExt};
 use serde_json::json;
 use sqlx::types::Json;
 use uuid::Uuid;
@@ -63,79 +63,109 @@ pub async fn handler_delete_image_about_me(id: i64) -> Result<impl warp::Reply, 
     ))
 }
 
+// pub async fn add_image_profile_to_about_me(
+//     id: i64,
+//     form: FormData,
+// ) -> Result<impl warp::Reply, Rejection> {
+//     let parts: Vec<Part> = form.try_collect().await.map_err(|e| {
+//         eprintln!("form error: {}", e);
+//         warp::reject::reject()
+//     })?;
 
-#[derive(Copy, Clone)]
-struct MyPart(Part);
-// struct MyPart(Part);
+//     for p in &parts {
+//         if p.name() == "file" {
+//             let content_type = p.content_type();
+//             let file_name = p.filename();
+//             let file_ending;
+//             // Verify the type of file sent
+//             match content_type {
+//                 Some(file_type) => match file_type {
+//                     "image/jpg" => {
+//                         file_ending = "jpg";
+//                     }
+//                     "image/jpeg" => {
+//                         file_ending = "jpeg";
+//                     }
+//                     "image/png" => {
+//                         file_ending = "png";
+//                     }
+//                     v => {
+//                         eprintln!("invalid file type found: {}", v);
+//                         return Err(warp::reject::reject());
+//                     }
+//                 },
+//                 None => {
+//                     eprintln!("file type could not be determined");
+//                     return Err(warp::reject::reject());
+//                 }
+//             }
+//             // let name_test = p.filename()
 
-// impl Copy for MyPart{}
+//             let value = p
+//                 .stream()
+//                 .try_fold(Vec::new(), |mut vec, data| {
+//                     vec.put(data);
+//                     async move { Ok(vec) }
+//                 })
+//                 .await
+//                 .map_err(|e| {
+//                     eprintln!("reading file error: {}", e);
+//                     warp::reject::reject()
+//                 })?;
 
+//             let uudi_v4 = Uuid::new_v4().to_string();
+
+//             let file_name = file_name
+//                 .map(|name| format!("{}{}", uudi_v4, name.to_string()))
+//                 .unwrap_or(format!("{}.{}", uudi_v4, file_ending));
+
+//             let file_name = format!("./files/{}.{}", Uuid::new_v4().to_string(), file_ending);
+//             tokio::fs::write(&file_name, value).await.map_err(|e| {
+//                 eprint!("error writing file: {}", e);
+//                 warp::reject::reject()
+//             })?;
+//             println!("created file: {}", file_name);
+//         }
+//     }
+
+//     Ok("success")
+// }
+
+//todo  a etudier https://rustcc.cn/article?id=665a3a71-e66a-4029-8a8b-c2db0488ad4b
+
+//async fn upload(ctx: Arc<AppContext>, form: multipart::FormData) -> Result<impl Reply, Infallible> {
 pub async fn add_image_profile_to_about_me(
-    id: i64,
+    id: i32,
     form: FormData,
 ) -> Result<impl warp::Reply, Rejection> {
-    let parts: Vec<Part> = form.try_collect().await.map_err(|e| {
-        eprintln!("form error: {}", e);
-        warp::reject::reject()
-    })?;
-
-    for p in &parts {
-        if p.name() == "file" {
-            let content_type = p.content_type();
-            let file_name = p.filename();
-            let file_ending;
-            // Verify the type of file sent
-            match content_type {
-                Some(file_type) => match file_type {
-                    "image/jpg" => {
-                        file_ending = "jpg";
-                    }
-                    "image/jpeg" => {
-                        file_ending = "jpeg";
-                    }
-                    "image/png" => {
-                        file_ending = "png";
-                    }
-                    v => {
-                        eprintln!("invalid file type found: {}", v);
-                        return Err(warp::reject::reject());
-                    }
-                },
-                None => {
-                    eprintln!("file type could not be determined");
-                    return Err(warp::reject::reject());
-                }
-            }
-            // let name_test = p.filename()
-
-            let value = p
-                .stream()
-                .try_fold(Vec::new(), |mut vec, data| {
-                    vec.put(data);
-                    async move { Ok(vec) }
-                })
-                .await
-                .map_err(|e| {
-                    eprintln!("reading file error: {}", e);
-                    warp::reject::reject()
-                })?;
-
+    let uploaded: Result<Vec<(String, Vec<u8>)>, warp::Rejection> = form
+        .and_then(|part| {
+            // let name = part.name().to_string();
+            let file_name = part.filename().unwrap_or_default();
             let uudi_v4 = Uuid::new_v4().to_string();
 
-            let file_name = file_name
-                .map(|name| format!("{}{}", uudi_v4, name.to_string()))
-                .unwrap_or(format!("{}.{}", uudi_v4, file_ending));
-
-            let file_name = format!("./files/{}.{}", Uuid::new_v4().to_string(), file_ending);
-            tokio::fs::write(&file_name, value).await.map_err(|e| {
-                eprint!("error writing file: {}", e);
-                warp::reject::reject()
-            })?;
-            println!("created file: {}", file_name);
+            let name = if file_name.is_empty() {
+                uudi_v4
+            } else {
+                uudi_v4 + "-" + file_name
+            };
+            let value = part.stream().try_fold(Vec::new(), |mut vec, data| {
+                vec.put(data);
+                async move { Ok(vec) }
+            });
+            value.map_ok(move |vec| (name, vec))
+        })
+        .try_collect()
+        .await
+        .map_err(|e| {
+            panic!("multipart error: {:?}", e);
+        });
+    if let Ok(parts) = uploaded {
+        for (name, buffer) in parts.into_iter() {
+            add_profile_picture(id, name, &buffer).await;
         }
-    }
-
-    Ok("success")
+    };
+    Ok("done")
 }
 
 pub async fn handler_create_about_me(body: AboutMe) -> Result<impl warp::Reply, Rejection> {
