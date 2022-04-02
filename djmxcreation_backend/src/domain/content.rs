@@ -3,14 +3,14 @@ use serde::{Serialize, Deserialize};
 
 #[derive(sqlx::FromRow, Debug, Clone, Serialize, Deserialize)]
 pub struct Content {
-    id: i64,
+    id: Option<i32>,
     bucket_name: String,
     file_name: String,
-    mime_type: String,
+    mime_type: Option<String>,
 }
 
 impl Content {
-    pub fn new(id: i64, bucket_name: String, file_name: String, mime_type: String) -> Self {
+    pub fn new(id: Option<i32>, bucket_name: String, file_name: String, mime_type: Option<String>) -> Self {
         Self {
             id,
             bucket_name,
@@ -19,8 +19,8 @@ impl Content {
         }
     }
 
-    pub fn id(&self) -> &i64 {
-        &self.id
+    pub fn id(&self) -> Option<&i32> {
+        self.id.as_ref()
     }
 
     pub fn bucket_name(&self) -> &str {
@@ -31,7 +31,7 @@ impl Content {
         &self.file_name
     }
 
-    pub fn mime_type(&self) -> &str {
-        &self.mime_type
+    pub fn mime_type(&self) -> Option<&String> {
+        self.mime_type.as_ref()
     }
 }

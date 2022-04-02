@@ -8,7 +8,7 @@ pub struct AboutMe {
     first_name: String,
     last_name: String,
     description: Option<Json<Value>>,
-    photo: Option<String>,
+    photo: Option<Json<Value>>,
 }
 
 impl AboutMe {
@@ -17,7 +17,7 @@ impl AboutMe {
         first_name: String,
         last_name: String,
         description: Option<Json<Value>>,
-        photo: Option<String>,
+        photo: Option<Json<Value>>,
     ) -> Self {
         Self {
             id,
@@ -44,7 +44,7 @@ impl AboutMe {
         self.description.as_ref()
     }
 
-    pub fn photo(&self) -> Option<&String> {
+    pub fn photo(&self) -> Option<&Json<Value>> {
         self.photo.as_ref()
     }
 }

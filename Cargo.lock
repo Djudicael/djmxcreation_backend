@@ -561,6 +561,7 @@ dependencies = [
  "bytes",
  "dotenv",
  "futures",
+ "mime_guess",
  "serde",
  "serde_derive",
  "serde_json",

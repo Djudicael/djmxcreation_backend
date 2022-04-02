@@ -1,4 +1,11 @@
-use crate::{app_error::Error, config::db::init_db, domain::about_me::AboutMe};
+use crate::{
+    app_error::Error,
+    config::db::init_db,
+    domain::{about_me::AboutMe, content::Content},
+};
+
+use serde_json::json;
+use sqlx::types::Json;
 
 // https://jmoiron.github.io/sqlx/
 
@@ -22,6 +29,31 @@ pub async fn get_about_me() -> Result<AboutMe, Error> {
     let query = sqlx::query_as::<_, AboutMe>(&sql);
     let about_me = query.fetch_one(&db).await?;
     Ok(about_me)
+}
+
+pub async fn get_about_me_by_id(id: i32) -> Result<AboutMe, Error> {
+    let db = init_db().await?;
+    let sql = "SELECT * FROM about where id = $1 FETCH FIRST ROW ONLY";
+    let query = sqlx::query_as::<_, AboutMe>(&sql).bind(id);
+    let about_me = query.fetch_one(&db).await?;
+    Ok(about_me)
+}
+
+pub async fn update_photo(id: i32, content: &Content) -> Result<(), Error> {
+    let db = init_db().await?;
+    let mut tx = db.begin().await?;
+
+    let contentJson = Json(json!(content));
+
+    sqlx::query("UPDATE about SET photo = $1 WHERE id = $2 ")
+        .bind(contentJson)
+        .bind(id)
+        .execute(&mut tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
 }
 
 // export const updatePhoto = async (idProjectId, photo) => {

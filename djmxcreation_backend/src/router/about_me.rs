@@ -3,8 +3,8 @@ use serde_json::json;
 use warp::{reply::Json, Filter};
 
 use crate::controller::about_me_controller::{
-    handler_create_about_me, handler_delete_image_about_me, handler_get_about_me,
-    handler_update_about_me,
+    add_image_profile_to_about_me, handler_create_about_me, handler_delete_image_about_me,
+    handler_get_about_me, handler_update_about_me,
 };
 
 pub fn about_me_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
@@ -30,13 +30,25 @@ pub fn about_me_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::path::end())
         .and_then(handler_update_about_me);
 
+    let update_photo = about_me_base
+        .and(warp::patch())
+        .and(warp::path::param())
+        .and(warp::multipart::form().max_length(5_000_000))
+        .and(warp::path("photo"))
+        .and(warp::path::end())
+        .and_then(add_image_profile_to_about_me);
+
     let delete_image_me = about_me_base
         .and(warp::delete())
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(handler_delete_image_about_me);
 
-    get_me.or(create_me).or(update_me).or(delete_image_me)
+    get_me
+        .or(create_me)
+        .or(update_me)
+        .or(update_photo)
+        .or(delete_image_me)
 }
 
 fn json_response<D: Serialize>(data: D) -> Result<Json, warp::Rejection> {

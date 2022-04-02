@@ -25,13 +25,12 @@ pub fn get_aws_client(region: &str) -> Result<Client, Error> {
 
     // build the aws clientconst REGION: &str = "us-west-2";
     let region = Region::new("us-west-2");
+
     let conf_builder = config::Builder::new()
-        .endpoint_resolver(Endpoint::immutable(Uri::from_static(
-            &minio_endpoint.as_str(), // "http://localhost:8080",
-        )))
+        .endpoint_resolver(Endpoint::immutable(minio_endpoint.parse::<Uri>().unwrap()))
         .region(region)
         .credentials_provider(cred);
-    let mut conf = conf_builder.build();
+    let conf = conf_builder.build();
 
     // build aws client
     let client = Client::from_conf(conf);
