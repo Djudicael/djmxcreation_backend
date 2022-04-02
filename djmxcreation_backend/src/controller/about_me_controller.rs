@@ -92,7 +92,7 @@ pub async fn add_image_profile_to_about_me(
         });
     if let Ok(parts) = uploaded {
         for (name, buffer) in parts.into_iter() {
-            add_profile_picture(id, name, &buffer).await;
+            add_profile_picture(id, name, &buffer).await.unwrap();
         }
     };
     Ok("done")

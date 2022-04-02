@@ -28,13 +28,14 @@ pub async fn add_profile_picture(
     file: &std::vec::Vec<u8>,
 ) -> Result<(()), Error> {
     let me = get_about_me_by_id(id).await?;
+    let key = format!("{}/{}","about",file_name);
     let previous_content = me
         .photo()
         .map(|photo| &photo.0)
         .map(|photo| to_content(photo));
-    let bucket = "portfolio/about";
-    let content = Content::new(None, bucket.to_owned(), file_name.clone(), None);
-    upload_file(bucket, &file_name.as_str(), file).await?;
+    let bucket = "portfolio";
+    let content = Content::new(None, bucket.to_owned(), key.clone(), None);
+    upload_file(bucket, &key.as_str(), file).await?;
     update_photo(id, &content).await?;
     // delete about me
     Ok(())
