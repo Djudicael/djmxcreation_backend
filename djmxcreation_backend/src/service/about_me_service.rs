@@ -1,10 +1,12 @@
+use std::ptr::NonNull;
+
 use crate::{
     app_error::Error,
     domain::about_me::AboutMe,
     domain::content::Content,
     repository::{
         about_me_repository::{get_about_me, get_about_me_by_id, update_about_me, update_photo},
-        storage_repository::upload_file,
+        storage_repository::{remove_object, upload_file},
     },
 };
 
@@ -28,7 +30,7 @@ pub async fn add_profile_picture(
     file: &std::vec::Vec<u8>,
 ) -> Result<(()), Error> {
     let me = get_about_me_by_id(id).await?;
-    let key = format!("{}/{}","about",file_name);
+    let key = format!("{}/{}", "about", file_name);
     let previous_content = me
         .photo()
         .map(|photo| &photo.0)
@@ -37,6 +39,11 @@ pub async fn add_profile_picture(
     let content = Content::new(None, bucket.to_owned(), key.clone(), None);
     upload_file(bucket, &key.as_str(), file).await?;
     update_photo(id, &content).await?;
-    // delete about me
+
+    // delete previous image from bucket
+    match previous_content {
+        Some(content) => remove_object(content.bucket_name(), content.file_name()).await?,
+        None => (),
+    }
     Ok(())
 }
