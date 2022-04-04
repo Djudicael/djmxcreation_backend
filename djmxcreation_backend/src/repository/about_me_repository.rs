@@ -56,21 +56,13 @@ pub async fn update_photo(id: i32, content: &Content) -> Result<(), Error> {
     Ok(())
 }
 
-// export const updatePhoto = async (idProjectId, photo) => {
-//     const client = await pool.connect();
-//     try {
-//         await client.query('BEGIN');
-//         const queryText = `UPDATE sylwia_portfolio.${TABLE_ABOUT}
-//         SET photo = $1
-//         WHERE id = $2;`;
-//         const { rows } = await client.query(queryText, [photo, idProjectId]);
-//         await client.query('COMMIT')
-//         return rows[0];
-//     } catch (e) {
-//         console.log(e);
-//         await client.query('ROLLBACK')
-//         throw e
-//     } finally {
-//         client.release()
-//     }
-// };
+pub async fn delete_about_me_photo(id: i32) -> Result<(), Error> {
+    let db = init_db().await?;
+    let mut tx = db.begin().await?;
+    sqlx::query("UPDATE about SET photo = NULL WHERE id = $1")
+        .bind(id)
+        .execute(&mut tx)
+        .await?;
+    tx.commit().await?;
+    Ok(())
+}

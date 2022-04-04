@@ -6,7 +6,9 @@ use crate::{
     domain::content::Content,
     domain::me::Me,
     repository::{
-        about_me_repository::{get_about_me, get_about_me_by_id, update_about_me, update_photo},
+        about_me_repository::{
+            delete_about_me_photo, get_about_me, get_about_me_by_id, update_about_me, update_photo,
+        },
         storage_repository::{get_object_url, remove_object, upload_file},
     },
 };
@@ -86,6 +88,21 @@ pub async fn add_profile_picture(
     update_photo(id, &content).await?;
 
     // delete previous image from bucket
+    match previous_content {
+        Some(content) => remove_object(content.bucket_name(), content.file_name()).await?,
+        None => (),
+    }
+    Ok(())
+}
+
+pub async fn delete_photo(id: i32) -> Result<(), Error> {
+    let me = get_about_me_by_id(id).await?;
+    let previous_content = me
+        .photo()
+        .map(|photo| &photo.0)
+        .map(|photo| to_content(photo));
+    delete_about_me_photo(id).await?;
+
     match previous_content {
         Some(content) => remove_object(content.bucket_name(), content.file_name()).await?,
         None => (),

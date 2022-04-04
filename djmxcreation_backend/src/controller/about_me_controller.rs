@@ -4,7 +4,6 @@ use std::convert::Infallible;
 use bytes::BufMut;
 use futures::{TryFutureExt, TryStreamExt};
 use serde_json::json;
-use sqlx::types::Json;
 use uuid::Uuid;
 use warp::hyper::StatusCode;
 use warp::multipart::FormData;
@@ -53,12 +52,9 @@ pub async fn handler_update_about_me(
     ))
 }
 
-pub async fn handler_delete_image_about_me(id: i64) -> Result<impl warp::Reply, Rejection> {
-    let tmpjson = json!({ "id": id });
-    Ok(warp::reply::with_status(
-        warp::reply::json(&tmpjson),
-        StatusCode::OK,
-    ))
+pub async fn handler_delete_image_about_me(id: i32) -> Result<impl warp::Reply, Rejection> {
+    delete_photo(id).await.unwrap();
+    Ok("deleted")
 }
 
 //todo  a etudier https://rustcc.cn/article?id=665a3a71-e66a-4029-8a8b-c2db0488ad4b

@@ -37,10 +37,11 @@ pub fn about_me_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and(warp::path("photo"))
         .and(warp::path::end())
         .and_then(add_image_profile_to_about_me);
-
-    let delete_image_me = about_me_base
+        
+        let delete_image_me = about_me_base
         .and(warp::delete())
         .and(warp::path::param())
+        .and(warp::path("photo"))
         .and(warp::path::end())
         .and_then(handler_delete_image_about_me);
 
