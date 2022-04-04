@@ -16,7 +16,7 @@ pub enum Error {
     #[error(transparent)]
     StorageUploadError(#[from] SdkError<PutObjectError>),
     #[error(transparent)]
-    StorageDeleteObjectError(#[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>),
-    // #[error(transparent)]
-    // WarpError(#[from] dyn warp::reject::Reject),
+    StorageDeleteObjectError(
+        #[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>,
+    ),
 }

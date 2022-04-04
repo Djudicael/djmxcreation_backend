@@ -8,7 +8,8 @@ pub fn to_model(view: &AboutMeView) -> AboutMe {
         None,
         view.first_name().to_string(),
         view.last_name.to_string(),
-        view.description().map(|description| Json(description.clone())),
+        view.description()
+            .map(|description| Json(description.clone())),
         None,
     )
 }

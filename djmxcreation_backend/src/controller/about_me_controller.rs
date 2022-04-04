@@ -22,7 +22,7 @@ pub async fn handler_get_about_me() -> Result<impl warp::Reply, Rejection> {
         about.first_name(),
         about.last_name(),
         about.description().map(|description| &description.0),
-        None, // about.photo().map(|photo| photo.clone()),
+        about.photo_url().map(|url| url.clone()), // about.photo().map(|photo| photo.clone()),
     );
 
     let tmpjson = json!(view);

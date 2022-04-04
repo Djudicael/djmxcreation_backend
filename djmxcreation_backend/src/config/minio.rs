@@ -1,5 +1,6 @@
 use aws_sdk_s3::{config, Client, Credentials, Endpoint, Region};
 use dotenv::dotenv;
+use s3::Bucket;
 
 // use s3::{creds::Credentials, request_trait::Request, Bucket, BucketConfiguration, Region};
 use std::{env, str::FromStr};
@@ -24,8 +25,6 @@ pub fn get_aws_client(region: &str) -> Result<Client, Error> {
         // "loaded-from-custom-env",
     );
 
-    println!("{:?}", cred);
-    // build the aws clientconst REGION: &str = "us-west-2";
     let region = Region::new("us-west-0");
 
     let conf_builder = config::Builder::new()
@@ -37,4 +36,28 @@ pub fn get_aws_client(region: &str) -> Result<Client, Error> {
     let client = Client::from_conf(conf);
 
     Ok(client)
+}
+
+pub fn get_s3_client(bucket_name: &str, region: &str) -> Result<Bucket, Error> {
+    dotenv().unwrap();
+    let minio_endpoint = env::var("MINIO_ENDPOINT").unwrap();
+    let minio_access_key = env::var("MINIO_ACCESS_KEY").unwrap();
+    let minio_secret_key = env::var("MINIO_SECRET_KEY").unwrap();
+
+    let bucket = Bucket::new_with_path_style(
+        bucket_name,
+        s3::Region::Custom {
+            region: region.to_owned(),
+            endpoint: minio_endpoint,
+        },
+        s3::creds::Credentials {
+            access_key: Some(minio_access_key),
+            secret_key: Some(minio_secret_key),
+            security_token: None,
+            session_token: None,
+        },
+    )
+    .unwrap();
+
+    Ok(bucket)
 }
