@@ -17,7 +17,6 @@ pub async fn update_about_me(id: i32, about: &AboutMe) -> Result<AboutMe, Error>
         .bind(about.first_name())
         .bind(about.last_name())
         .bind(about.description())
-        // .bind(about.photo())
         .bind(id);
     let about_me = query.fetch_one(&db).await?;
     Ok(about_me)

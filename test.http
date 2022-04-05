@@ -7,11 +7,11 @@ content-type: application/json
 
 {
   
-  "firstName": "Judicael2",
-  "lastName": "dubray3",
+  "firstName": "Judicael",
+  "lastName": "dubray",
   "description":{
 
-  "firstName": "caca",
+  "firstName": "wow",
   "id": 1,
   "lastName": "boo"
 }
