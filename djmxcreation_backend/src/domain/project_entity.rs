@@ -1,11 +1,13 @@
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use sqlx::types::{chrono, Json};
 
 use super::metadata::Metadata;
 
+#[derive(sqlx::FromRow, Serialize, Deserialize, Default, Debug, Clone)]
 pub struct ProjectEntity {
     id: Option<i32>,
-    metadata: Metadata,
+    metadata: Option<Json<Value>>,
     description: Option<Json<Value>>,
     visible: bool,
     created_on: Option<chrono::DateTime<chrono::Utc>>,
