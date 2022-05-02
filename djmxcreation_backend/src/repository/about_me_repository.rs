@@ -42,10 +42,10 @@ pub async fn update_photo(id: i32, content: &Content) -> Result<(), Error> {
     let db = init_db().await?;
     let mut tx = db.begin().await?;
 
-    let contentJson = Json(json!(content));
+    let content_json = Json(json!(content));
 
     sqlx::query("UPDATE about SET photo = $1 WHERE id = $2 ")
-        .bind(contentJson)
+        .bind(content_json)
         .bind(id)
         .execute(&mut tx)
         .await?;

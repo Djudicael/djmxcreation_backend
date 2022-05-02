@@ -4,7 +4,7 @@ use sqlx::types::{chrono, Json};
 
 use super::metadata::Metadata;
 
-#[derive(sqlx::FromRow, Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(sqlx::FromRow, Default, Debug, Clone)]
 pub struct ProjectEntity {
     id: Option<i32>,
     metadata: Option<Json<Value>>,
@@ -17,7 +17,7 @@ pub struct ProjectEntity {
 impl ProjectEntity {
     pub fn new(
         id: Option<i32>,
-        metadata: Metadata,
+        metadata: Option<Json<Value>>,
         description: Option<Json<Value>>,
         visible: bool,
         created_on: Option<chrono::DateTime<chrono::Utc>>,
@@ -37,8 +37,8 @@ impl ProjectEntity {
         self.id.as_ref()
     }
 
-    pub fn metadata(&self) -> &Metadata {
-        &self.metadata()
+    pub fn metadata(&self) -> Option<&Json<Value>> {
+        self.metadata.as_ref()
     }
 
     pub fn description(&self) -> Option<&Json<Value>> {
