@@ -5,7 +5,7 @@ use crate::{
     view::{content_view::ContentView, project_view::ProjectView},
 };
 
-pub fn to_view(content: &Vec<ContentView>, project: &ProjectEntity) -> ProjectView {
+pub fn to_view(contents: &Vec<ContentView>, project: &ProjectEntity) -> ProjectView {
     ProjectView::new(
         project.id().map(|id| *id),
         project
@@ -17,7 +17,7 @@ pub fn to_view(content: &Vec<ContentView>, project: &ProjectEntity) -> ProjectVi
             .map(|description| &description.0)
             .map(|description| description.clone()),
         project.visible(),
-        content.to_vec(),
+        contents.to_vec(),
     )
 }
 
