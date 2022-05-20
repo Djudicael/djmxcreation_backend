@@ -26,7 +26,7 @@ pub async fn upload_file(
 pub async fn get_object_url(bucket_name: &str, file_name: &str) -> Result<String, Error> {
     // client
     let client = get_s3_client(bucket_name, "us-west-0")?;
-    let url = client.presign_get(file_name, 86400).unwrap();
+    let url = client.presign_get(file_name, 8640, None).unwrap();
     Ok(url)
 }
 

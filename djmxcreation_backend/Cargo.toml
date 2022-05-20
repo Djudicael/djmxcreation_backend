@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aws-config = "0.9.0"
-aws-sdk-s3 = "0.9.0"
+aws-config = "0.11.0"
+aws-sdk-s3 = "0.11.0"
 bytes = "1.1.0"
-chrono = "0.4.19"
+chrono = {version = "0.4.19", feature = ["serde"]}
 dotenv = "0.15.0"
 futures = "0.3.21"
 mime_guess = "2.0.4"
-rust-s3 = "0.30.0"
+rust-s3 = "0.31.0"
 serde = {version="1.0.136", features=["derive"]}
 serde_derive = "1.0.136"
 serde_json = "1.0.79"
@@ -21,6 +21,6 @@ sqlx = {version = "0.5.11", features = ["runtime-tokio-rustls", "postgres", "chr
 thiserror = "1.0.30"
 tokio = {version="1.17.0", features=["full"]}
 tokio-stream = "0.1.8"
-uuid = {version = "0.8.2", features = ["v4"]}
+uuid = {version = "1.0.0", features = ["v4"]}
 warp = "0.3.2"
 # minio-rs = { git = "https://github.com/minio/minio-rs", branch = "master" }

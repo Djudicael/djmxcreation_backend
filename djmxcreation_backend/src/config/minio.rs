@@ -44,7 +44,7 @@ pub fn get_s3_client(bucket_name: &str, region: &str) -> Result<Bucket, Error> {
     let minio_access_key = env::var("MINIO_ACCESS_KEY").unwrap();
     let minio_secret_key = env::var("MINIO_SECRET_KEY").unwrap();
 
-    let bucket = Bucket::new_with_path_style(
+    let bucket = Bucket::new(
         bucket_name,
         s3::Region::Custom {
             region: region.to_owned(),
