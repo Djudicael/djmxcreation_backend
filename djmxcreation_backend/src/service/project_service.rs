@@ -1,10 +1,6 @@
 use crate::{
     app_error::Error,
-    domain::{
-        content::Content,
-        metadata::Metadata,
-        project_entity::{self, ProjectEntity},
-    },
+    domain::{content::Content, metadata::Metadata, project_entity::ProjectEntity},
     mapper::project_mapper::to_view,
     repository::{
         project_repository::{

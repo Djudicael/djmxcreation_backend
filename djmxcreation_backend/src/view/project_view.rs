@@ -32,4 +32,16 @@ impl ProjectView {
             contents,
         }
     }
+
+    pub fn metadata(&self) -> Option<&Metadata> {
+        self.metadata.as_ref()
+    }
+
+    pub fn description(&self) -> Option<&Value> {
+        self.description.as_ref()
+    }
+
+    pub fn visible(&self) -> bool {
+        self.visible
+    }
 }
