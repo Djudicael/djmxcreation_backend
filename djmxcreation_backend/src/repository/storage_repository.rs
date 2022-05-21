@@ -1,4 +1,5 @@
 use aws_sdk_s3::types::ByteStream;
+use s3::serde_types::HeadObjectResult;
 
 use crate::{
     app_error::Error,
@@ -39,4 +40,11 @@ pub async fn remove_object(bucket_name: &str, file_name: &str) -> Result<(), Err
         .send()
         .await?;
     Ok(())
+}
+
+pub async fn get_object_metadata(bucket_name: &str, file_name: &str) -> Result<HeadObjectResult, Error> {
+    // client
+    let client = get_s3_client(bucket_name, "us-west-0")?;
+    let (head, _) = client.head_object(file_name).await?;
+    Ok(head)
 }

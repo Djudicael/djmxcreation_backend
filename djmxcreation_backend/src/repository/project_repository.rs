@@ -55,6 +55,24 @@ pub async fn update_description(project_id: i32, description: &Value) -> Result<
     Ok(())
 }
 
+pub async fn update_project_entity(project_id: i32, project: &ProjectEntity) -> Result<(), Error> {
+    let db = init_db().await?;
+    let mut tx = db.begin().await?;
+    let now_utc: DateTime<Utc> = Utc::now();
+    sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, updated_on = $4 WHERE id = $5 ")
+        .bind(project.description())
+        .bind(project.metadata())
+        .bind(project.visible())
+        .bind(now_utc)
+        .bind(project_id)
+        .execute(&mut tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
 pub async fn update_metadata(project_id: i32, metadata: &Metadata) -> Result<(), Error> {
     let db = init_db().await?;
     let mut tx = db.begin().await?;

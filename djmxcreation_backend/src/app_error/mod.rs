@@ -1,4 +1,5 @@
 use aws_sdk_s3::{error::PutObjectError, types::SdkError};
+use s3::error::S3Error;
 use thiserror::*;
 
 #[derive(Error, Debug)]
@@ -19,4 +20,6 @@ pub enum Error {
     StorageDeleteObjectError(
         #[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>,
     ),
+    #[error(transparent)]
+    S3Error(#[from] S3Error),
 }
