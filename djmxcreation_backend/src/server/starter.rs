@@ -1,15 +1,15 @@
 use std::convert::Infallible;
 
-use serde_json::json;
 use warp::hyper::StatusCode;
 use warp::Filter;
 use warp::{Rejection, Reply};
 
+use crate::router::project_router::project_filter;
 use crate::{app_error::Error, router::about_me::about_me_filter};
 
 pub async fn start() -> Result<(), Error> {
     // Apis
-    let apis = about_me_filter();
+    let apis = about_me_filter().or(project_filter());
     // let routes = apis.recover(handle_rejection);
     let routes = apis.recover(handle_rejection);
     println!("start web server");

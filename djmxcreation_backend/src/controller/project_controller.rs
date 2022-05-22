@@ -1,7 +1,10 @@
 use crate::{
     domain::metadata::Metadata,
     mapper::project_mapper::to_entity,
-    service::project_service::{add_project, create_project, find_project, update_project},
+    service::project_service::{
+        add_project, create_project, delete_project, delete_project_content, find_project,
+        update_project,
+    },
     view::{content_view::ContentView, project_view::ProjectView},
 };
 use bytes::BufMut;
@@ -74,4 +77,17 @@ pub async fn handler_find_project(id: i32) -> Result<impl warp::Reply, Rejection
         warp::reply::json(&tmpjson),
         StatusCode::OK,
     ))
+}
+
+pub async fn handler_delete_project(id: i32) -> Result<impl warp::Reply, Rejection> {
+    delete_project(id).await.unwrap();
+    Ok("deleted")
+}
+
+pub async fn handler_delete_content_project(
+    id: i32,
+    content_id: i32,
+) -> Result<impl warp::Reply, Rejection> {
+    delete_project_content(id, content_id).await.unwrap();
+    Ok("deleted")
 }
