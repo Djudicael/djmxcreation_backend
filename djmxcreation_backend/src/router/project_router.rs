@@ -2,12 +2,12 @@ use warp::Filter;
 
 use crate::controller::project_controller::{
     handler_add_project, handler_create_project, handler_delete_content_project,
-    handler_delete_project, handler_find_project, handler_update_project,
+    handler_delete_project, handler_find_project, handler_get_projects, handler_update_project,
 };
 
 pub fn project_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
-    let project_base = warp::path("project");
+    let project_base = warp::path("projects");
 
     let create_project = project_base
         .and(warp::post())
@@ -15,11 +15,16 @@ pub fn project_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp:
         .and(warp::path::end())
         .and_then(handler_create_project);
 
+    let get_projects = project_base
+        .and(warp::get())
+        .and(warp::path::end())
+        .and_then(handler_get_projects);
+
     let add_project = project_base
         .and(warp::patch())
         .and(warp::path::param())
         .and(warp::multipart::form().max_length(5_000_000))
-        .and(warp::path("content"))
+        .and(warp::path("contents"))
         .and(warp::path::end())
         .and_then(handler_add_project);
 
@@ -45,12 +50,13 @@ pub fn project_filter() -> impl Filter<Extract = impl warp::Reply, Error = warp:
     let delete_content_project = project_base
         .and(warp::delete())
         .and(warp::path::param())
-        .and(warp::path("content"))
+        .and(warp::path("contents"))
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(handler_delete_content_project);
 
     create_project
+        .or(get_projects)
         .or(update_project)
         .or(add_project)
         .or(find_project)

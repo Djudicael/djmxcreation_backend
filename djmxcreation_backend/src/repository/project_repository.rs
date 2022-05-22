@@ -123,6 +123,14 @@ pub async fn get_projects_contents(project_id: i32) -> Result<Vec<ProjectContent
     Ok(contents)
 }
 
+pub async fn get_projects_content_thumbnail(project_id: i32) -> Result<Vec<ProjectContentEntity>, Error> {
+    let db = init_db().await?;
+    let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
+    let query = sqlx::query_as::<_, ProjectContentEntity>(&sql).bind(project_id);
+    let contents = query.fetch_all(&db).await?;
+    Ok(contents)
+}
+
 pub async fn get_projects_content_by_id(
     project_id: i32,
     id: i32,

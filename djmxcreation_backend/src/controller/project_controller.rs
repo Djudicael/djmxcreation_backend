@@ -3,7 +3,7 @@ use crate::{
     mapper::project_mapper::to_entity,
     service::project_service::{
         add_project, create_project, delete_project, delete_project_content, find_project,
-        update_project,
+        get_portfolio_projects, update_project,
     },
     view::{content_view::ContentView, project_view::ProjectView},
 };
@@ -90,4 +90,14 @@ pub async fn handler_delete_content_project(
 ) -> Result<impl warp::Reply, Rejection> {
     delete_project_content(id, content_id).await.unwrap();
     Ok("deleted")
+}
+
+pub async fn handler_get_projects() -> Result<impl warp::Reply, Rejection> {
+    let projects = get_portfolio_projects().await.unwrap();
+
+    let tmpjson = json!({ "projects": projects });
+    Ok(warp::reply::with_status(
+        warp::reply::json(&tmpjson),
+        StatusCode::OK,
+    ))
 }
