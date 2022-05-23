@@ -34,7 +34,7 @@ pub async fn add_project(
     file: &std::vec::Vec<u8>,
 ) -> Result<ContentView, Error> {
     let _ = get_project_by_id(id).await?;
-    let key = format!("{}/{}", "about", file_name);
+    let key = format!("{}/{}", "portfolio", file_name);
     let bucket = "portfolio";
     let content = Content::new(None, bucket.to_owned(), key.clone(), None);
     upload_file(bucket, &key.as_str(), file).await?;

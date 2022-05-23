@@ -5,7 +5,7 @@ use crate::{
         add_project, create_project, delete_project, delete_project_content, find_project,
         get_portfolio_projects, update_project,
     },
-    view::{content_view::ContentView, project_view::ProjectView},
+    view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
 };
 use bytes::BufMut;
 use futures::{TryFutureExt, TryStreamExt};
@@ -61,7 +61,7 @@ pub async fn handler_add_project(id: i32, form: FormData) -> Result<impl warp::R
 
 pub async fn handler_update_project(
     id: i32,
-    project: ProjectView,
+    project: ProjectPayload,
 ) -> Result<impl warp::Reply, Rejection> {
     let project_entity = to_entity(&project);
 
