@@ -57,7 +57,8 @@ pub fn get_s3_client(bucket_name: &str, region: &str) -> Result<Bucket, Error> {
             session_token: None,
         },
     )
-    .unwrap();
+    .unwrap()
+    .with_path_style();
 
     Ok(bucket)
 }

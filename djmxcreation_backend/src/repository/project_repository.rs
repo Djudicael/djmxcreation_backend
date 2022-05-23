@@ -147,7 +147,7 @@ pub async fn get_projects_content_by_id(
 pub async fn delete_project_by_id(project_id: i32) -> Result<(), Error> {
     let db = init_db().await?;
     let mut tx = db.begin().await?;
-    sqlx::query("DELETE project WHERE id = $1 ")
+    sqlx::query("DELETE FROM project WHERE id = $1 ")
         .bind(project_id)
         .execute(&mut tx)
         .await?;
@@ -158,7 +158,7 @@ pub async fn delete_project_by_id(project_id: i32) -> Result<(), Error> {
 pub async fn delete_project_content_by_id(project_id: i32, id: i32) -> Result<(), Error> {
     let db = init_db().await?;
     let mut tx = db.begin().await?;
-    sqlx::query("DELETE project_content WHERE id = $1 and project_id=$2 ")
+    sqlx::query("DELETE FROM project_content WHERE id = $1 and project_id = $2 ")
         .bind(id)
         .bind(project_id)
         .execute(&mut tx)
