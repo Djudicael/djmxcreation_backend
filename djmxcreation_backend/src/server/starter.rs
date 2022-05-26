@@ -19,8 +19,11 @@ pub async fn start() -> Result<(), Error> {
 }
 
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
+    eprintln!("HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE: {:?}", err.is_not_found());
     let (code, message) = if err.is_not_found() {
         (StatusCode::NOT_FOUND, "Not Found".to_string())
+    } else if err.is_not_found() {
+        (StatusCode::NOT_FOUND, "Payload too large".to_string())
     } else if err.find::<warp::reject::PayloadTooLarge>().is_some() {
         (StatusCode::BAD_REQUEST, "Payload too large".to_string())
     } else {

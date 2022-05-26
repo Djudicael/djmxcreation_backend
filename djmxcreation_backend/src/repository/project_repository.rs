@@ -37,7 +37,13 @@ pub async fn add_project_content(
         .bind(project_id)
         .bind(content_json)
         .bind(now_utc);
-    let content_entity = query.fetch_one(&db).await?;
+    let content_entity = query
+        .fetch_one(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(content_entity)
 }
 
@@ -48,7 +54,11 @@ pub async fn update_description(project_id: i32, description: &Value) -> Result<
         .bind(Json(description))
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
 
     tx.commit().await?;
 
@@ -66,7 +76,10 @@ pub async fn update_project_entity(project_id: i32, project: &ProjectEntity) -> 
         .bind(now_utc)
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
 
     tx.commit().await?;
 
@@ -80,7 +93,11 @@ pub async fn update_metadata(project_id: i32, metadata: &Metadata) -> Result<(),
         .bind(Json(metadata))
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
 
     tx.commit().await?;
 
@@ -94,7 +111,11 @@ pub async fn update_visibility(project_id: i32, is_visible: bool) -> Result<(), 
         .bind(is_visible)
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     tx.commit().await?;
     Ok(())
 }
@@ -111,7 +132,13 @@ pub async fn get_project_by_id(id: i32) -> Result<ProjectEntity, Error> {
     let db = init_db().await?;
     let sql = "SELECT * FROM project where id= $1";
     let query = sqlx::query_as::<_, ProjectEntity>(&sql).bind(id);
-    let project = query.fetch_one(&db).await?;
+    let project = query
+        .fetch_one(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(project)
 }
 
@@ -119,15 +146,29 @@ pub async fn get_projects_contents(project_id: i32) -> Result<Vec<ProjectContent
     let db = init_db().await?;
     let sql = "SELECT * FROM project_content where project_id = $1";
     let query = sqlx::query_as::<_, ProjectContentEntity>(&sql).bind(project_id);
-    let contents = query.fetch_all(&db).await?;
+    let contents = query
+        .fetch_all(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(contents)
 }
 
-pub async fn get_projects_content_thumbnail(project_id: i32) -> Result<Vec<ProjectContentEntity>, Error> {
+pub async fn get_projects_content_thumbnail(
+    project_id: i32,
+) -> Result<Vec<ProjectContentEntity>, Error> {
     let db = init_db().await?;
     let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
     let query = sqlx::query_as::<_, ProjectContentEntity>(&sql).bind(project_id);
-    let contents = query.fetch_all(&db).await?;
+    let contents = query
+        .fetch_all(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(contents)
 }
 
@@ -140,7 +181,14 @@ pub async fn get_projects_content_by_id(
     let query = sqlx::query_as::<_, ProjectContentEntity>(&sql)
         .bind(project_id)
         .bind(id);
-    let content = query.fetch_one(&db).await?;
+    let content = query
+        .fetch_one(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
+
     Ok(content)
 }
 
@@ -150,7 +198,11 @@ pub async fn delete_project_by_id(project_id: i32) -> Result<(), Error> {
     sqlx::query("DELETE FROM project WHERE id = $1 ")
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     tx.commit().await?;
     Ok(())
 }
@@ -162,7 +214,11 @@ pub async fn delete_project_content_by_id(project_id: i32, id: i32) -> Result<()
         .bind(id)
         .bind(project_id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     tx.commit().await?;
     Ok(())
 }

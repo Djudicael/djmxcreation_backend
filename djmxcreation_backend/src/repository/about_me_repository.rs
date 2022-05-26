@@ -18,7 +18,13 @@ pub async fn update_about_me(id: i32, about: &AboutMe) -> Result<AboutMe, Error>
         .bind(about.last_name())
         .bind(about.description())
         .bind(id);
-    let about_me = query.fetch_one(&db).await?;
+    let about_me = query
+        .fetch_one(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(about_me)
 }
 
@@ -34,7 +40,13 @@ pub async fn get_about_me_by_id(id: i32) -> Result<AboutMe, Error> {
     let db = init_db().await?;
     let sql = "SELECT * FROM about where id = $1 FETCH FIRST ROW ONLY";
     let query = sqlx::query_as::<_, AboutMe>(&sql).bind(id);
-    let about_me = query.fetch_one(&db).await?;
+    let about_me = query
+        .fetch_one(&db)
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     Ok(about_me)
 }
 
@@ -48,7 +60,11 @@ pub async fn update_photo(id: i32, content: &Content) -> Result<(), Error> {
         .bind(content_json)
         .bind(id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
 
     tx.commit().await?;
 
@@ -61,7 +77,11 @@ pub async fn delete_about_me_photo(id: i32) -> Result<(), Error> {
     sqlx::query("UPDATE about SET photo = NULL WHERE id = $1")
         .bind(id)
         .execute(&mut tx)
-        .await?;
+        .await
+        .map_err(|sqlx_error| match sqlx_error {
+            sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
+            other => Error::SqlxError(other),
+        })?;
     tx.commit().await?;
     Ok(())
 }
