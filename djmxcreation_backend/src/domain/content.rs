@@ -1,5 +1,4 @@
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
 
 #[derive(sqlx::FromRow, Debug, Clone, Serialize, Deserialize)]
 pub struct Content {
@@ -10,7 +9,12 @@ pub struct Content {
 }
 
 impl Content {
-    pub fn new(id: Option<i32>, bucket_name: String, file_name: String, mime_type: Option<String>) -> Self {
+    pub fn new(
+        id: Option<i32>,
+        bucket_name: String,
+        file_name: String,
+        mime_type: Option<String>,
+    ) -> Self {
         Self {
             id,
             bucket_name,

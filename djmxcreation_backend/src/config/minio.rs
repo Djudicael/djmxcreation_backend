@@ -3,12 +3,12 @@ use dotenv::dotenv;
 use s3::Bucket;
 
 // use s3::{creds::Credentials, request_trait::Request, Bucket, BucketConfiguration, Region};
-use std::{env, str::FromStr};
+use std::env;
 use warp::http::Uri;
 
 use crate::app_error::Error;
 
-pub fn get_aws_client(region: &str) -> Result<Client, Error> {
+pub fn get_aws_client(_region: &str) -> Result<Client, Error> {
     // get the id/secret from env
     dotenv().unwrap();
     let minio_endpoint = env::var("MINIO_ENDPOINT").unwrap();

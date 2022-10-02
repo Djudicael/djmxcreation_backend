@@ -1,15 +1,5 @@
+use djmxcreation_backend::*;
 use server::starter::start;
-// use djmxcreation_backend;
-mod app_error;
-mod config;
-mod controller;
-mod domain;
-mod mapper;
-mod repository;
-mod router;
-mod server;
-mod service;
-mod view;
 
 #[tokio::main]
 async fn main() {

@@ -25,7 +25,7 @@ pub fn to_view(
         id,
         first_name.to_owned(),
         last_name.to_owned(),
-        description.map(|desc| desc.clone()),
+        description.cloned(),
         picture,
     )
 }

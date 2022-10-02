@@ -1,8 +1,5 @@
-use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use sqlx::types::{chrono, Json};
-
-use super::metadata::Metadata;
 
 #[derive(sqlx::FromRow, Default, Debug, Clone)]
 pub struct ProjectEntity {

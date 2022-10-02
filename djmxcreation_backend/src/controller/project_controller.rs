@@ -1,12 +1,12 @@
 use crate::{
     app_error::{self, Error, WebErrorMessage},
-    domain::{metadata::Metadata, project_content_entity::ProjectContentEntity},
+    domain::metadata::Metadata,
     mapper::project_mapper::to_entity,
     service::project_service::{
         add_project, create_project, delete_project, delete_project_content, find_project,
         get_portfolio_projects, update_project,
     },
-    view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
+    view::{content_view::ContentView, project_payload::ProjectPayload},
 };
 use bytes::BufMut;
 use futures::{TryFutureExt, TryStreamExt};

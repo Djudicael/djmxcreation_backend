@@ -1,7 +1,6 @@
 use aws_sdk_s3::{error::PutObjectError, types::SdkError};
 use s3::error::S3Error;
 use thiserror::*;
-use warp::Rejection;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -10,21 +9,19 @@ pub enum Error {
     #[error("Fail authentication missing X-Auth-Token header.")]
     FailAuthMissingXAuth,
     #[error(transparent)]
-    SqlxError(#[from] sqlx::Error),
+    Sqlx(#[from] sqlx::Error),
     // #[error(transparent)]
     // SqlxNotRowFoundError(#[from] sqlx::Error::RowNotFound),
     #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    IO(#[from] std::io::Error),
     #[error(transparent)]
-    WarpError(#[from] warp::Error),
+    Warp(#[from] warp::Error),
     #[error(transparent)]
-    StorageUploadError(#[from] SdkError<PutObjectError>),
+    StorageUpload(#[from] SdkError<PutObjectError>),
     #[error(transparent)]
-    StorageDeleteObjectError(
-        #[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>,
-    ),
+    StorageDeleteObject(#[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>),
     #[error(transparent)]
-    S3Error(#[from] S3Error),
+    S3(#[from] S3Error),
     #[error("Entity Not Found - {0}] ")]
     EntityNotFound(String),
 }

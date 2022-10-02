@@ -1,4 +1,3 @@
-use crate::domain::content::Content;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;

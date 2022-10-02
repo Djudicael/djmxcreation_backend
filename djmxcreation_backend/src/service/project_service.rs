@@ -28,21 +28,17 @@ pub async fn create_project(metadata: &Metadata) -> Result<ProjectView, Error> {
     Ok(project_view)
 }
 
-pub async fn add_project(
-    id: i32,
-    file_name: String,
-    file: &std::vec::Vec<u8>,
-) -> Result<ContentView, Error> {
+pub async fn add_project(id: i32, file_name: String, file: &[u8]) -> Result<ContentView, Error> {
     let _ = get_project_by_id(id).await?;
     let key = format!("{}/{}", "portfolio", file_name);
     let bucket = "portfolio";
     let content = Content::new(None, bucket.to_owned(), key.clone(), None);
-    upload_file(bucket, &key.as_str(), file).await?;
+    upload_file(bucket, key.as_str(), file).await?;
     let content_entity = add_project_content(id, &content).await?;
     let content = content_entity
         .content()
         .map(|photo| &photo.0)
-        .map(|photo| to_content(photo));
+        .map(to_content);
     let (url, mime_type) = match content {
         Some(photo) => {
             let url = get_object_url(photo.bucket_name(), photo.file_name()).await?;
@@ -52,7 +48,7 @@ pub async fn add_project(
         None => (None, None),
     };
 
-    let content_view = ContentView::new(content_entity.id().map(|id| *id), mime_type, url);
+    let content_view = ContentView::new(content_entity.id().copied(), mime_type, url);
 
     Ok(content_view)
 }
@@ -76,7 +72,7 @@ pub async fn find_project(id: i32) -> Result<ProjectView, Error> {
         let content = content_entity
             .content()
             .map(|photo| &photo.0)
-            .map(|photo| to_content(photo));
+            .map(to_content);
         let (url, mime_type) = match content {
             Some(photo) => {
                 let url = get_object_url(photo.bucket_name(), photo.file_name()).await?;
@@ -86,7 +82,7 @@ pub async fn find_project(id: i32) -> Result<ProjectView, Error> {
             None => (None, None),
         };
 
-        let content_view = ContentView::new(content_entity.id().map(|id| *id), mime_type, url);
+        let content_view = ContentView::new(content_entity.id().copied(), mime_type, url);
         contents.push(content_view);
     }
     let project_view = to_view(&contents, &project_entity);
@@ -101,11 +97,10 @@ pub async fn delete_project(id: i32) -> Result<(), Error> {
         let content = content_entity
             .content()
             .map(|photo| &photo.0)
-            .map(|photo| to_content(photo));
+            .map(to_content);
 
-        match content {
-            Some(content) => remove_object(content.bucket_name(), content.file_name()).await?,
-            None => (),
+        if let Some(content) = content {
+            remove_object(content.bucket_name(), content.file_name()).await?
         }
     }
 
@@ -118,13 +113,12 @@ pub async fn delete_project_content(project_id: i32, content_id: i32) -> Result<
     let content = content_entity
         .content()
         .map(|photo| &photo.0)
-        .map(|photo| to_content(photo));
+        .map(to_content);
 
     delete_project_content_by_id(project_id, content_id).await?;
 
-    match content {
-        Some(content) => remove_object(content.bucket_name(), content.file_name()).await?,
-        None => (),
+    if let Some(content) = content {
+        remove_object(content.bucket_name(), content.file_name()).await?
     }
 
     Ok(())
@@ -137,7 +131,7 @@ pub async fn get_portfolio_projects() -> Result<Vec<ProjectView>, Error> {
 
     let result = stream::iter(projects)
         .fold(Vec::new(), |mut vec, data| async move {
-            let contents = match data.id().map(|id| *id) {
+            let contents = match data.id().copied() {
                 Some(id) => {
                     let thumb = get_projects_content_thumbnail(id).await.unwrap();
                     let thumb_views = to_contents(&thumb).await.unwrap();
@@ -167,7 +161,7 @@ async fn to_contents(
         let content = content_entity
             .content()
             .map(|photo| &photo.0)
-            .map(|photo| to_content(photo));
+            .map(to_content);
         let (url, mime_type) = match content {
             Some(photo) => {
                 let url = get_object_url(photo.bucket_name(), photo.file_name()).await?;
@@ -176,7 +170,7 @@ async fn to_contents(
             }
             None => (None, None),
         };
-        let content_view = ContentView::new(content_entity.id().map(|id| *id), mime_type, url);
+        let content_view = ContentView::new(content_entity.id().copied(), mime_type, url);
         contents.push(content_view);
     }
     Ok(contents)

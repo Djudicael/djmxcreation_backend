@@ -3,20 +3,20 @@ use sqlx::types::Json;
 
 use crate::{
     domain::{metadata::Metadata, project_entity::ProjectEntity},
-    view::{content_view::ContentView, project_view::ProjectView, project_payload::ProjectPayload},
+    view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
 };
 
-pub fn to_view(contents: &Vec<ContentView>, project: &ProjectEntity) -> ProjectView {
+pub fn to_view(contents: &[ContentView], project: &ProjectEntity) -> ProjectView {
     ProjectView::new(
-        project.id().map(|id| *id),
+        project.id().cloned(),
         project
             .metadata()
             .map(|metadata| &metadata.0)
-            .map(|metadata| to_metadata(metadata)),
+            .map(to_metadata),
         project
             .description()
             .map(|description| &description.0)
-            .map(|description| description.clone()),
+            .cloned(),
         project.visible(),
         contents.to_vec(),
     )

@@ -14,11 +14,11 @@ use crate::view::about_me_view::AboutMeView;
 pub async fn handler_get_about_me() -> Result<impl warp::Reply, Rejection> {
     let about = about_me().await.unwrap();
     let view = to_view(
-        about.id().map(|id| *id),
+        about.id().cloned(),
         about.first_name(),
         about.last_name(),
         about.description().map(|description| &description.0),
-        about.photo_url().map(|url| url.clone()), // about.photo().map(|photo| photo.clone()),
+        about.photo_url().cloned(), // about.photo().map(|photo| photo.clone()),
     );
 
     let tmpjson = json!(view);
@@ -35,7 +35,7 @@ pub async fn handler_update_about_me(
     let about = to_model(&body);
     let new_me = update_me(id, &about).await.unwrap();
     let view = to_view(
-        new_me.id().map(|id| *id),
+        new_me.id().cloned(),
         new_me.first_name(),
         new_me.last_name(),
         new_me.description().map(|description| &description.0),
