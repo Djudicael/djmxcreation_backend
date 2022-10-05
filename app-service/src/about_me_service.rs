@@ -1,15 +1,11 @@
-use crate::{
-    app_error::Error,
-    domain::about_me::AboutMe,
-    domain::content::Content,
-    domain::me::Me,
-    repository::{
-        about_me_repository::{
-            delete_about_me_photo, get_about_me, get_about_me_by_id, update_about_me, update_photo,
-        },
-        storage_repository::{get_object_url, remove_object, upload_file},
-    },
+use app_domain::about_me::AboutMe;
+use app_domain::content::Content;
+use app_domain::me::Me;
+use app_error::Error;
+use repository::about_me_repository::{
+    delete_about_me_photo, get_about_me, get_about_me_by_id, update_about_me, update_photo,
 };
+use repository::storage_repository::{get_object_url, remove_object, upload_file};
 
 pub async fn about_me() -> Result<Me, Error> {
     let about_me = get_about_me().await?;

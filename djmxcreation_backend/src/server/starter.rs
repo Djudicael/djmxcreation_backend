@@ -4,8 +4,9 @@ use warp::hyper::StatusCode;
 use warp::Filter;
 use warp::{Rejection, Reply};
 
+use crate::router::about_me::about_me_filter;
 use crate::router::project_router::project_filter;
-use crate::{app_error::Error, router::about_me::about_me_filter};
+use app_error::Error;
 
 pub async fn start() -> Result<(), Error> {
     // Apis

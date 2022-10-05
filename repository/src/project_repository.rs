@@ -1,15 +1,13 @@
+use app_domain::{
+    content::Content, metadata::Metadata, project_content_entity::ProjectContentEntity,
+    project_entity::ProjectEntity,
+};
+use app_error::Error;
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use sqlx::types::Json;
 
-use crate::{
-    app_error::Error,
-    config::db::init_db,
-    domain::{
-        content::Content, metadata::Metadata, project_content_entity::ProjectContentEntity,
-        project_entity::ProjectEntity,
-    },
-};
+use crate::config::db::init_db;
 
 pub async fn create(metadata: &Metadata) -> Result<ProjectEntity, Error> {
     let db = init_db().await?;

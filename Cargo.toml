@@ -1,4 +1,8 @@
 [workspace]
 members = [
-    "djmxcreation_backend"
+    "app-error",
+    "djmxcreation_backend",
+    "repository",
+    "app-domain",
+    "app-service",
 ]

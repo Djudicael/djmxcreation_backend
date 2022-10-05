@@ -3,22 +3,21 @@ use futures::{
     FutureExt,
 };
 
-use crate::{
-    app_error::Error,
-    domain::{
-        content::Content, metadata::Metadata, project_content_entity::ProjectContentEntity,
-        project_entity::ProjectEntity,
+use app_domain::mapper::project_mapper::to_view;
+use app_domain::{
+    content::Content, metadata::Metadata, project_content_entity::ProjectContentEntity,
+    project_entity::ProjectEntity,
+};
+use app_error::Error;
+
+use app_domain::view::{content_view::ContentView, project_view::ProjectView};
+use repository::{
+    project_repository::{
+        add_project_content, create, delete_project_by_id, delete_project_content_by_id,
+        get_project_by_id, get_projects, get_projects_content_by_id,
+        get_projects_content_thumbnail, get_projects_contents, update_project_entity,
     },
-    mapper::project_mapper::to_view,
-    repository::{
-        project_repository::{
-            add_project_content, create, delete_project_by_id, delete_project_content_by_id,
-            get_project_by_id, get_projects, get_projects_content_by_id,
-            get_projects_content_thumbnail, get_projects_contents, update_project_entity,
-        },
-        storage_repository::{get_object_metadata, get_object_url, remove_object, upload_file},
-    },
-    view::{content_view::ContentView, project_view::ProjectView},
+    storage_repository::{get_object_metadata, get_object_url, remove_object, upload_file},
 };
 
 pub async fn create_project(metadata: &Metadata) -> Result<ProjectView, Error> {
@@ -134,8 +133,7 @@ pub async fn get_portfolio_projects() -> Result<Vec<ProjectView>, Error> {
             let contents = match data.id().copied() {
                 Some(id) => {
                     let thumb = get_projects_content_thumbnail(id).await.unwrap();
-                    let thumb_views = to_contents(&thumb).await.unwrap();
-                    thumb_views
+                    to_contents(&thumb).await.unwrap()
                 }
                 None => vec![],
             };

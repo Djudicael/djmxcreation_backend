@@ -1,8 +1,7 @@
-use crate::{
-    app_error::Error,
-    config::db::init_db,
-    domain::{about_me::AboutMe, content::Content},
-};
+use crate::config::db::init_db;
+
+use app_domain::{about_me::AboutMe, content::Content};
+use app_error::Error;
 
 use serde_json::json;
 use sqlx::types::Json;

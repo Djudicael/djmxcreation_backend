@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::metadata::Metadata;
+use crate::metadata::Metadata;
 
 use super::content_view::ContentView;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]

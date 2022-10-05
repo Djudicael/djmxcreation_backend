@@ -2,8 +2,8 @@ use serde_json::{json, Value};
 use sqlx::types::Json;
 
 use crate::{
-    domain::{metadata::Metadata, project_entity::ProjectEntity},
     view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
+    {metadata::Metadata, project_entity::ProjectEntity},
 };
 
 pub fn to_view(contents: &[ContentView], project: &ProjectEntity) -> ProjectView {

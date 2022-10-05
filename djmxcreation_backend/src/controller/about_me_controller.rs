@@ -6,10 +6,13 @@ use warp::hyper::StatusCode;
 use warp::multipart::FormData;
 use warp::Rejection;
 
-use crate::domain::about_me::AboutMe;
-use crate::mapper::about_me_mapper::*;
-use crate::service::about_me_service::*;
-use crate::view::about_me_view::AboutMeView;
+use app_domain::about_me::AboutMe;
+
+use app_domain::mapper::about_me_mapper::*;
+
+use app_domain::view::about_me_view::AboutMeView;
+
+use app_service::about_me_service::*;
 
 pub async fn handler_get_about_me() -> Result<impl warp::Reply, Rejection> {
     let about = about_me().await.unwrap();

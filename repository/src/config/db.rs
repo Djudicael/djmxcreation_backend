@@ -60,7 +60,7 @@ async fn new_db_pool(config: &DatabaseConfiguration) -> Result<Db, sqlx::Error> 
 
     PgPoolOptions::new()
         .max_connections(config.pg_app_max_con)
-        .connect_timeout(Duration::from_millis(500))
+        .acquire_timeout(Duration::from_millis(500))
         .connect(&con_string)
         .await
 }

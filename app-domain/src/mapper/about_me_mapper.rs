@@ -1,7 +1,7 @@
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::{domain::about_me::AboutMe, view::about_me_view::AboutMeView};
+use crate::{about_me::AboutMe, view::about_me_view::AboutMeView};
 
 pub fn to_model(view: &AboutMeView) -> AboutMe {
     AboutMe::new(

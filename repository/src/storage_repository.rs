@@ -1,10 +1,7 @@
+use crate::config::minio::{get_aws_client, get_s3_client};
+use app_error::Error;
 use aws_sdk_s3::types::ByteStream;
 use s3::serde_types::HeadObjectResult;
-
-use crate::{
-    app_error::Error,
-    config::minio::{get_aws_client, get_s3_client},
-};
 
 pub async fn upload_file(bucket_name: &str, file_name: &str, file: &[u8]) -> Result<(), Error> {
     let client = get_aws_client("us-west-0")?;

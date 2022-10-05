@@ -2,11 +2,11 @@ use aws_sdk_s3::{config, Client, Credentials, Endpoint, Region};
 use dotenv::dotenv;
 use s3::Bucket;
 
-// use s3::{creds::Credentials, request_trait::Request, Bucket, BucketConfiguration, Region};
 use std::env;
-use warp::http::Uri;
 
-use crate::app_error::Error;
+use http::Uri;
+
+use app_error::Error;
 
 pub fn get_aws_client(_region: &str) -> Result<Client, Error> {
     // get the id/secret from env
@@ -55,6 +55,7 @@ pub fn get_s3_client(bucket_name: &str, region: &str) -> Result<Bucket, Error> {
             secret_key: Some(minio_secret_key),
             security_token: None,
             session_token: None,
+            expiration: None,
         },
     )
     .unwrap()
