@@ -673,6 +673,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "djmxcreation-backend-axium"
+version = "0.1.0"
+dependencies = [
+ "app-domain",
+ "app-error",
+ "app-service",
+]
+
+[[package]]
 name = "djmxcreation_backend"
 version = "0.1.0"
 dependencies = [

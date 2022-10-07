@@ -2,6 +2,7 @@
 members = [
     "app-error",
     "djmxcreation_backend",
+    "djmxcreation-backend-axium",
     "repository",
     "app-domain",
     "app-service",
