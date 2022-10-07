@@ -6,7 +6,7 @@ It's a one man project so some choice have to be made for the economic purpose a
 
 ## Architecture
 
-Tis project is composed by 1 backend and 2 front end . A front dedicated to the CMS part and one for the portfolio website.
+This project is composed by 1 backend and 2 front end . A front dedicated to the CMS part and one for the portfolio website.
 
 
 ![SOA](./docs/overview.jpg)
