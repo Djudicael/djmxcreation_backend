@@ -1,11 +1,12 @@
-use app_domain::about_me::AboutMe;
 use axum::extract::Multipart;
 
 use app_domain::mapper::about_me_mapper::*;
 use app_domain::view::about_me_view::AboutMeView;
 
 use app_service::about_me_service::*;
+
 use axum::Json;
+
 use uuid::Uuid;
 
 use crate::error::axum_error::ApiResult;
@@ -42,35 +43,16 @@ pub async fn handler_delete_image_about_me(id: i32) -> ApiResult<()> {
     Ok(())
 }
 
-pub async fn add_image_profile_to_about_me(id: i32, mut form: Multipart) -> ApiResult<()> {
-    while let Some(mut field) = form.next_field().await.unwrap() {
-    //    let test =  field. .bytes().await.unwrap(); 
-    //         .and_then(|part| {
-    //             // let name = part.name().to_string();
-    //             let file_name = part.filename().unwrap_or_default();
-    //             let uudi_v4 = Uuid::new_v4().to_string();
+pub async fn handle_add_image_profile_to_about_me(id: i32, mut form: Multipart) -> ApiResult<()> {
+    while let Some(field) = form.next_field().await.unwrap() {
+        let uudi_v4 = Uuid::new_v4().to_string();
+        let file_name = if let Some(file_name) = field.file_name() {
+            format!("{}-{}", uudi_v4, file_name.to_owned())
+        } else {
+            uudi_v4
+        };
 
-    //             let name = if file_name.is_empty() {
-    //                 uudi_v4
-    //             } else {
-    //                 uudi_v4 + "-" + file_name
-    //             };
-    //             let value = part.stream().try_fold(Vec::new(), |mut vec, data| {
-    //                 vec.put(data);
-    //                 async move { Ok(vec) }
-    //             });
-    //             value.map_ok(move |vec| (name, vec))
-    //         })
-    //         .try_collect()
-    //         .await
-    //         .map_err(|e| {
-    //             panic!("multipart error: {:?}", e);
-    //         });
+        add_profile_picture(id, file_name, &field.bytes().await?).await?;
     }
-    // if let Ok(parts) = uploaded {
-    //     for (name, buffer) in parts.into_iter() {
-    //         add_profile_picture(id, name, &buffer).await.unwrap();
-    //     }
-    // };
     Ok(())
 }

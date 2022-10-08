@@ -1,8 +1,8 @@
-GET http://127.0.0.1:8080/me
+GET http://127.0.0.1:8081/api/v1/me
 
 
 ### create a todo
-PATCH  http://127.0.0.1:8080/me/1
+PUT  http://127.0.0.1:8081/api/v1/me/4
 content-type: application/json
 
 {
@@ -11,9 +11,9 @@ content-type: application/json
   "lastName": "dubray",
   "description":{
 
-  "firstName": "wow",
+  "firstName": "daim",
   "id": 1,
-  "lastName": "boo"
+  "lastName": "boom"
 }
 
 }

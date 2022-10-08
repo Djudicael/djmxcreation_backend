@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -37,6 +38,8 @@ pub enum Error {
     InternalServerError,
     #[error("Error from service layer")]
     ServiceError(#[from] app_error::Error),
+    #[error("Error from upload file")]
+    UploadMultipartError(#[from] MultipartError),
 }
 
 impl IntoResponse for Error {
