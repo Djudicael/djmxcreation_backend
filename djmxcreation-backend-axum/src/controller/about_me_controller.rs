@@ -44,7 +44,7 @@ pub async fn handler_delete_image_about_me(id: i32) -> ApiResult<()> {
 }
 
 pub async fn handle_add_image_profile_to_about_me(id: i32, mut form: Multipart) -> ApiResult<()> {
-    while let Some(field) = form.next_field().await.unwrap() {
+    while let Some(field) = form.next_field().await? {
         let uudi_v4 = Uuid::new_v4().to_string();
         let file_name = if let Some(file_name) = field.file_name() {
             format!("{}-{}", uudi_v4, file_name.to_owned())
