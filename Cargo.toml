@@ -6,4 +6,5 @@ members = [
     "repository",
     "app-domain",
     "app-service",
+    "migration",
 ]
