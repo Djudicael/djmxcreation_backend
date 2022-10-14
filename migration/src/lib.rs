@@ -1,5 +1,8 @@
 use std::{env, fs, path::PathBuf, time::Duration};
 
+use base64ct::{Base64, Encoding};
+use sha3::{Digest, Sha3_256};
+
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
@@ -34,9 +37,21 @@ impl DatabaseConfiguration {
     }
 }
 
+fn content_hasher(content: &str) -> String {
+    // create a SHA3-256 object
+    let mut hasher = Sha3_256::default();
+
+    // write input message
+    hasher.update(content.as_bytes());
+
+    // read hash digest
+    let hash = hasher.finalize();
+    Base64::encode_string(&hash)
+}
+
 pub async fn init_db_migration_test(database: &DatabaseConfiguration) -> Result<(), sqlx::Error> {
     // run the app sql files
-    let app_db = new_db_pool(&database).await?;
+    let app_db = new_db_pool(database).await?;
 
     let mut paths: Vec<PathBuf> = fs::read_dir(SQL_DIR)?
         .into_iter()
@@ -48,7 +63,7 @@ pub async fn init_db_migration_test(database: &DatabaseConfiguration) -> Result<
         if let Some(path) = path.to_str() {
             // only .sql and not the recreate
             if path.ends_with(".sql") {
-                pexec(&app_db, &path).await?;
+                pexec(&app_db, path).await?;
             }
         }
     }
@@ -64,10 +79,10 @@ pub async fn init_db() -> Result<Db, sqlx::Error> {
     let pg_password = env::var("PG_PASSWORD").unwrap();
 
     let database = DatabaseConfiguration::new(
-        &pg_host.as_str(),
-        &pg_db.as_str(),
-        &pg_user.as_str(),
-        &pg_password.as_str(),
+        pg_host.as_str(),
+        pg_db.as_str(),
+        pg_user.as_str(),
+        pg_password.as_str(),
         5,
     );
 
@@ -82,10 +97,13 @@ async fn pexec(db: &Db, file: &str) -> Result<(), sqlx::Error> {
         ex
     })?;
 
-    let sqls: Vec<&str> = content.split(";").collect();
+    let _hashed_content = content_hasher(content.as_str());
+    // dbg!(&content);
+
+    let sqls: Vec<&str> = content.split(';').collect();
 
     for sql in sqls {
-        match sqlx::query(&sql).execute(db).await {
+        match sqlx::query(sql).execute(db).await {
             Ok(_) => (),
             Err(ex) => println!(
                 "WARNING -pexex - SQL file '{}' FAILED caused: {} ",
