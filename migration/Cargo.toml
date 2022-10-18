@@ -11,3 +11,4 @@ dotenv = "0.15.0"
 sha3 = "0.10.5"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres"] }
 tokio = { version = "1.21.2", features = ["full"] }
+test-util = { path = "../test-util" }

@@ -7,4 +7,5 @@ members = [
     "app-domain",
     "app-service",
     "migration",
+    "test-util",
 ]

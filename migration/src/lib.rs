@@ -133,11 +133,16 @@ async fn new_db_pool(config: &DatabaseConfiguration) -> Result<Db, sqlx::Error> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_util::{postgresql::init_postgresql, *};
 
     #[tokio::test]
     async fn it_works() {
+        let container = init_postgresql("portfolio", "postgres", "postgres");
+
         let database =
             DatabaseConfiguration::new("127.0.0.1", "portfolio", "postgres", "postgres", 5);
         let _ = init_db_migration_test(&database);
+
+        container.rm();
     }
 }
