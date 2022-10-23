@@ -32,10 +32,10 @@ https://github.com/cloud-hypervisor/cloud-hypervisor
 
 ![SOA](./docs/SOA.drawio.png)
 
-For my project i decided to go for a Service-oriented Architecture SOA. 
+For my project i decided to go for a Layered Architecture. (https://cs.uwaterloo.ca/~m2nagapp/courses/CS446/1195/Arch_Design_Activity/Layered.pdf)
 Its easy to reuse some part of the component for the different tool without too much effort.
 
-  SOA will not be use in a dogmatic way . For example in this project there is a package app-domain , this package has the view and the entity representing the data. I made the choice to make them together to reuse them in other project like the frontend portfolio and cms. Fow now the backend framework used is WARP but AXUM and ACTIX ( i will not talk about WASMER and wasmcloud for now) .
+  For example in this project there is a package app-domain , this package has the view and the entity representing the data. I made the choice to make them together to reuse them in other project like the frontend portfolio and cms. Fow now the backend framework used is WARP but AXUM and ACTIX ( i will not talk about WASMER and wasmcloud for now) .
   So for now all layers are aware of the app-domain lib.In the SOA architecture it should not be the case but i prefer to stay pragmatic to simply the system.
 
 
