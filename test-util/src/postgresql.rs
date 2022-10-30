@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use testcontainers::{clients::Cli, core::WaitFor, Image, Container};
+use testcontainers::{clients::Cli, core::WaitFor, Container, Image};
 
 const NAME: &str = "postgres";
 const TAG: &str = "11-alpine";
@@ -46,7 +46,7 @@ impl Image for PostgresSQL {
     }
 }
 
-pub fn init_postgresql(pg_db: &str, pg_user: &str, pg_password: &str) -> Container<PostgresSQL> {
+pub fn init_postgresql(pg_db: &str, pg_user: &str, pg_password: &str) -> (Cli, PostgresSQL) {
     let mut env_vars = HashMap::new();
     env_vars.insert("POSTGRES_DB".to_owned(), pg_db.to_owned());
     env_vars.insert("POSTGRES_PASSWORD".into(), pg_password.into());
@@ -56,5 +56,5 @@ pub fn init_postgresql(pg_db: &str, pg_user: &str, pg_password: &str) -> Contain
 
     let podman = Cli::podman();
 
-    podman.run(image);
+    (podman, image)
 }
