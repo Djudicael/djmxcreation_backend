@@ -15,8 +15,6 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]
-    Warp(#[from] warp::Error),
-    #[error(transparent)]
     StorageUpload(#[from] SdkError<PutObjectError>),
     #[error(transparent)]
     StorageDeleteObject(#[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>),
@@ -42,7 +40,7 @@ impl WebErrorMessage {
 
 impl From<self::Error> for warp::Rejection {
     fn from(other: self::Error) -> Self {
-        WebErrorMessage::rejection("web::Error", format!("{}", other))
+        WebErrorMessage::rejection("web::Error", format!("{other}"))
     }
 }
 // impl From<model::Error> for warp::Rejection {

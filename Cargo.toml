@@ -8,4 +8,6 @@ members = [
     "app-service",
     "migration",
     "test-util",
+    "app_core",
+    "app_config",
 ]

@@ -3,7 +3,7 @@ use app_domain::{
     metadata::Metadata,
     view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
 };
-use app_service::project_service::{
+use app_service::project_service_old::{
     add_project, create_project, delete_project, delete_project_content, find_project,
     get_portfolio_projects, update_project,
 };

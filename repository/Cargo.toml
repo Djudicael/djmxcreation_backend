@@ -14,6 +14,6 @@ rust-s3 = "0.32.3"
 chrono = {version = "0.4.22", feature = ["serde"]}
 app-error = { path = "../app-error" }
 app-domain = { path = "../app-domain" }
-# serde_derive = "1.0.145"
 serde_json = "1.0.85"
 http = "0.2.8"
+serde = "1.0.152"

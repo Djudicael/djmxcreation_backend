@@ -1,0 +1,13 @@
+[package]
+name = "app_core"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.61"
+app-error = { path = "../app-error" }
+chrono = { version = "0.4.23", features = ["serde"] }
+serde_json = "1.0.91"
+serde = "1.0.152"
