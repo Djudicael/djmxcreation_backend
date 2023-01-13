@@ -4,7 +4,7 @@ use app_core::{
         project_dto::ProjectDto,
     },
     mapper::project_mapper::to_view,
-    project::{project_repository::DynProjectRepository, project_service::IProjectService},
+    project::{project_repository::DynIProjectRepository, project_service::IProjectService},
     storage::storage_repository::DynIStorageRepository,
     view::{content_view::ContentView, project_view::ProjectView},
 };
@@ -12,12 +12,12 @@ use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
 
-fn to_content(value: serde_json::Value) -> ContentDto {
-    serde_json::from_value(value).unwrap()
-}
+// fn to_content(value: serde_json::Value) -> ContentDto {
+//     serde_json::from_value(value).unwrap()
+// }
 
 pub struct ProjectService {
-    pub project_repository: DynProjectRepository,
+    pub project_repository: DynIProjectRepository,
     pub storage_repository: DynIStorageRepository,
 }
 
@@ -38,7 +38,7 @@ impl ProjectService {
     ) -> Result<Vec<ContentView>, Error> {
         let mut contents: Vec<ContentView> = vec![];
         for content_dto in project_contents {
-            let content = content_dto.clone().content.map(to_content);
+            let content = content_dto.clone().content;
             let (url, mime_type) = match content {
                 Some(photo) => {
                     let url = self

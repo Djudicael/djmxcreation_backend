@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
+use super::metadata_dto::MetadataDto;
+
 #[derive(Default, Debug, Clone)]
 pub struct ProjectDto {
     pub id: Option<i32>,
-    pub metadata: Option<Value>,
+    pub metadata: Option<MetadataDto>,
     pub description: Option<Value>,
     pub visible: bool,
     pub created_on: Option<DateTime<Utc>>,
@@ -14,7 +16,7 @@ pub struct ProjectDto {
 impl ProjectDto {
     pub fn new(
         id: Option<i32>,
-        metadata: Option<Value>,
+        metadata: Option<MetadataDto>,
         description: Option<Value>,
         visible: bool,
         created_on: Option<DateTime<Utc>>,

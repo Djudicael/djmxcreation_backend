@@ -21,16 +21,15 @@ impl ProjectPayload {
     }
 }
 
-impl Into<ProjectDto> for ProjectPayload {
-    fn into(self) -> ProjectDto {
-        let metadata_json = self.metadata.map(|meta| json!(meta));
-        let description_json = self.description.map(|description| json!(description));
+impl From<ProjectPayload> for ProjectDto {
+    fn from(val: ProjectPayload) -> Self {
+        let description_json = val.description.map(|description| json!(description));
 
         ProjectDto::new(
             None,
-            metadata_json,
+            val.metadata,
             description_json,
-            self.visible,
+            val.visible,
             None,
             None,
         )

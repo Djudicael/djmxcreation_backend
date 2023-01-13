@@ -8,10 +8,10 @@ use crate::dto::{
     project_dto::ProjectDto,
 };
 
-pub type DynProjectRepository = Arc<dyn ProjectRepository + Send + Sync>;
+pub type DynIProjectRepository = Arc<dyn IProjectRepository + Send + Sync>;
 
 #[async_trait]
-pub trait ProjectRepository {
+pub trait IProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error>;
 
     async fn add_project_content(

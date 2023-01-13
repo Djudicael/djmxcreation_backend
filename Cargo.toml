@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "app-error",
-    "djmxcreation_backend",
     "djmxcreation-backend-axum",
     "repository",
     "app-domain",

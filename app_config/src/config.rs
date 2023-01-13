@@ -25,8 +25,10 @@ impl Config {
         let minio_endpoint = env::var("MINIO_ENDPOINT").expect("Cannot find MINIO_ENDPOINT");
         let minio_access_key = env::var("MINIO_ACCESS_KEY").expect("Cannot find MINIO_ACCESS_KEY");
         let minio_secret_key = env::var("MINIO_SECRET_KEY").expect("Cannot find MINIO_SECRET_KEY");
+        let region = env::var("MINIO_REGION").expect("Cannot find MINIO_REGION");
 
-        let storage = StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key);
+        let storage =
+            StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key, region);
 
         Self { database, storage }
     }

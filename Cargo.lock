@@ -64,7 +64,6 @@ dependencies = [
 name = "app-service"
 version = "0.1.0"
 dependencies = [
- "app-domain",
  "app-error",
  "app_core",
  "async-trait",
@@ -850,26 +849,6 @@ dependencies = [
  "tower",
  "tower-http",
  "uuid",
-]
-
-[[package]]
-name = "djmxcreation_backend"
-version = "0.1.0"
-dependencies = [
- "app-domain",
- "app-error",
- "app-service",
- "bytes",
- "futures",
- "mime_guess",
- "serde",
- "serde_derive",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-stream",
- "uuid",
- "warp",
 ]
 
 [[package]]
@@ -1957,8 +1936,10 @@ dependencies = [
 name = "repository"
 version = "0.1.0"
 dependencies = [
- "app-domain",
  "app-error",
+ "app_config",
+ "app_core",
+ "async-trait",
  "aws-config",
  "aws-sdk-s3",
  "chrono",

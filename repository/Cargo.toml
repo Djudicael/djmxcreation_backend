@@ -7,13 +7,19 @@ edition = "2021"
 
 [dependencies]
 dotenv = "0.15.0"
-sqlx = {version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "chrono"]}
+sqlx = { version = "0.6.2", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+] }
 aws-config = "0.51.0"
 aws-sdk-s3 = "0.21.0"
 rust-s3 = "0.32.3"
-chrono = {version = "0.4.22", feature = ["serde"]}
+chrono = { version = "0.4.22", feature = ["serde"] }
 app-error = { path = "../app-error" }
-app-domain = { path = "../app-domain" }
 serde_json = "1.0.85"
 http = "0.2.8"
 serde = "1.0.152"
+async-trait = "0.1.61"
+app_core = { path = "../app_core" }
+app_config = { path = "../app_config" }

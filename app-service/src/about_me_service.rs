@@ -1,87 +1,111 @@
-use app_domain::about_me::AboutMe;
-use app_domain::content::Content;
-use app_domain::me::Me;
-use app_error::Error;
-use repository::about_me_repository::{
-    delete_about_me_photo, get_about_me, get_about_me_by_id, update_about_me, update_photo,
+use app_core::{
+    about_me::{about_me_repository::DynIAboutMeRepository, about_me_service::IAboutMeService},
+    dto::{about_me_dto::AboutMeDto, content_dto::ContentDto},
+    storage::storage_repository::DynIStorageRepository,
+    view::me_view::MeView,
 };
-use repository::storage_repository::{get_object_url, remove_object, upload_file};
+use app_error::Error;
+use async_trait::async_trait;
 
-pub async fn about_me() -> Result<Me, Error> {
-    let about_me = get_about_me().await?;
+pub struct AboutMeService {
+    pub about_me_repository: DynIAboutMeRepository,
+    pub storage_repository: DynIStorageRepository,
+}
 
-    let content = about_me.photo().map(|photo| &photo.0).map(to_content);
-
-    let url = match content {
-        Some(photo) => {
-            let url = get_object_url(photo.bucket_name(), photo.file_name()).await?;
-            Some(url)
+impl AboutMeService {
+    pub fn new(
+        about_me_repository: DynIAboutMeRepository,
+        storage_repository: DynIStorageRepository,
+    ) -> Self {
+        Self {
+            about_me_repository,
+            storage_repository,
         }
-        None => None,
-    };
-
-    let me = Me::new(
-        about_me.id().cloned(),
-        about_me.first_name().to_string(),
-        about_me.last_name().to_string(),
-        about_me.description().cloned(),
-        about_me.photo().cloned(),
-        url,
-    );
-    Ok(me)
+    }
 }
 
-pub async fn update_me(id: i32, about: &AboutMe) -> Result<Me, Error> {
-    let _ = get_about_me_by_id(id).await?;
-    let result = update_about_me(id, about).await?;
-    let content = result.photo().map(|photo| &photo.0).map(to_content);
-    let url = match content {
-        Some(photo) => {
-            let url = get_object_url(photo.bucket_name(), photo.file_name()).await?;
-            Some(url)
-        }
-        None => None,
-    };
-    let me = Me::new(
-        result.id().cloned(),
-        result.first_name().to_string(),
-        result.last_name().to_string(),
-        result.description().cloned(),
-        result.photo().cloned(),
-        url,
-    );
-    Ok(me)
+fn to_content(value: serde_json::Value) -> ContentDto {
+    serde_json::from_value(value).unwrap()
 }
 
-fn to_content(value: &serde_json::Value) -> Content {
-    serde_json::from_value(value.clone()).unwrap()
-}
+#[async_trait]
+impl IAboutMeService for AboutMeService {
+    async fn about_me(&self) -> Result<MeView, Error> {
+        let about_me = self.about_me_repository.get_about_me().await?;
 
-pub async fn add_profile_picture(id: i32, file_name: String, file: &[u8]) -> Result<(), Error> {
-    let me = get_about_me_by_id(id).await?;
-    let key = format!("{}/{}", "about", file_name);
-    let previous_content = me.photo().map(|photo| &photo.0).map(to_content);
-    let bucket = "portfolio";
-    let content = Content::new(None, bucket.to_owned(), key.clone(), None);
-    upload_file(bucket, key.as_str(), file).await?;
-    update_photo(id, &content).await?;
+        let content = about_me.clone().photo.map(to_content);
 
-    // delete previous image from bucket
-    if let Some(content) = previous_content {
-        remove_object(content.bucket_name(), content.file_name()).await?
+        let url = match content {
+            Some(photo) => {
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await?;
+                Some(url)
+            }
+            None => None,
+        };
+        let mut me = MeView::from(about_me);
+        me.photo_url = url;
+        Ok(me)
     }
 
-    Ok(())
-}
-
-pub async fn delete_photo(id: i32) -> Result<(), Error> {
-    let me = get_about_me_by_id(id).await?;
-    let previous_content = me.photo().map(|photo| &photo.0).map(to_content);
-    delete_about_me_photo(id).await?;
-
-    if let Some(content) = previous_content {
-        remove_object(content.bucket_name(), content.file_name()).await?
+    async fn update_me(&self, id: i32, about: &AboutMeDto) -> Result<MeView, Error> {
+        let _ = self.about_me_repository.get_about_me_by_id(id).await?;
+        let result = self.about_me_repository.update_about_me(id, about).await?;
+        let content = result.clone().photo.map(to_content);
+        let url = match content {
+            Some(photo) => {
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await?;
+                Some(url)
+            }
+            None => None,
+        };
+        let mut me = MeView::from(result);
+        me.photo_url = url;
+        Ok(me)
     }
 
-    Ok(())
+    async fn add_profile_picture(
+        &self,
+        id: i32,
+        file_name: String,
+        file: &[u8],
+    ) -> Result<(), Error> {
+        let me = self.about_me_repository.get_about_me_by_id(id).await?;
+        let key = format!("{}/{}", "about", file_name);
+        let previous_content = me.photo.map(to_content);
+        let bucket = "portfolio";
+        let content = ContentDto::new(None, bucket.to_owned(), key.clone(), None);
+        self.storage_repository
+            .upload_file(bucket, key.as_str(), file)
+            .await?;
+        self.about_me_repository.update_photo(id, &content).await?;
+
+        // delete previous image from bucket
+        if let Some(content) = previous_content {
+            self.storage_repository
+                .remove_object(&content.bucket_name, &content.file_name)
+                .await?
+        }
+
+        Ok(())
+    }
+
+    async fn delete_photo(&self, id: i32) -> Result<(), Error> {
+        let me = self.about_me_repository.get_about_me_by_id(id).await?;
+        let previous_content = me.photo.map(to_content);
+        self.about_me_repository.delete_about_me_photo(id).await?;
+
+        if let Some(content) = previous_content {
+            self.storage_repository
+                .remove_object(&content.bucket_name, &content.file_name)
+                .await?
+        }
+
+        Ok(())
+    }
 }

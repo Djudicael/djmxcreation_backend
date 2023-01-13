@@ -1,47 +1,62 @@
-use crate::config::minio::{get_aws_client, get_s3_client};
+use std::time::Duration;
+
+use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
-use aws_sdk_s3::types::ByteStream;
+use async_trait::async_trait;
+use aws_sdk_s3::{presigning::config::PresigningConfig, types::ByteStream, Client};
 
-use s3::serde_types::HeadObjectResult;
-
-pub async fn upload_file(bucket_name: &str, file_name: &str, file: &[u8]) -> Result<(), Error> {
-    let client = get_aws_client("us-west-0")?;
-
-    let body = ByteStream::from(file.to_owned());
-    client
-        .put_object()
-        .bucket(bucket_name)
-        .key(file_name)
-        .body(body)
-        .send()
-        .await?;
-    Ok(())
+pub struct StorageRepository {
+    client: Client,
 }
 
-pub async fn get_object_url(bucket_name: &str, file_name: &str) -> Result<String, Error> {
-    // client
-    let client = get_s3_client(bucket_name, "us-west-0")?;
-    let url = client.presign_get(file_name, 8640, None).unwrap();
-    Ok(url)
+impl StorageRepository {
+    pub fn new(client: Client) -> Self {
+        Self { client }
+    }
 }
 
-pub async fn remove_object(bucket_name: &str, file_name: &str) -> Result<(), Error> {
-    let client = get_aws_client("us-west-0")?;
-    client
-        .delete_object()
-        .bucket(bucket_name)
-        .key(file_name)
-        .send()
-        .await?;
-    Ok(())
-}
+#[async_trait]
+impl IStorageRepository for StorageRepository {
+    async fn upload_file(
+        &self,
+        bucket_name: &str,
+        file_name: &str,
+        file: &[u8],
+    ) -> Result<(), Error> {
+        let body = ByteStream::from(file.to_owned());
+        self.client
+            .put_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .body(body)
+            .send()
+            .await
+            .unwrap();
+        Ok(())
+    }
 
-pub async fn get_object_metadata(
-    bucket_name: &str,
-    file_name: &str,
-) -> Result<HeadObjectResult, Error> {
-    // client
-    let client = get_s3_client(bucket_name, "us-west-0")?;
-    let (head, _) = client.head_object(file_name).await?;
-    Ok(head)
+    async fn get_object_url(&self, bucket_name: &str, file_name: &str) -> Result<String, Error> {
+        let expires_in = Duration::from_secs(8640);
+        let presigned_request = self
+            .client
+            .get_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .presigned(PresigningConfig::expires_in(expires_in).unwrap())
+            .await
+            .unwrap();
+
+        Ok(presigned_request.uri().to_string())
+    }
+
+    async fn remove_object(&self, bucket_name: &str, file_name: &str) -> Result<(), Error> {
+        self.client
+            .delete_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .send()
+            .await
+            .unwrap();
+        Ok(())
+    }
 }

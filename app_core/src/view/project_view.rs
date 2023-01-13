@@ -38,16 +38,6 @@ impl ProjectView {
 impl From<ProjectDto> for ProjectView {
     fn from(dto: ProjectDto) -> Self {
         let contents: Vec<ContentView> = vec![];
-        Self::new(
-            dto.id,
-            dto.metadata.map(to_metadata),
-            dto.description,
-            dto.visible,
-            contents,
-        )
+        Self::new(dto.id, dto.metadata, dto.description, dto.visible, contents)
     }
-}
-
-fn to_metadata(value: Value) -> MetadataDto {
-    serde_json::from_value(value.clone()).unwrap()
 }

@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::dto::content_dto::ContentDto;
-
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ContentView {

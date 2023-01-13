@@ -9,7 +9,6 @@ edition = "2021"
 serde_json = "1.0.85"
 futures = "0.3.24"
 app-error = { path = "../app-error" }
-app-domain = { path = "../app-domain" }
 repository = { path = "../repository" }
 app_core = { path = "../app_core" }
 async-trait = "0.1.61"

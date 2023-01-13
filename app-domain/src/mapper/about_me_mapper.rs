@@ -1,7 +1,6 @@
 use serde_json::Value;
-use sqlx::types::Json;
 
-use crate::{about_me::AboutMe, view::about_me_view::AboutMeView};
+use crate::view::about_me_view::AboutMeView;
 
 pub fn to_view(
     id: Option<i32>,

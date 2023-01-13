@@ -30,15 +30,9 @@ impl AboutMeView {
     }
 }
 
-impl Into<AboutMeDto> for AboutMeView {
-    fn into(self) -> AboutMeDto {
-        AboutMeDto::new(
-            None,
-            self.first_name,
-            self.last_name,
-            self.description,
-            None,
-        )
+impl From<AboutMeView> for AboutMeDto {
+    fn from(val: AboutMeView) -> Self {
+        AboutMeDto::new(None, val.first_name, val.last_name, val.description, None)
     }
 }
 
