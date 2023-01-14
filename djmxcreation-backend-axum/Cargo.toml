@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 app-error = { path = "../app-error" }
-app-domain = { path = "../app-domain" }
 app-service = { path = "../app-service" }
+app_core = { path = "../app_core" }
+app_config = { path = "../app_config" }
+repository = { path = "../repository" }
 anyhow = "1.0.65"
 axum = { version = "0.6.1", features = ["multipart"] }
 tokio = { version = "1.21.2", features = ["full"] }

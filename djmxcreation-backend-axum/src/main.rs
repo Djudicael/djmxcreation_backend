@@ -5,6 +5,6 @@ use server::starter::start;
 async fn main() {
     match start().await {
         Ok(_) => println!("Server ended"),
-        Err(ex) => println!("ERROR - web server failed to start. Cause {:?}", ex),
+        Err(ex) => println!("ERROR - web server failed to start. Cause {ex:?}"),
     }
 }

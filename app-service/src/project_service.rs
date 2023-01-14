@@ -23,7 +23,7 @@ pub struct ProjectService {
 
 impl ProjectService {
     pub fn new(
-        project_repository: DynProjectRepository,
+        project_repository: DynIProjectRepository,
         storage_repository: DynIStorageRepository,
     ) -> Self {
         Self {
@@ -83,7 +83,7 @@ impl IProjectService for ProjectService {
             .project_repository
             .add_project_content(id, &content)
             .await?;
-        let content = content_dto.content.map(to_content);
+        let content = content_dto.content;
         let (url, mime_type) = match content {
             Some(photo) => {
                 let url = self
@@ -119,7 +119,7 @@ impl IProjectService for ProjectService {
         let mut contents: Vec<ContentView> = vec![];
 
         for content_dto in project_contents {
-            let content = content_dto.content.map(to_content);
+            let content = content_dto.content;
             let (url, mime_type) = match content {
                 Some(photo) => {
                     let url = self
@@ -144,7 +144,7 @@ impl IProjectService for ProjectService {
         let project_contents = self.project_repository.get_projects_contents(id).await?;
         self.project_repository.delete_project_by_id(id).await?;
         for content_dto in project_contents {
-            let content = content_dto.content.map(to_content);
+            let content = content_dto.content;
 
             if let Some(content) = content {
                 self.storage_repository
@@ -165,7 +165,7 @@ impl IProjectService for ProjectService {
             .project_repository
             .get_projects_content_by_id(project_id, content_id)
             .await?;
-        let content = content_dto.content.map(to_content);
+        let content = content_dto.content;
 
         self.project_repository
             .delete_project_content_by_id(project_id, content_id)

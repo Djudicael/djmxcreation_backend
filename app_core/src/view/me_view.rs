@@ -10,7 +10,6 @@ pub struct MeView {
     pub first_name: String,
     pub last_name: String,
     pub description: Option<Value>,
-
     pub photo_url: Option<String>,
 }
 

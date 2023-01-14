@@ -3,14 +3,16 @@ use std::time::Duration;
 use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
 use async_trait::async_trait;
-use aws_sdk_s3::{presigning::config::PresigningConfig, types::ByteStream, Client};
+use aws_sdk_s3::{presigning::config::PresigningConfig, types::ByteStream};
+
+use crate::config::minio::StorageClient;
 
 pub struct StorageRepository {
-    client: Client,
+    client: StorageClient,
 }
 
 impl StorageRepository {
-    pub fn new(client: Client) -> Self {
+    pub fn new(client: StorageClient) -> Self {
         Self { client }
     }
 }

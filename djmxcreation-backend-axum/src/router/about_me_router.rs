@@ -1,33 +1,74 @@
-use crate::{
-    controller::about_me_controller::{
-        handle_add_image_profile_to_about_me, handler_delete_image_about_me, handler_get_about_me,
-        handler_update_about_me,
-    },
-    error::axum_error::ApiResult,
+use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
+use app_core::{
+    about_me::about_me_service::DynIAboutMeService,
+    dto::about_me_dto::AboutMeDto,
+    view::{about_me_view::AboutMeView, me_view::MeView},
 };
-use app_domain::view::about_me_view::AboutMeView;
+
 use axum::{
     extract::{Multipart, Path},
     routing::{delete, get, post, put},
-    Json, Router,
+    Extension, Json, Router,
 };
-pub fn about_me_router() -> Router {
-    Router::new()
-        .route("/v1/me", get(handler_get_about_me))
-        .route("/v1/me/:id", put(update_about_me))
-        .route("/v1/me/:id", delete(delete_image_about_me))
-        .route("/v1/me/:id/image", post(add_image_profile_to_about_me))
-}
+use uuid::Uuid;
 
-pub async fn update_about_me(
-    Path(id): Path<i32>,
-    Json(body): Json<AboutMeView>,
-) -> ApiResult<Json<AboutMeView>> {
-    handler_update_about_me(id, body).await
-}
-pub async fn delete_image_about_me(Path(id): Path<i32>) -> ApiResult<()> {
-    handler_delete_image_about_me(id).await
-}
-pub async fn add_image_profile_to_about_me(Path(id): Path<i32>, form: Multipart) -> ApiResult<()> {
-    handle_add_image_profile_to_about_me(id, form).await
+pub struct AboutMeRouter;
+
+impl AboutMeRouter {
+    pub fn new_router(service_register: ServiceRegister) -> Router {
+        Router::new()
+            .route("/v1/me", get(AboutMeRouter::get_about_me))
+            .route("/v1/me/:id", put(AboutMeRouter::update_about_me))
+            .route("/v1/me/:id", delete(AboutMeRouter::delete_image_about_me))
+            .route(
+                "/v1/me/:id/image",
+                post(AboutMeRouter::add_image_profile_to_about_me),
+            )
+            .layer(Extension(service_register.about_me_service))
+    }
+
+    pub async fn get_about_me(
+        Extension(about_me_service): Extension<DynIAboutMeService>,
+    ) -> ApiResult<Json<MeView>> {
+        let about_me = about_me_service.about_me().await?;
+        Ok(Json(about_me))
+    }
+
+    pub async fn update_about_me(
+        Extension(about_me_service): Extension<DynIAboutMeService>,
+        Path(id): Path<i32>,
+        Json(body): Json<AboutMeView>,
+    ) -> ApiResult<Json<MeView>> {
+        let about_me = about_me_service
+            .update_me(id, &AboutMeDto::from(body))
+            .await?;
+        Ok(Json(about_me))
+    }
+    pub async fn delete_image_about_me(
+        Extension(about_me_service): Extension<DynIAboutMeService>,
+        Path(id): Path<i32>,
+    ) -> ApiResult<()> {
+        about_me_service.delete_photo(id).await?;
+        Ok(())
+    }
+
+    pub async fn add_image_profile_to_about_me(
+        Extension(about_me_service): Extension<DynIAboutMeService>,
+        Path(id): Path<i32>,
+        mut form: Multipart,
+    ) -> ApiResult<()> {
+        while let Some(field) = form.next_field().await? {
+            let uudi_v4 = Uuid::new_v4().to_string();
+            let file_name = if let Some(file_name) = field.file_name() {
+                format!("{}-{}", uudi_v4, file_name.to_owned())
+            } else {
+                uudi_v4
+            };
+
+            about_me_service
+                .add_profile_picture(id, file_name, &field.bytes().await?)
+                .await?;
+        }
+        Ok(())
+    }
 }

@@ -3,7 +3,6 @@ members = [
     "app-error",
     "djmxcreation-backend-axum",
     "repository",
-    "app-domain",
     "app-service",
     "migration",
     "test-util",

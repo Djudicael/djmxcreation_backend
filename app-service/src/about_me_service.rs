@@ -24,16 +24,12 @@ impl AboutMeService {
     }
 }
 
-fn to_content(value: serde_json::Value) -> ContentDto {
-    serde_json::from_value(value).unwrap()
-}
-
 #[async_trait]
 impl IAboutMeService for AboutMeService {
     async fn about_me(&self) -> Result<MeView, Error> {
         let about_me = self.about_me_repository.get_about_me().await?;
 
-        let content = about_me.clone().photo.map(to_content);
+        let content = about_me.clone().photo;
 
         let url = match content {
             Some(photo) => {
@@ -53,7 +49,7 @@ impl IAboutMeService for AboutMeService {
     async fn update_me(&self, id: i32, about: &AboutMeDto) -> Result<MeView, Error> {
         let _ = self.about_me_repository.get_about_me_by_id(id).await?;
         let result = self.about_me_repository.update_about_me(id, about).await?;
-        let content = result.clone().photo.map(to_content);
+        let content = result.clone().photo;
         let url = match content {
             Some(photo) => {
                 let url = self
@@ -77,7 +73,7 @@ impl IAboutMeService for AboutMeService {
     ) -> Result<(), Error> {
         let me = self.about_me_repository.get_about_me_by_id(id).await?;
         let key = format!("{}/{}", "about", file_name);
-        let previous_content = me.photo.map(to_content);
+        let previous_content = me.photo;
         let bucket = "portfolio";
         let content = ContentDto::new(None, bucket.to_owned(), key.clone(), None);
         self.storage_repository
@@ -97,7 +93,7 @@ impl IAboutMeService for AboutMeService {
 
     async fn delete_photo(&self, id: i32) -> Result<(), Error> {
         let me = self.about_me_repository.get_about_me_by_id(id).await?;
-        let previous_content = me.photo.map(to_content);
+        let previous_content = me.photo;
         self.about_me_repository.delete_about_me_photo(id).await?;
 
         if let Some(content) = previous_content {

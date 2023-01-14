@@ -12,8 +12,8 @@ sqlx = { version = "0.6.2", features = [
     "postgres",
     "chrono",
 ] }
-aws-config = "0.51.0"
-aws-sdk-s3 = "0.21.0"
+# aws-config = "0.51.0"
+aws-sdk-s3 = "0.22.0"
 rust-s3 = "0.32.3"
 chrono = { version = "0.4.22", feature = ["serde"] }
 app-error = { path = "../app-error" }

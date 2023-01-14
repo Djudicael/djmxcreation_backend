@@ -3,8 +3,15 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::router::{about_me_router, observability_router, project_router};
+use crate::{
+    router::{
+        about_me_router::AboutMeRouter, observability_router::ObservabilityRouter,
+        project_router::ProjectRouter,
+    },
+    service::service_register::ServiceRegister,
+};
 use anyhow::Context;
+use app_config::config::Config;
 use axum::{
     error_handling::HandleErrorLayer,
     extract::MatchedPath,
@@ -15,6 +22,7 @@ use axum::{
 };
 use hyper::{header::HeaderValue, Method, Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
+use repository::config::{db::new_db_pool, minio::get_aws_client};
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -30,17 +38,14 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, Json<serde_json::Va
             StatusCode::REQUEST_TIMEOUT,
             Json(json!({
                 "error":
-                    format!(
-                        "request took longer than the configured {} second timeout",
-                        HTTP_TIMEOUT
-                    )
+                    format!("request took longer than the configured {HTTP_TIMEOUT} second timeout")
             })),
         )
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
-                "error": format!("unhandled internal error: {}", err)
+                "error": format!("unhandled internal error: {err}")
             })),
         )
     }
@@ -71,7 +76,19 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> impl IntoRespon
     response
 }
 
+//TODO add Migration database
 pub async fn start() -> anyhow::Result<()> {
+    let config = Config::new();
+
+    let db_pool = new_db_pool(&config.database)
+        .await
+        .expect("Failed to connect to  client");
+
+    let storage_client =
+        get_aws_client(config.storage).expect("Failed to create object Storage client");
+
+    let service_register = ServiceRegister::new(db_pool, storage_client);
+
     let recorder_handle = PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full(String::from("http_requests_duration_seconds")),
@@ -83,9 +100,9 @@ pub async fn start() -> anyhow::Result<()> {
 
     let router = Router::new()
         .route("/metrics", get(move || ready(recorder_handle.render())))
-        .nest("/api", about_me_router::about_me_router())
-        .nest("/api", observability_router::observability_router())
-        .nest("/api", project_router::project_router())
+        .nest("/api", AboutMeRouter::new_router(service_register.clone()))
+        .nest("/api", ObservabilityRouter::new_router())
+        .nest("/api", ProjectRouter::new_router(service_register.clone()))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -99,7 +116,7 @@ pub async fn start() -> anyhow::Result<()> {
         )
         .route_layer(middleware::from_fn(track_metrics));
 
-    axum::Server::bind(&format!("0.0.0.0:{}", "8081").parse().unwrap())
+    axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse().unwrap())
         .serve(router.into_make_service())
         .await?;
     Ok(())
