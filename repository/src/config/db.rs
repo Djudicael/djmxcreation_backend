@@ -21,3 +21,8 @@ pub async fn new_db_pool(config: &DatabaseConfiguration) -> Result<Db, sqlx::Err
         .connect(&con_string)
         .await
 }
+
+// pub async fn migrate_db(pool: &Db) -> Result<(), sqlx::Error> {
+//     sqlx::migrate!("./sql").run(pool).await?;
+//     Ok(())
+// }

@@ -12,7 +12,7 @@ app_core = { path = "../app_core" }
 app_config = { path = "../app_config" }
 repository = { path = "../repository" }
 anyhow = "1.0.65"
-axum = { version = "0.6.1", features = ["multipart"] }
+axum = { version = "0.6.2", features = ["multipart"] }
 tokio = { version = "1.21.2", features = ["full"] }
 hyper = "0.14.20"
 thiserror = "1.0.37"

@@ -1,5 +1,5 @@
 use app_config::storage_configuration::StorageConfiguration;
-use aws_sdk_s3::{config, Client, Credentials, Endpoint, Region};
+use aws_sdk_s3::{config, types::SdkError, Client, Credentials, Endpoint, Region};
 
 use app_error::Error;
 
@@ -27,4 +27,44 @@ pub fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Err
     let client = Client::from_conf(conf);
 
     Ok(client)
+}
+
+// pub async fn create_bucket_old(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
+//     let info = client.head_bucket().bucket(bucket_name).send().await;
+
+//     match info {
+//         Ok(_) => println!("Bucket {} exists!", bucket_name),
+//         Err(err) => {
+//             if let Some(status) = err.ki {
+//                 if status == 404 {
+//                     client
+//                         .create_bucket()
+//                         .bucket(bucket_name)
+//                         .send()
+//                         .await
+//                         .unwrap();
+//                     println!("Bucket {} created!", bucket_name);
+//                 } else {
+//                     println!("Error checking if bucket {} exists: {:?}", bucket_name, err);
+//                     return Err(err);
+//                 }
+//             } else {
+//                 println!("Error checking if bucket {} exists: {:?}", bucket_name, err);
+//                 return Err(err);
+//             }
+//         }
+//     }
+
+//     Ok(())
+// }
+
+pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
+    client
+        .create_bucket()
+        .bucket(bucket_name)
+        .send()
+        .await
+        .expect("Error cannot crate the bucket {bucket_name} parsing");
+
+    Ok(())
 }

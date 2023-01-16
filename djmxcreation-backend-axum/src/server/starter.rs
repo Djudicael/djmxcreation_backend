@@ -22,7 +22,10 @@ use axum::{
 };
 use hyper::{header::HeaderValue, Method, Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
-use repository::config::{db::new_db_pool, minio::get_aws_client};
+use repository::config::{
+    db::new_db_pool,
+    minio::{create_bucket, get_aws_client},
+};
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -87,6 +90,8 @@ pub async fn start() -> anyhow::Result<()> {
     let storage_client =
         get_aws_client(config.storage).expect("Failed to create object Storage client");
 
+    create_bucket("portfolio", storage_client.clone()).await?;
+
     let service_register = ServiceRegister::new(db_pool, storage_client);
 
     let recorder_handle = PrometheusBuilder::new()
@@ -99,10 +104,16 @@ pub async fn start() -> anyhow::Result<()> {
         .context("could not install metrics recorder")?;
 
     let router = Router::new()
+        .nest("/", ObservabilityRouter::new_router())
+        .nest(
+            "/api/about",
+            AboutMeRouter::new_router(service_register.clone()),
+        )
+        .nest(
+            "/api/portfolio",
+            ProjectRouter::new_router(service_register.clone()),
+        )
         .route("/metrics", get(move || ready(recorder_handle.render())))
-        .nest("/api", AboutMeRouter::new_router(service_register.clone()))
-        .nest("/api", ObservabilityRouter::new_router())
-        .nest("/api", ProjectRouter::new_router(service_register.clone()))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
