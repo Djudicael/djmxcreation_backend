@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  djmxcreation-backend-axum:
+    container_name: realworld_rust_axum_sqlx_conduit_bin
+    build:
+      context: ../..
+      dockerfile: djmxcreation-backend-axum/Dockerfile
+    volumes:
+      - /tmp/app:/var/log/app
+    ports:
+      - '8080:8080'
+    environment:
+      PG_HOST: "backend_postgres"
+      PG_DB: "customer"
+      PG_USER: "postgres"
+      PG_PASSWORD: "postgres"
+      PG_APP_MAX_CON : 5
+      MINIO_ENDPOINT: "http://backend_minio:9000"                 
+
+      MINIO_ACCESS_KEY: "minio"
+      MINIO_SECRET_KEY: "minio123"
+      MINIO_REGION: "us-west-0"
+    # depends_on:
+    #   # backend_minio
+    #   backend_postgres:
+    #     # condition: service_healthy
