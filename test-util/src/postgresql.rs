@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use testcontainers::{clients::Cli, core::WaitFor, Container, Image};
+use testcontainers::{clients::Cli, core::WaitFor, Image};
 
 const NAME: &str = "postgres";
 const TAG: &str = "11-alpine";

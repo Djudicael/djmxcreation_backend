@@ -16,6 +16,8 @@ pub enum Error {
     IO(#[from] std::io::Error),
     #[error(transparent)]
     StorageUpload(#[from] SdkError<PutObjectError>),
+    #[error("Error bucket creation")]
+    BucketCreation,
     #[error(transparent)]
     StorageDeleteObject(#[from] aws_sdk_s3::types::SdkError<aws_sdk_s3::error::DeleteObjectError>),
     #[error(transparent)]

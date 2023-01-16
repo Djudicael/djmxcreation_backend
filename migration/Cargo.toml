@@ -7,8 +7,13 @@ edition = "2021"
 
 [dependencies]
 base64ct = { version = "1.5.2", features = ["alloc"] }
-dotenv = "0.15.0"
 sha3 = "0.10.5"
-sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "postgres"] }
+sqlx = { version = "0.6.2", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "offline",
+] }
 tokio = { version = "1.21.2", features = ["full"] }
 test-util = { path = "../test-util" }
+app_config = { path = "../app_config" }
+tracing = "0.1.37"

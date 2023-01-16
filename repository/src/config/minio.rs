@@ -1,6 +1,8 @@
 use app_config::storage_configuration::StorageConfiguration;
-use aws_sdk_s3::{config, types::SdkError, Client, Credentials, Endpoint, Region};
-
+use aws_sdk_s3::{
+    config, error::HeadBucketErrorKind, types::SdkError, Client, Credentials, Endpoint, Region,
+};
+use tracing::info;
 use app_error::Error;
 
 pub type StorageClient = Client;
@@ -29,42 +31,44 @@ pub fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Err
     Ok(client)
 }
 
-// pub async fn create_bucket_old(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
-//     let info = client.head_bucket().bucket(bucket_name).send().await;
-
-//     match info {
-//         Ok(_) => println!("Bucket {} exists!", bucket_name),
-//         Err(err) => {
-//             if let Some(status) = err.ki {
-//                 if status == 404 {
-//                     client
-//                         .create_bucket()
-//                         .bucket(bucket_name)
-//                         .send()
-//                         .await
-//                         .unwrap();
-//                     println!("Bucket {} created!", bucket_name);
-//                 } else {
-//                     println!("Error checking if bucket {} exists: {:?}", bucket_name, err);
-//                     return Err(err);
-//                 }
-//             } else {
-//                 println!("Error checking if bucket {} exists: {:?}", bucket_name, err);
-//                 return Err(err);
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
-
 pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
-    client
-        .create_bucket()
-        .bucket(bucket_name)
-        .send()
-        .await
-        .expect("Error cannot crate the bucket {bucket_name} parsing");
+    let metadata = client.head_bucket().bucket(bucket_name).send().await;
+
+    // Create bucket when it doesn't exist
+    match metadata {
+        Ok(_) => println!("Bucket {bucket_name} exists!"),
+        Err(err) => match err {
+            SdkError::ServiceError(sdk_err) => match sdk_err.err().kind {
+                HeadBucketErrorKind::NotFound(_) => {
+                    client
+                        .create_bucket()
+                        .bucket(bucket_name)
+                        .send()
+                        .await
+                        .expect("Error cannot create the bucket {bucket_name} parsing");
+                    info!("Bucket {} created!", bucket_name);
+                }
+                _ => {
+                    return Err(Error::BucketCreation);
+                }
+            },
+            _ => {
+                info!("Error checking if bucket {} exists: {:?}", bucket_name, err);
+                return Err(Error::BucketCreation);
+            }
+        },
+    }
 
     Ok(())
 }
+
+// pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
+//     client
+//         .create_bucket()
+//         .bucket(bucket_name)
+//         .send()
+//         .await
+//         .expect("Error cannot create the bucket {bucket_name} parsing");
+
+//     Ok(())
+// }

@@ -11,6 +11,7 @@ app-service = { path = "../app-service" }
 app_core = { path = "../app_core" }
 app_config = { path = "../app_config" }
 repository = { path = "../repository" }
+migration = { path = "../migration" }
 anyhow = "1.0.65"
 axum = { version = "0.6.2", features = ["multipart"] }
 tokio = { version = "1.21.2", features = ["full"] }

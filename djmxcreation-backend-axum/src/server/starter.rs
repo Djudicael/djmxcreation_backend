@@ -22,6 +22,7 @@ use axum::{
 };
 use hyper::{header::HeaderValue, Method, Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
+use migration::init_db_migration;
 use repository::config::{
     db::new_db_pool,
     minio::{create_bucket, get_aws_client},
@@ -82,6 +83,10 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> impl IntoRespon
 //TODO add Migration database
 pub async fn start() -> anyhow::Result<()> {
     let config = Config::new();
+
+    init_db_migration(&config.database)
+        .await
+        .expect("Failed to migrate database");
 
     let db_pool = new_db_pool(&config.database)
         .await
