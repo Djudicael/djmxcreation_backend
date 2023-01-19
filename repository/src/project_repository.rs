@@ -14,6 +14,7 @@ use sqlx::types::Json;
 use crate::{
     config::db::Db,
     entity::{project::Project, project_content::ProjectContent},
+    error::to_error,
 };
 
 pub struct ProjectRepository {
@@ -37,7 +38,12 @@ impl IProjectRepository for ProjectRepository {
             .bind(metadata_json)
             .bind(now_utc)
             .bind(false);
-        let project = ProjectDto::from(query.fetch_one(&self.db).await?);
+        let project = ProjectDto::from(
+            query
+                .fetch_one(&self.db)
+                .await
+                .map_err(|sqlx_error| to_error(sqlx_error, None))?,
+        );
         Ok(project)
     }
 
@@ -53,14 +59,10 @@ impl IProjectRepository for ProjectRepository {
             .bind(project_id)
             .bind(content_json)
             .bind(now_utc);
-        let content_entity =
-            query
-                .fetch_one(&self.db)
-                .await
-                .map_err(|sqlx_error| match sqlx_error {
-                    sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                    other => Error::Sqlx(other),
-                })?;
+        let content_entity = query
+            .fetch_one(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         Ok(ProjectContentDto::from(content_entity))
     }
 
@@ -78,17 +80,17 @@ impl IProjectRepository for ProjectRepository {
         let project = query
             .fetch_one(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
         Ok(ProjectDto::from(project))
     }
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error> {
         let sql = "SELECT * FROM project";
         let query = sqlx::query_as::<_, Project>(sql);
-        let projects = query.fetch_all(&self.db).await?;
+        let projects = query
+            .fetch_all(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
         Ok(projects
             .iter()
             .map(|p| ProjectDto::from(p.clone()))
@@ -100,7 +102,11 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
         project: &ProjectDto,
     ) -> Result<(), Error> {
-        let mut tx = self.db.begin().await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         let now_utc: DateTime<Utc> = Utc::now();
         sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, updated_on = $4 WHERE id = $5 ")
             .bind(project.clone().description)
@@ -109,12 +115,11 @@ impl IProjectRepository for ProjectRepository {
             .bind(now_utc)
             .bind(project_id)
             .execute(&mut tx)
-            .await .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .await.map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
-        tx.commit().await?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
         Ok(())
     }
@@ -128,10 +133,7 @@ impl IProjectRepository for ProjectRepository {
         let contents = query
             .fetch_all(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         Ok(contents
             .iter()
             .map(|c| ProjectContentDto::from(c.clone()))
@@ -150,40 +152,43 @@ impl IProjectRepository for ProjectRepository {
         let content = query
             .fetch_one(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
         Ok(ProjectContentDto::from(content))
     }
 
     async fn delete_project_content_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
-        let mut tx = self.db.begin().await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         sqlx::query("DELETE FROM project_content WHERE id = $1 and project_id = $2 ")
             .bind(id)
             .bind(project_id)
             .execute(&mut tx)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
-        tx.commit().await?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         Ok(())
     }
 
     async fn delete_project_by_id(&self, project_id: i32) -> Result<(), Error> {
-        let mut tx = self.db.begin().await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         sqlx::query("DELETE FROM project WHERE id = $1 ")
             .bind(project_id)
             .execute(&mut tx)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
-        tx.commit().await?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         Ok(())
     }
 
@@ -197,10 +202,7 @@ impl IProjectRepository for ProjectRepository {
         let contents = query
             .fetch_all(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(project_id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         Ok(contents
             .iter()
             .map(|c| ProjectContentDto::from(c.clone()))

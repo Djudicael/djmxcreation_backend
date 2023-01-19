@@ -3,3 +3,4 @@ pub mod config;
 pub mod project_repository;
 pub mod storage_repository;
 pub mod entity;
+pub mod error;

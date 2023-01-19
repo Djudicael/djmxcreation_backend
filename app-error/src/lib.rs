@@ -8,10 +8,8 @@ pub enum Error {
     FailStartWebFolderNotFound(String),
     #[error("Fail authentication missing X-Auth-Token header.")]
     FailAuthMissingXAuth,
-    #[error(transparent)]
-    Sqlx(#[from] sqlx::Error),
-    // #[error(transparent)]
-    // SqlxNotRowFoundError(#[from] sqlx::Error::RowNotFound),
+    #[error("Database error")]
+    Database,
     #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]
@@ -25,33 +23,3 @@ pub enum Error {
     #[error("Entity Not Found - {0}] ")]
     EntityNotFound(String),
 }
-
-#[derive(Debug)]
-pub struct WebErrorMessage {
-    pub typ: &'static str,
-    pub message: String,
-}
-
-impl warp::reject::Reject for WebErrorMessage {}
-
-impl WebErrorMessage {
-    pub fn rejection(typ: &'static str, message: String) -> warp::Rejection {
-        warp::reject::custom(WebErrorMessage { typ, message })
-    }
-}
-
-impl From<self::Error> for warp::Rejection {
-    fn from(other: self::Error) -> Self {
-        WebErrorMessage::rejection("web::Error", format!("{other}"))
-    }
-}
-// impl From<model::Error> for warp::Rejection {
-//     fn from(other: model::Error) -> Self {
-//         WebErrorMessage::rejection("model::Error", format!("{}", other))
-//     }
-// }
-// impl From<security::Error> for warp::Rejection {
-//     fn from(other: security::Error) -> Self {
-//         WebErrorMessage::rejection("security::Error", format!("{}", other))
-//     }
-// }

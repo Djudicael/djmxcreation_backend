@@ -54,7 +54,7 @@ pub async fn init_db(config: &DatabaseConfiguration) -> Result<Db, sqlx::Error> 
 async fn pexec(db: &Db, file: &str) -> Result<(), sqlx::Error> {
     // read the file
 
-    println!("Executing SQL file: {}", file);
+    println!("Executing SQL file: {file}");
 
     let content = fs::read_to_string(file).map_err(|ex| {
         info!("ERROR reading {} ( cause: {:?})", file, ex);

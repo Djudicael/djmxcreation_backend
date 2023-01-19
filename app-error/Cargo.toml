@@ -9,7 +9,5 @@ edition = "2021"
 aws-config = "0.51.0"
 aws-sdk-s3 = "0.21.0"
 rust-s3 = "0.32.3"
-warp = "0.3.3"
-sqlx = {version = "0.6.2", features = ["runtime-tokio-rustls", "postgres", "chrono"]}
 thiserror = "1.0.37"
 futures = "0.3.24"

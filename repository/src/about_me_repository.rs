@@ -1,4 +1,4 @@
-use crate::{config::db::Db, entity::about_me::AboutMe};
+use crate::{config::db::Db, entity::about_me::AboutMe, error::to_error};
 
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
@@ -34,17 +34,17 @@ impl IAboutMeRepository for AboutMeRepository {
         let about_me = query
             .fetch_one(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
         Ok(AboutMeDto::from(about_me))
     }
 
     async fn get_about_me(&self) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about FETCH FIRST ROW ONLY";
         let query = sqlx::query_as::<_, AboutMe>(sql);
-        let about_me = query.fetch_one(&self.db).await?;
+        let about_me = query
+            .fetch_one(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
         Ok(AboutMeDto::from(about_me))
     }
 
@@ -54,16 +54,17 @@ impl IAboutMeRepository for AboutMeRepository {
         let about_me = query
             .fetch_one(&self.db)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
 
         Ok(AboutMeDto::from(about_me))
     }
 
     async fn update_photo(&self, id: i32, content: &ContentDto) -> Result<(), Error> {
-        let mut tx = self.db.begin().await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
 
         let content_json = Json(json!(content));
 
@@ -72,27 +73,29 @@ impl IAboutMeRepository for AboutMeRepository {
             .bind(id)
             .execute(&mut tx)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
 
-        tx.commit().await?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
 
         Ok(())
     }
 
     async fn delete_about_me_photo(&self, id: i32) -> Result<(), Error> {
-        let mut tx = self.db.begin().await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
         sqlx::query("UPDATE about SET photo = NULL WHERE id = $1")
             .bind(id)
             .execute(&mut tx)
             .await
-            .map_err(|sqlx_error| match sqlx_error {
-                sqlx::Error::RowNotFound => Error::EntityNotFound(id.to_string()),
-                other => Error::Sqlx(other),
-            })?;
-        tx.commit().await?;
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
         Ok(())
     }
 }

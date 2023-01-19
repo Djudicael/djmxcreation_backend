@@ -8,7 +8,8 @@ COPY . .
 
 
 # Compile the program
-RUN cargo build -p djmxcreation-backend-axum --release
+RUN cargo build --release
+# RUN cargo build -p djmxcreation-backend-axum --release
 
 
 # copy the binary to a smaller image
