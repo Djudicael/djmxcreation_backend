@@ -35,8 +35,8 @@ https://github.com/cloud-hypervisor/cloud-hypervisor
 For my project i decided to go for a Layered Architecture. (https://cs.uwaterloo.ca/~m2nagapp/courses/CS446/1195/Arch_Design_Activity/Layered.pdf)
 Its easy to reuse some part of the component for the different tool without too much effort.
 
-  For example in this project there is a package app-domain , this package has the view and the entity representing the data. I made the choice to make them together to reuse them in other project like the frontend portfolio and cms. Fow now the backend framework used is WARP but AXUM and ACTIX ( i will not talk about WASMER and wasmcloud for now) .
-  So for now all layers are aware of the app-domain lib. In the Layered Architecture it should not be the case but i prefer to stay pragmatic to simplify the system.
+  For example in this project there is a package app-core , this package has the view and the dto representing the data. I made the choice to make them together to reuse them in other projects like the frontend portfolio and cms. Fow now the backend framework used is WARP but AXUM and ACTIX ( i will not talk about WASMER and wasmcloud for now) .
+  So for now all layers are aware of the app-core lib. In the Layered Architecture it should not be the case but i prefer to stay pragmatic to simplify the system.
 
 
   ## APP Security
@@ -53,15 +53,10 @@ This project is still in progress .
 
 ### TODO LIST
 
-- [] Add migration library
-- [] Add a backend for AXUM
-    - [X] add router add about me
-    - [] add router add project
-    - [] add router add project
-- [] Add a backend for ACTIX
+- [] Add a backend for ACTIX (not important for now)
 - [] implement wasmcloud
 - [] implement wasmer
-- [] fix app-error( make it more oriented business , remove error from warp and sqlx)
+- [] fix app-error( remove S3 erorr)
 - [] add test using test-container
 - [] add observability
 - [] add CICD
