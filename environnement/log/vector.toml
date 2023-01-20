@@ -1,0 +1,23 @@
+[sources.in]
+type = "tcp"
+address = "0.0.0.0:3000"
+
+# [sinks.out]
+#   type = "stdout"
+
+# [sinks.out]
+# type = "s3"
+# bucket = "my-log-bucket"
+# region = "us-west-2"
+# prefix = "logs/"
+# access_key = "AKIAIOSFODNN7EXAMPLE"
+# secret_key = "wJalrXUtnFEMI/K7"
+
+[sinks.out]
+inputs = ["in"]
+region = "us-west-0"
+bucket = "portfolio"
+endpoint = "http://127.0.0.1:9000"
+access_key = "minio"
+secret_key = "minio123"
+prefix = "logs/"
