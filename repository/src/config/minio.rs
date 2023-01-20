@@ -1,9 +1,9 @@
 use app_config::storage_configuration::StorageConfiguration;
+use app_error::Error;
 use aws_sdk_s3::{
-    config, error::HeadBucketErrorKind, types::SdkError, Client, Credentials, Endpoint, Region,
+    config, error::HeadBucketErrorKind, types::SdkError, Client, Credentials, Region,
 };
 use tracing::info;
-use app_error::Error;
 
 pub type StorageClient = Client;
 // "us-west-0"
@@ -21,7 +21,7 @@ pub fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Err
     let region = Region::new(config.region);
 
     let conf_builder = config::Builder::new()
-        .endpoint_resolver(Endpoint::immutable(config.endpoint).expect("Error endpoint parsing"))
+        .endpoint_url(config.endpoint.as_str())
         .region(region)
         .credentials_provider(cred);
     let conf = conf_builder.build();
@@ -61,14 +61,3 @@ pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(
 
     Ok(())
 }
-
-// pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
-//     client
-//         .create_bucket()
-//         .bucket(bucket_name)
-//         .send()
-//         .await
-//         .expect("Error cannot create the bucket {bucket_name} parsing");
-
-//     Ok(())
-// }

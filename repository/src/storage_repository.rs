@@ -33,7 +33,7 @@ impl IStorageRepository for StorageRepository {
             .body(body)
             .send()
             .await
-            .unwrap();
+            .map_err(|_| Error::StorageUpload)?;
         Ok(())
     }
 
@@ -46,7 +46,7 @@ impl IStorageRepository for StorageRepository {
             .key(file_name)
             .presigned(PresigningConfig::expires_in(expires_in).unwrap())
             .await
-            .unwrap();
+            .map_err(|_| Error::StorageGetObjectUrl)?;
 
         Ok(presigned_request.uri().to_string())
     }
@@ -58,7 +58,7 @@ impl IStorageRepository for StorageRepository {
             .key(file_name)
             .send()
             .await
-            .unwrap();
+            .map_err(|_| Error::StorageDeleteObject)?;
         Ok(())
     }
 }

@@ -14,7 +14,7 @@ This project is composed by 1 backend and 2 front end . A front dedicated to the
 All detail is not decided yet but here the technical stack :
 
 - IAAS No cloud provider but a private cloud:
-i intend to use cloudhypervisor, its easy to use light and give a full control on the infrastructure.
+I intend to use cloudhypervisor, its easy to use light and give a full control on the infrastructure.
 https://www.cloudhypervisor.org/
 https://github.com/cloud-hypervisor/cloud-hypervisor
 
@@ -24,7 +24,7 @@ https://github.com/cloud-hypervisor/cloud-hypervisor
 - Object storage: for the cost of the project i don't intent to use AWS-S3 but a S3 like
   2 Solutions is studied:
   Minio: https://min.io/
-  i used minio because the experience i have with .
+  I used minio because the experience i have with .
   Seaweedfs: https://github.com/seaweedfs/seaweedfs
    on paper it's the most attractive but i didn't try it yet . But i will probably be the final choice.
 
@@ -56,7 +56,6 @@ This project is still in progress .
 - [] Add a backend for ACTIX (not important for now)
 - [] implement wasmcloud
 - [] implement wasmer
-- [] fix app-error( remove S3 erorr)
 - [] add test using test-container
 - [] add observability
 - [] add CICD
