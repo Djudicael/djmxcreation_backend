@@ -9,22 +9,23 @@ use crate::{
         about_me_router::AboutMeRouter, observability_router::ObservabilityRouter,
         project_router::ProjectRouter,
     },
-    security::basic_auth::BasicAuth,
     service::service_register::ServiceRegister,
 };
 use anyhow::Context;
-use app_config::config::Config;
+use app_config::{config::Config, security_config::SecurityConfig};
 use axum::{
     error_handling::HandleErrorLayer,
     extract::MatchedPath,
+    headers::{authorization::Basic, Authorization},
     middleware::{self, Next},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
-    BoxError, Json, Router,
+    BoxError, Json, Router, TypedHeader,
 };
 use hyper::{header::HeaderValue, Method, Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 use migration::init_db_migration;
+use once_cell::sync::Lazy;
 use repository::config::{
     db::new_db_pool,
     minio::{create_bucket, get_aws_client},
@@ -32,6 +33,8 @@ use repository::config::{
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+
+static GLOBAL_CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::new()));
 
 const HTTP_TIMEOUT: u64 = 30;
 const EXPONENTIAL_SECONDS: &[f64] = &[
@@ -82,9 +85,32 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> impl IntoRespon
     response
 }
 
+pub async fn auth<B>(
+    // run the `TypedHeader` extractor
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+    // you can also add more extractors here but the last
+    // extractor must implement `FromRequest` which
+    // `Request` does
+    request: Request<B>,
+    next: Next<B>,
+) -> Result<Response, StatusCode> {
+    if token_is_valid(auth.0) {
+        let response = next.run(request).await;
+        Ok(response)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+fn token_is_valid(token: Basic) -> bool {
+    let SecurityConfig { username, password } = GLOBAL_CONFIG.clone().get_security();
+
+    username == token.username() && password == token.password()
+}
+
 //TODO add Migration database
 pub async fn start() -> anyhow::Result<()> {
-    let config = Config::new();
+    let config = GLOBAL_CONFIG.clone();
 
     init_db_migration(&config.database)
         .await
@@ -93,9 +119,9 @@ pub async fn start() -> anyhow::Result<()> {
     let db_pool = new_db_pool(&config.database)
         .await
         .expect("Failed to connect to  client");
+    let storage = config.clone().get_storage();
 
-    let storage_client =
-        get_aws_client(config.storage).expect("Failed to create object Storage client");
+    let storage_client = get_aws_client(storage).expect("Failed to create object Storage client");
 
     create_bucket("portfolio", storage_client.clone()).await?;
 
@@ -110,7 +136,7 @@ pub async fn start() -> anyhow::Result<()> {
         .install_recorder()
         .context("could not install metrics recorder")?;
 
-    let basic_auth = Arc::new(BasicAuth::new(config.security));
+    // let my_auth = MyAuth { basic_auth };
 
     let router = Router::new()
         .nest("/", ObservabilityRouter::new_router())
@@ -135,9 +161,7 @@ pub async fn start() -> anyhow::Result<()> {
                 .allow_methods([Method::GET]),
         )
         .route_layer(middleware::from_fn(track_metrics))
-        .layer(middleware::from_fn(move |s, c, t| {
-            basic_auth.clone().auth(s, c, t)
-        }));
+        .layer(middleware::from_fn(auth));
 
     axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse().unwrap())
         .serve(router.into_make_service())

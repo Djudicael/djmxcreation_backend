@@ -1,4 +1,4 @@
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct StorageConfiguration {
     pub endpoint: String,
     pub access_key: String,

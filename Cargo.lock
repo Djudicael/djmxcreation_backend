@@ -770,6 +770,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "migration",
+ "once_cell",
  "repository",
  "serde",
  "serde_json",

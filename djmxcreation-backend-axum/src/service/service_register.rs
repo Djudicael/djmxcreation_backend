@@ -27,7 +27,6 @@ impl ServiceRegister {
         let project_repository: DynIProjectRepository = Arc::new(ProjectRepository::new(db));
         let about_me_repository: DynIAboutMeRepository =
             Arc::new(AboutMeRepository::new(about_me_db));
-        // let client = get_aws_client("us-west-0").expect("Failed to create AWS client");
         let storage_repository: DynIStorageRepository = Arc::new(StorageRepository::new(client));
         let project_service: DynIProjectService = Arc::new(ProjectService::new(
             project_repository,

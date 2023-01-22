@@ -34,8 +34,8 @@ impl Config {
         let storage =
             StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key, region);
 
-        let username = env::var("USERNAME").expect("Cannot find USERNAME");
-        let password = env::var("PASSWORD").expect("Cannot find PASSWORD");
+        let username = env::var("USERNAME_APP").expect("Cannot find USERNAME");
+        let password = env::var("PASSWORD_APP").expect("Cannot find PASSWORD");
 
         let security = SecurityConfig::new(username, password);
 
@@ -45,5 +45,13 @@ impl Config {
             port,
             security,
         }
+    }
+
+    pub fn get_storage(&self) -> StorageConfiguration {
+        self.storage.clone()
+    }
+
+    pub fn get_security(&self) -> SecurityConfig {
+        self.security.clone()
     }
 }
