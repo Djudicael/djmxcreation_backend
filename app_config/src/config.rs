@@ -1,7 +1,8 @@
 use std::env;
 
 use crate::{
-    database_configuration::DatabaseConfiguration, storage_configuration::StorageConfiguration,
+    database_configuration::DatabaseConfiguration, security_config::SecurityConfig,
+    storage_configuration::StorageConfiguration,
 };
 use dotenv::dotenv;
 
@@ -10,6 +11,7 @@ pub struct Config {
     pub database: DatabaseConfiguration,
     pub storage: StorageConfiguration,
     pub port: String,
+    pub security: SecurityConfig,
 }
 
 impl Config {
@@ -32,10 +34,16 @@ impl Config {
         let storage =
             StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key, region);
 
+        let username = env::var("USERNAME").expect("Cannot find USERNAME");
+        let password = env::var("PASSWORD").expect("Cannot find PASSWORD");
+
+        let security = SecurityConfig::new(username, password);
+
         Self {
             database,
             storage,
             port,
+            security,
         }
     }
 }

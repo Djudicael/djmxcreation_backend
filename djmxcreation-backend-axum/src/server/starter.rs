@@ -1,5 +1,6 @@
 use std::{
     future::ready,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -8,6 +9,7 @@ use crate::{
         about_me_router::AboutMeRouter, observability_router::ObservabilityRouter,
         project_router::ProjectRouter,
     },
+    security::basic_auth::BasicAuth,
     service::service_register::ServiceRegister,
 };
 use anyhow::Context;
@@ -108,6 +110,8 @@ pub async fn start() -> anyhow::Result<()> {
         .install_recorder()
         .context("could not install metrics recorder")?;
 
+    let basic_auth = Arc::new(BasicAuth::new(config.security));
+
     let router = Router::new()
         .nest("/", ObservabilityRouter::new_router())
         .nest(
@@ -130,7 +134,10 @@ pub async fn start() -> anyhow::Result<()> {
                 .allow_origin("*".parse::<HeaderValue>().unwrap()) //TODO to modify
                 .allow_methods([Method::GET]),
         )
-        .route_layer(middleware::from_fn(track_metrics));
+        .route_layer(middleware::from_fn(track_metrics))
+        .layer(middleware::from_fn(move |s, c, t| {
+            basic_auth.clone().auth(s, c, t)
+        }));
 
     axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse().unwrap())
         .serve(router.into_make_service())

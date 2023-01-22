@@ -1,13 +1,11 @@
 [package]
-name = "app-service"
+name = "djmxcreation_backend_wasmcloud"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.85"
-futures = "0.3.24"
 app-error = { path = "../app-error" }
+app-service = { path = "../app-service" }
 app_core = { path = "../app_core" }
-async-trait = "0.1.61"
