@@ -58,6 +58,7 @@ This project is still in progress .
 - [] implement wasmer
 - [] add test using test-container
 - [] add observability
+- [] add openAPI
 - [] add CICD
 - [] add documentation
 
