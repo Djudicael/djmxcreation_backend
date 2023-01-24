@@ -11,6 +11,7 @@ use crate::{
     },
     service::service_register::ServiceRegister,
 };
+use aide::openapi::OpenApi;
 use anyhow::Context;
 use app_config::{config::Config, security_config::SecurityConfig};
 use axum::{
@@ -108,8 +109,16 @@ fn token_is_valid(token: Basic) -> bool {
     username == token.username() && password == token.password()
 }
 
-//TODO add Migration database
+
 pub async fn start() -> anyhow::Result<()> {
+    // aide::gen::on_error(|error| {
+    //     println!("{error}");
+    // });
+
+    // aide::gen::extract_schemas(true);
+
+    // let mut api = OpenApi::default();
+
     let config = GLOBAL_CONFIG.clone();
 
     init_db_migration(&config.database)
@@ -161,6 +170,7 @@ pub async fn start() -> anyhow::Result<()> {
                 .allow_methods([Method::GET]),
         )
         .route_layer(middleware::from_fn(track_metrics))
+        
         .layer(middleware::from_fn(auth));
 
     axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse().unwrap())

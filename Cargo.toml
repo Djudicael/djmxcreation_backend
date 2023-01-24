@@ -8,5 +8,4 @@ members = [
     "test-util",
     "app_core",
     "app_config",
-    "djmxcreation_backend_wasmcloud",
 ]
