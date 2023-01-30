@@ -24,12 +24,18 @@ impl AboutMeRepository {
 #[async_trait]
 impl IAboutMeRepository for AboutMeRepository {
     async fn update_about_me(&self, id: i32, about: &AboutMeDto) -> Result<AboutMeDto, Error> {
+        let AboutMeDto {
+            first_name,
+            last_name,
+            description,
+            ..
+        } = about.clone();
         let sql = "UPDATE about SET first_name = $1, last_name = $2, description = $3 WHERE id = $4 RETURNING *";
         // let sql = "UPDATE about SET first_name = $1, last_name = $2, description = $3, photo = $4 WHERE id = $5 RETURNING *";
         let query = sqlx::query_as::<_, AboutMe>(sql)
-            .bind(about.clone().first_name)
-            .bind(about.clone().last_name)
-            .bind(about.clone().description)
+            .bind(first_name)
+            .bind(last_name)
+            .bind(description)
             .bind(id);
         let about_me = query
             .fetch_one(&self.db)

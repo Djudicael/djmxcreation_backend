@@ -108,10 +108,16 @@ impl IProjectRepository for ProjectRepository {
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         let now_utc: DateTime<Utc> = Utc::now();
+        let ProjectDto {
+            metadata,
+            description,
+            visible,
+            ..
+        } = project.clone();
         sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, updated_on = $4 WHERE id = $5 ")
-            .bind(project.clone().description)
-            .bind(project.clone().metadata.map(|metadata| Json(json!(metadata))))
-            .bind(project.visible)
+            .bind(description)
+            .bind(metadata.map(|metadata| Json(json!(metadata))))
+            .bind(visible)
             .bind(now_utc)
             .bind(project_id)
             .execute(&mut tx)
