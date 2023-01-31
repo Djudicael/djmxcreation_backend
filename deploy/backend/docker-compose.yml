@@ -1,27 +1,52 @@
 version: '3.9'
 
 services:
+  backend_minio:
+      image: minio/minio:latest
+      restart: always
+      networks:
+      - my-network
+      environment:
+        MINIO_ROOT_USER: minio
+        MINIO_ROOT_PASSWORD: minio123
+        MINIO_SITE_REGION: "us-west-0"
+      command: server data1
+      ports:
+        - "9000:9000"
+  backend_postgres:
+      image: postgres:latest
+      hostname: postgres
+      networks:
+      - my-network
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: customer
+      ports:
+        - "5432:5432"
   djmxcreation-backend-axum:
-    container_name: djmxcreation_backend
     build:
       context: ../..
       dockerfile: Dockerfile
-    # volumes:
-    #   - /tmp/app:/var/log/app
+    networks:
+      - my-network
     ports:
       - '8080:8080'
     environment:
-      PG_HOST: "backend_postgres"
+      PG_HOST: "postgres"
       PG_DB: "customer"
       PG_USER: "postgres"
       PG_PASSWORD: "postgres"
-      PG_APP_MAX_CON : 5
-      MINIO_ENDPOINT: "http://backend_minio:9000"     
-      PORT: "8080"            
+      PG_APP_MAX_CON: 5
+      MINIO_ENDPOINT: "http://backend_minio:9000"
+      PORT: "8080"
       MINIO_ACCESS_KEY: "minio"
       MINIO_SECRET_KEY: "minio123"
       MINIO_REGION: "us-west-0"
-    # depends_on:
-    #   # backend_minio
-    #   backend_postgres:
-    #     # condition: service_healthy
+      USERNAME_APP: "tata"
+      PASSWORD_APP: "yoyo"
+    depends_on:
+      - backend_postgres
+      - backend_minio
+networks:
+  my-network:

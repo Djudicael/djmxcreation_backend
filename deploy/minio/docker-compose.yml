@@ -10,6 +10,5 @@ services:
       MINIO_ROOT_PASSWORD: minio123
       MINIO_SITE_REGION: "us-west-0"
     command: server data1
-
     ports:
       - "9000:9000"
