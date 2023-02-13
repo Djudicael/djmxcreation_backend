@@ -11,7 +11,7 @@ use crate::{
     },
     service::service_register::ServiceRegister,
 };
-use aide::openapi::OpenApi;
+// use aide::openapi::OpenApi;
 use anyhow::Context;
 use app_config::{config::Config, security_config::SecurityConfig};
 use axum::{

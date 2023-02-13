@@ -59,7 +59,6 @@ This project is still in progress .
 - [] add test using test-container
 - [] add observability
 - [] add openAPI
-- [] add CICD
 - [] add documentation
 
 
