@@ -7,8 +7,6 @@ COPY . .
 # Compile the program
 RUN cargo build --release
 
-# Copy the binary to a smaller image
-# FROM alpine:latest
 # use google distroless as runtime image
 FROM gcr.io/distroless/cc-debian11
 WORKDIR /app
