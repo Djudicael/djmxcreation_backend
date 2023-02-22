@@ -109,7 +109,6 @@ fn token_is_valid(token: Basic) -> bool {
     username == token.username() && password == token.password()
 }
 
-
 pub async fn start() -> anyhow::Result<()> {
     // aide::gen::on_error(|error| {
     //     println!("{error}");
@@ -170,10 +169,9 @@ pub async fn start() -> anyhow::Result<()> {
                 .allow_methods([Method::GET]),
         )
         .route_layer(middleware::from_fn(track_metrics))
-        
         .layer(middleware::from_fn(auth));
 
-    axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse().unwrap())
+    axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse()?)
         .serve(router.into_make_service())
         .await?;
     Ok(())
