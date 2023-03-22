@@ -1,0 +1,1 @@
+podman run -it localhost/backend_djmxcreation-backend-axum:latest /bin/sh
