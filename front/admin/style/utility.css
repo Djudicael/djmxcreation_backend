@@ -1,0 +1,86 @@
+.recent-grid {
+    margin-top: 3.5rem;
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 67% auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.card {
+    background: var(--white-color);
+    border-radius: 5px;
+}
+
+.card-header, .card-body {
+    padding: 1rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--milk-color);
+}
+
+.card-header button {
+    display: flex;
+    background: var(--main-color);
+    border-radius: 10px;
+    color: var(--white-color);
+    font-size: .8rem;
+    padding: .5rem 1rem;
+    border: 1px solid var(--main-color);
+    align-items: center;
+}
+
+.card-header button img {
+    height: 1.7rem;
+    padding-left: 1rem;
+}
+
+thead tr {
+    border-top: 1px solid var(--milk-color);
+    border-bottom: 1px solid var(--milk-color);
+}
+
+thead td {
+    font-weight: 700;
+}
+
+td {
+    padding: .5rem 1rem;
+    font-size: .9rem;
+    color: var(--brown-color);
+}
+
+.user {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem .7rem;
+}
+
+.info {
+    display: flex;
+    align-items: center;
+}
+
+.info img {
+    border-radius: 50%;
+    margin-right: 1rem;
+}
+
+.info h4 {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--brown-color);
+}
+
+.info small {
+    font-weight: 600;
+    color: var(--text-grey);
+}

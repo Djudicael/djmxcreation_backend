@@ -1,0 +1,106 @@
+.create-project-box {
+    background: #2bb24c;
+    font-family: "Gothic A1", serif;
+    padding: 6em 0;
+    text-align: center;
+}
+
+.create-project-box h2 {
+    margin: 0 0 0.85em 0;
+    font-weight: 100;
+    font-size: 30px;
+    font-family: "Marcellus", serif;
+}
+
+.create-project-box .create-project {
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+}
+
+.create-project-box .create-project input {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid;
+    padding: 1em 0 0.8em;
+    text-align: center;
+    font-size: 18px;
+    font-family: inherit;
+    font-weight: 300;
+    line-height: 1.5;
+    color: inherit;
+    outline: none;
+}
+
+.create-project-box .create-project input::-moz-placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.create-project-box .create-project input:-ms-input-placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.create-project-box .create-project input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.create-project-box .create-project button {
+    all: unset;
+    margin-top: 2.4em;
+    background: transparent;
+    border: 2px solid white;
+    padding: 1em 4em;
+    border-radius: 50px;
+    cursor: pointer;
+    display: inline-block;
+    font-weight: 700;
+    position: relative;
+    transition: all 300ms ease;
+}
+
+.create-project-box .create-project button span {
+    display: inline-block;
+    transition: all 300ms ease;
+}
+
+.create-project-box .create-project button:before, .create-project-box .create-project button:after {
+    content: "";
+    display: block;
+    position: absolute;
+    transition: all 300ms ease;
+    opacity: 0;
+}
+
+.create-project-box .create-project button:before {
+    height: 7px;
+    width: 7px;
+    background: transparent;
+    border-right: 2px solid;
+    border-top: 2px solid;
+    right: 30px;
+    top: 21px;
+    transform: rotate(45deg);
+}
+
+.create-project-box .create-project button:after {
+    background: white;
+    height: 2px;
+    width: 50px;
+    left: 0;
+    top: 1.49em;
+}
+
+.create-project-box .create-project button:hover span {
+    transform: translateX(-10px);
+}
+
+.create-project-box .create-project button:hover:before {
+    opacity: 1;
+}
+
+.create-project-box .create-project button:hover:after {
+    width: 14px;
+    opacity: 1;
+    transform: translateX(160px);
+}

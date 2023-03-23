@@ -1,0 +1,27 @@
+.services {
+    margin-top: 30;
+    display: grid;
+    /* grid-template-columns: 1fr 1fr 1fr; */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    text-align: center;
+}
+
+.services .service {
+    padding: 30px;
+}
+
+.services .service:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.services .service h2 {
+    font-size: 24px;
+    font-weight: 500;
+    margin-top: 20px;
+    color: var(--service-title-color);
+}
+
+.services .service .icon img {
+    max-width: 100px;
+}

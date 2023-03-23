@@ -2,3 +2,4 @@
 .vscode
 .env
 script_python
+/front/*/node_modules

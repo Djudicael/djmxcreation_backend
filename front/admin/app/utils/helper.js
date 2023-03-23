@@ -1,0 +1,1 @@
+export const secureImageSrc = src => src ? src.replace(/".*/g, '') : src

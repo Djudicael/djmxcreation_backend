@@ -1,0 +1,192 @@
+.scroll-top {
+    position: fixed;
+    bottom: 25px;
+    right: 1px;
+    z-index: 99;
+    outline: none;
+    /* background-color: #efefef; */
+    /* border: 1px solid #333; */
+    cursor: pointer;
+    /* padding: 15px; */
+    border-radius: 4px;
+}
+
+.drag-area {
+    border: 2px dashed #fff;
+    height: 500px;
+    width: 700px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.drag-area.active {
+    border: 2px solid #fff;
+}
+
+.drag-area .icon {
+    font-size: 100px;
+    color: #fff;
+}
+
+.drag-area header {
+    font-size: 30px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.drag-area span {
+    font-size: 25px;
+    font-weight: 500;
+    color: #fff;
+    margin: 10px 0 15px 0;
+}
+
+.drag-area button {
+    padding: 10px 25px;
+    font-size: 20px;
+    font-weight: 500;
+    border: none;
+    outline: none;
+    background: #fff;
+    color: #5256ad;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.drag-area img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+/* #backToTop {
+    visibility: hidden;
+} */
+
+.cta {
+    position: relative;
+    margin: auto;
+    padding: 19px 22px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.cta:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    border-radius: 28px;
+    background: rgba(255, 171, 157, 0.5);
+    width: 56px;
+    height: 56px;
+    transition: all 0.3s ease;
+}
+
+.cta span {
+    position: relative;
+    font-size: 16px;
+    line-height: 18px;
+    font-weight: 900;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.cta svg {
+    position: relative;
+    top: 0;
+    margin-left: 10px;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke: #111;
+    stroke-width: 2;
+    transform: translateX(-5px);
+    transition: all 0.3s ease;
+}
+
+.cta:hover:before {
+    width: 100%;
+    background: #ffab9d;
+}
+
+.cta:hover svg {
+    transform: translateX(0);
+}
+
+.cta:active {
+    transform: scale(0.96);
+}
+
+input[type=checkbox] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+
+input[type=checkbox]:focus {
+    outline: 0;
+}
+
+.toggle {
+    height: 32px;
+    width: 52px;
+    border-radius: 16px;
+    display: inline-block;
+    position: relative;
+    margin: 0;
+    border: 2px solid #474755;
+    background: linear-gradient(180deg, #2D2F39 0%, #1F2027 100%);
+    transition: all 0.2s ease;
+}
+
+.toggle:after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 2px rgba(44, 44, 44, 0.2);
+    transition: all 0.2s cubic-bezier(0.5, 0.1, 0.75, 1.35);
+}
+
+.toggle:checked {
+    border-color: #654FEC;
+}
+
+.toggle:checked:after {
+    transform: translatex(20px);
+}
+
+.remove-image {
+    display: inline;
+}
+
+.image-area {
+    position: relative;
+    width: 100px;
+}
+
+.image-area img {
+    max-width: 100%;
+    /* height: 100px; */
+}
+
+.remove-image {
+    position: absolute;
+    right: 5px;
+    margin-top: 5px;
+    color: rgb(243, 11, 11);
+    font-size: 12px;
+}

@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;300;400&display=swap');
+@import "header.css";
+@import "gallery.css";
+@import "login.css";
+@import "sidebar.css";
+@import "utility.css";
+@import "metadataForm.css";
+@import "projects.css";
+@import "home.css";
+@import "project-page.css";
+@import "module.css";
+@import "mobile.css";
+/*===== VARIABLES CSS =====*/
+
+:root {
+    --main-color: #DD2F6E;
+    --dark-color: #1D2231;
+    --text-grey: #8390A2;
+    --white-color: #ffffff;
+    --milk-color: #f0f0f0;
+    --light-cream-color: #f1f5f9;
+    --cream-color: #ccc;
+    --brown-color: #222;
+    --light-brown-color: #333;
+    --green-mid-color: #11998e;
+    --green-light-color: #38ef7d;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    text-decoration: none;
+    font-family: 'Poppins', sans-serif;
+}
+
+.main-content {
+    margin-left: 345px;
+}
+
+main {
+    margin-top: 85px;
+    padding: 2rem 1.5rem;
+    background: var(--light-cream-color);
+    min-height: calc(100vh - 90px);
+}
+
+.main-content.toggled {
+    margin-left: 70px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.card-single {
+    display: flex;
+    justify-content: space-between;
+    background: var(--white-color);
+    padding: 2rem;
+    border-radius: 2px;
+}
+
+.card-single h1+span {
+    color: var(--text-grey);
+}
+
+.card-single h1 {
+    font-size: 3rem;
+}
+
+.flex-y {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.flex-x {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
