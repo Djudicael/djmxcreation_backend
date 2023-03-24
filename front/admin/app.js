@@ -20,14 +20,14 @@ app.get('/', function (req, res) {
     res.sendFile(join(__dirname + '/index.html'));
 });
 
-app.use((err, _, res, _) => {
-    res.status(err.status || 500);
-    res.send({
-        error: {
-            status: err.status || 500,
-            message: err.message
-        }
-    })
-});
+// app.use((err, _, res, _) => {
+//     res.status(err.status || 500);
+//     res.send({
+//         error: {
+//             status: err.status || 500,
+//             message: err.message
+//         }
+//     })
+// });
 
 export default app;

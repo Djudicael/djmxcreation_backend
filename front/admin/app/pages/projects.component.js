@@ -40,19 +40,15 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
     get template() {
 
-        const htmltemplate = `${sanitizeHtml(`
-        <section class="main-content">
-            <c-header></c-header>
-            <main>
-                ${this.creationButton({ step: this.step })}
-        
-                ${this.templateEngine({ step: this.step })}
-            </main>
-        </section>
-        `)}`;
-
-        return html`
-       ${htmltemplate}
+       
+        return html`<section class="main-content">
+        <c-header></c-header>
+        <main>
+            ${this.creationButton({ step: this.step })}
+    
+            ${this.templateEngine({ step: this.step })}
+        </main>
+    </section>
         `;
     }
 

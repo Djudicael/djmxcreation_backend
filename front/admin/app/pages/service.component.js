@@ -7,6 +7,7 @@ export class ServiceComponent extends TemplateRenderer {
     }
 
     get template() {
+        console.log('service');
 
 
         return html`

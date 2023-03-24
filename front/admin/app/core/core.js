@@ -4,12 +4,14 @@ import { layoutComponents } from '../components/layout/index.js';
 import { HomeComponent } from '../pages/home.component.js';
 import { DragDropComponent } from '../components/c-drag-drop.component.js';
 import { ProjectManagementComponent } from '../pages/projects.component.js';
-import { LoginComponent } from '../pages/login.component.js';
+// import { LoginComponent } from '../pages/login.component.js';
 import { ServiceComponent } from '../pages/service.component.js';
 import { WorkComponent } from '../pages/work.component.js';
 import { AboutComponent } from '../pages/about.component.js';
 import { ContactComponent } from '../pages/contact.component.js';
 import { ProjectComponent } from '../pages/project.component.js';
+
+import { Router } from '../controller/router.js';
 
 
 export class Core {
@@ -32,10 +34,10 @@ Core.inst = null;
 
 const components = [
     ...layoutComponents,
-    {
-        tagName: 'c-login',
-        component: LoginComponent
-    },
+    // {
+    //     tagName: 'c-login',
+    //     component: LoginComponent
+    // },
     {
         tagName: 'c-drag-drop',
         component: DragDropComponent
@@ -45,27 +47,31 @@ const components = [
         component: ProjectManagementComponent
     },
     {
-        tagName: 'c-home',
+        tagName: 'p-home',
         component: HomeComponent
     },
     {
-        tagName: 'c-service',
+        tagName: 'p-service',
         component: ServiceComponent
     },
     {
-        tagName: 'c-work',
+        tagName: 'p-work',
         component: WorkComponent
     },
     {
-        tagName: 'c-about',
+        tagName: 'p-about',
         component: AboutComponent
     },
     {
-        tagName: 'c-contact',
+        tagName: 'p-contact',
         component: ContactComponent
     },
     {
-        tagName: 'c-project',
+        tagName: 'p-project',
         component: ProjectComponent
+    },
+    {
+        tagName: 'c-router',
+        component: Router
     },
 ];

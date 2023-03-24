@@ -1,6 +1,6 @@
-import { TemplateRenderer } from "../utils/template-renderer.js";
+// import { TemplateRenderer } from "../utils/template-renderer.js";
 
-export class Router extends TemplateRenderer {
+export class Router extends HTMLElement  {
 
     constructor() {
         super()
@@ -38,7 +38,7 @@ export class Router extends TemplateRenderer {
             },
             // Article page (URL: /#/article/article-slug-here )
             {
-                name: 'p-projects',
+                name: 'c-project-management',
                 path: '../pages/projects.component.js',
                 regExp: new RegExp(/^#\/projects/)
             },
