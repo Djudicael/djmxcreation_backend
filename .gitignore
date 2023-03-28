@@ -3,3 +3,7 @@
 .env
 script_python
 /front/*/node_modules
+/front/*/dist/*.css
+/front/*/dist/*.html
+/front/*/dist/*.js
+/front/*/dist/*.js.map

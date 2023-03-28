@@ -11,7 +11,7 @@ import { AboutComponent } from '../pages/about.component.js';
 import { ContactComponent } from '../pages/contact.component.js';
 import { ProjectComponent } from '../pages/project.component.js';
 
-import { Router } from '../controller/router.js';
+import { RouterOutlet } from '../controller/router-outlet.js';
 
 
 export class Core {
@@ -43,7 +43,7 @@ const components = [
         component: DragDropComponent
     },
     {
-        tagName: 'c-project-management',
+        tagName: 'p-project-management',
         component: ProjectManagementComponent
     },
     {
@@ -71,7 +71,7 @@ const components = [
         component: ProjectComponent
     },
     {
-        tagName: 'c-router',
-        component: Router
+        tagName: 'router-outlet',
+        component: RouterOutlet
     },
 ];

@@ -1,10 +1,9 @@
 import { TemplateRenderer, html } from '../utils/template-renderer.js';
 import PortfolioApi from '../api/portfolio.api.js';
 export class HomeComponent extends TemplateRenderer {
-    constructor(router) {
+    constructor() {
         super();
         this.noShadow = true;
-        this.router = router;
         this.instance = new PortfolioApi();
         this.showReel;
         this.projects = [];
@@ -130,7 +129,6 @@ export class HomeComponent extends TemplateRenderer {
 
     connectedCallback() {
         super.connectedCallback();
-        this.router.updatePageLinks();
         // this.getShowReel();
         // this.getProjects();
     }

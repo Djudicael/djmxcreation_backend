@@ -1,13 +1,6 @@
 
-// import { html as exportedHtml, render } from '../../node_modules/lit-html/lit-html.js';
-// export const html = exportedHtml;
-
-export function html(strings, ...values) {
-    return strings.reduce((result, string, i) => {
-        const value = values[i] !== undefined ? values[i] : '';
-        return result + string + value;
-    }, '');
-}
+import { html as exportedHtml, render } from 'lit-html';
+export const html = exportedHtml;
 
 export function sanitizeHtml(html) {
     // Use a DOM parser to parse the HTML and remove any unsafe tags or attributes
@@ -40,11 +33,11 @@ export class TemplateRenderer extends HTMLElement {
 
     render(template) {
         if (this.noShadow) {
-            this.innerHTML = template || this.template;
-            // render(template || this.template, this);
+            // this.innerHTML = template || this.template;
+            render(template || this.template, this);
         } else {
-            this.innerHTML = template || this.template;
-            // render(template || this.template, this);
+            // this.innerHTML = template || this.template;
+            render(template || this.template, this);
         }
     }
 }

@@ -1,5 +1,7 @@
-console.log("test");
+
 import { Core } from "./core/core.js";
+
+import { initKeycloak } from "./auth/security.js";
 
 class App {
     constructor() {
@@ -7,4 +9,9 @@ class App {
     }
 }
 
-new App();
+const onAuthenticatedCallback = () => {
+    new App();
+}
+// new App();
+initKeycloak(onAuthenticatedCallback);
+

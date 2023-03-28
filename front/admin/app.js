@@ -11,13 +11,13 @@ app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/style', express.static(join(__dirname, 'style')));
-app.use('/app', express.static(join(__dirname, 'app')));
+// app.use('/style', express.static(join(__dirname, 'style')));
+app.use('/', express.static(join(__dirname, 'dist')));
 app.use('/lottie', express.static(join(__dirname, 'lottie')));
-app.use('/ressource', express.static(join(__dirname, 'ressource')));
+app.use('/ressource', express.static(join(__dirname, 'dist/ressource')));
 app.use('/lib', express.static(join(__dirname, 'lib')));
-app.get('/', function (req, res) {
-    res.sendFile(join(__dirname + '/index.html'));
+app.get('*', function (req, res) {
+    res.sendFile(join(__dirname + '/dist/index.html'));
 });
 
 // app.use((err, _, res, _) => {

@@ -1,11 +1,12 @@
 {
   "name": "admin",
-  "type": "module",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "admin": "nodemon --watch app clientServer.js"
+    "admin": "nodemon --watch app clientServer.js",
+    "build": "nodemon --watch app buildJs.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,9 @@
     "nodemon": "^2.0.22"
   },
   "dependencies": {
+    "@vaadin/router": "^1.7.5",
+    "esbuild": "0.17.14",
+    "keycloak-js": "^21.0.1",
     "lit-html": "^2.7.0"
   }
 }
