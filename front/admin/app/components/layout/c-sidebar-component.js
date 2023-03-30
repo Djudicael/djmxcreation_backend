@@ -9,33 +9,16 @@ export class SideBarComponent extends TemplateRenderer {
 
     get template() {
         return html`
-        <div class="sidebar">
-            <div class="side-brand">
-                <h2>Judicaël DUBRAY</h2>
-            </div>
-            <div class="sidebar-menu">
+        <aside class="sidebar">
+            <nav class="nav">
                 <ul>
-                    <li>
-                        <a href="$1" class="active"><img src="/ressource/icon/diagram.svg" /><span>Dashboard</span></a>
-                    </li>
-                    <li>
-                        <a href="$1"><img src="/ressource/icon/boy.svg" /><span>Profile</span></a>
-                    </li>
-                    <li>
-                        <a href="$1"><img src="/ressource/icon/group.svg" /><span>Users</span></a>
-                    </li>
-                    <li>
-                        <a href="/projects"><img src="/ressource/icon/folder.svg" /><span>Projects</span></a>
-                    </li>
-                    <li>
-                        <a href="/about"><img src="/ressource/icon/about.svg" data-navigo /><span>About me</span></a>
-                    </li>
-                    <li>
-                        <a href="/contact"><img src="/ressource/icon/pen tool.svg" data-navigo /><span>Contacts</span></a>
-                    </li>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/about">About me</a></li>
+                    <li><a href="/projects">Projects</a></li>
+                    <li><a href="/contact">Contact</a></li>
                 </ul>
-            </div>
-        </div>
+            </nav>
+        </aside>
         `;
     }
 

@@ -12,6 +12,6 @@ class App {
 const onAuthenticatedCallback = () => {
     new App();
 }
-// new App();
-initKeycloak(onAuthenticatedCallback);
+new App();
+// initKeycloak(onAuthenticatedCallback);
 

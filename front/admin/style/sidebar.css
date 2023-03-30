@@ -1,63 +1,58 @@
 .sidebar {
-    width: 345px;
-    left: 0;
-    top: 0;
     position: fixed;
-    height: 100%;
-    background: var(--main-color);
-    z-index: 100;
+    width: 25%;
+    height: 100vh;
+    background: #312450;
+    font-size: 0.65em;
 }
 
-.side-brand {
-    height: 90px;
-    padding: 1rem 0rem 1rem 2rem;
-    color: var(--white-color);
+.nav {
+    position: relative;
+    margin: 0 15%;
+    text-align: right;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
 }
 
-.side-brand h2 {
-    display: inline-block;
-    padding-right: 1rem;
+.nav ul {
+    list-style: none;
 }
 
-.sidebar-menu li {
-    width: 100%;
-    margin-bottom: 1.7rem;
-    padding-left: 1rem;
+.nav ul li {
+    position: relative;
+    margin: 3.2em 0;
 }
 
-.sidebar-menu {
-    margin-top: 1rem;
-}
-
-.sidebar-menu a {
-    padding-left: 1rem;
+.nav ul li a {
+    line-height: 5em;
+    text-transform: uppercase;
+    text-decoration: none;
+    letter-spacing: 0.4em;
+    color: rgba(255, 255, 255, 0.35);
     display: block;
-    color: var(--white-color);
-    font-size: 1.1rem;
+    transition: all ease-out 300ms;
 }
 
-.sidebar-menu a.active {
-    background: var(--white-color);
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-    color: var(--main-color);
-    border-radius: 30px 0px 0px 30px;
+.nav ul li.active a {
+    color: white;
 }
 
-.sidebar-menu a img {
-    height: 1.5rem;
-    padding-right: 1rem;
+.nav ul li:not(.active)::after {
+    opacity: 0.2;
 }
 
-.sidebar.toggled {
-    width: 70px;
+.nav ul li:not(.active):hover a {
+    color: rgba(255, 255, 255, 0.75);
 }
 
-.sidebar.toggled .side-brand h2, .sidebar.toggled li {
-    padding-left: 1rem;
+.nav ul li::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 0.2em;
+    background: black;
+    left: 0;
+    bottom: 0;
+    background-image: linear-gradient(to right, #5e42a6, #b74e91);
 }
-
-.sidebar.toggled>.side-brand h2, .sidebar.toggled>.sidebar-menu ul a span {
-    display: none;
-}
-

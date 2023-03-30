@@ -6,8 +6,8 @@ export default class PortfolioApi {
     }
 
     async createProject({ title, subTitle, client }) {
-        const auth = new Authentication();
-        return await this.instance.doPost({ path: "/v1/portfolio/projects", body: { title, subTitle, client }, authToken: auth.auth });
+        // const auth = new Authentication();
+        return await this.instance.doPost({ path: "/api/portfolio/v1/projects", body: { title, subTitle, client } });
     }
 
     async updateProjectMetadata(id, { title, subTitle, client }) {
@@ -32,7 +32,7 @@ export default class PortfolioApi {
 
     async deleteProject(id) {
         const auth = new Authentication();
-        return await this.instance.doDelete({ path: `/v1/portfolio/projects/${id}`, authToken: auth.auth });
+        return await this.instance.doDelete({ path: `/api/portfolio/v1/projects/${id}`});
     }
 
     async addContentToProject(id, { file }) {
@@ -44,7 +44,7 @@ export default class PortfolioApi {
     }
 
     async getProjects() {
-        return await this.instance.doGet("/v1/portfolio/projects");
+        return await this.instance.doGet("/api/portfolio/v1/projects");
     }
     async getShowReel() {
         return await this.instance.doGet("/portfolio/showreel");
@@ -75,7 +75,7 @@ export default class PortfolioApi {
         return await this.instance.doGet("/portfolio/contacts");
     }
     async getProject(projectId) {
-        return await this.instance.doGet(`/v1/portfolio/projects/${projectId}`);
+        return await this.instance.doGet(`/api/portfolio/v1/projects/${projectId}`);
     }
 
 }

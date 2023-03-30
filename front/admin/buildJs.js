@@ -78,7 +78,7 @@ const build = async () => {
         minify: true,
         sourcemap: true,
         target: ['chrome58'],
-        outfile: 'dist/index.js',
+        outfile: 'dist/js/index.js',
     });
 
     // Build the CSS

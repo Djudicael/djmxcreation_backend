@@ -1,5 +1,6 @@
 import { TemplateRenderer, html, sanitizeHtml } from '../utils/template-renderer.js';
 import PortfolioApi from '../api/portfolio.api.js';
+import Metadata from '../models/meadata.js';
 
 export class ProjectManagementComponent extends TemplateRenderer {
     // TODO https://codepen.io/choogoor/pen/YWBxAg
@@ -14,16 +15,31 @@ export class ProjectManagementComponent extends TemplateRenderer {
         this.deleteProject = this.deleteProject.bind(this);
         this.hideProject = this.hideProject.bind(this);
         this.create = this.create.bind(this);
+        this.cancelCreation = this.cancelCreation.bind(this);
     }
 
     templateEngine({ step }) {
         console.log(this.projects);
         switch (step) {
             case 'CREATE_PROJECT':
-                return `<c-metadata-form></c-metadata-form>`
+                return html`<c-metadata-form></c-metadata-form>`
             case 'PROJECT_HOME':
             default:
-                return this.projects ? this.projects.map(({ id, created_on, metadata, visible, content }) => `<c-card-work id=${id} project-id=${id} title=${metadata.title} ${metadata.subTitle ? `subtitle=${metadata.subTitle}` : ''}  ${metadata.client ? `client=${metadata.client}` : ''} creation-date=${created_on} visible=${visible} cover=${(content && content.length) ? content[0].url : '/ressource/icon/boy.svg'}></c-card-work>`).join('') : '';
+                return this.projects
+                    ? html`${this.projects.map(
+                        ({ id, createdOn, metadata, visible, contents }) =>
+                            html`<c-card-work
+                        id=${id}
+                        project-id=${id}
+                        title=${metadata.title}
+                        ${metadata.sub_title ? `subtitle=${metadata.sub_title}` : ''}
+                        ${metadata.client ? `client=${metadata.client}` : ''}
+                        creation-date=${createdOn}
+                        visible=${visible}
+                        cover=${(contents && contents.length) ? contents[0].url : '/ressource/icon/boy.svg'}
+                        ></c-card-work>`
+                    )}`
+                    : '';
         }
     }
 
@@ -31,25 +47,21 @@ export class ProjectManagementComponent extends TemplateRenderer {
     creationButton({ step }) {
         switch (step) {
             case 'PROJECT_HOME':
-                return ` <button class="create-project">New project</button>`;
+                return html`<button class="create-project">New project</button>`;
             default:
-                return ``;
+                return html``;
         }
     }
 
 
     get template() {
-
-       
-        return html`<section class="main-content">
-        <c-header></c-header>
-        <main>
+        return html`
+        <section class="content-page">
+        <div class="container">
             ${this.creationButton({ step: this.step })}
-    
             ${this.templateEngine({ step: this.step })}
-        </main>
-    </section>
-        `;
+        </div>
+        </section>`;
     }
 
 
@@ -57,14 +69,21 @@ export class ProjectManagementComponent extends TemplateRenderer {
         const projects = await this.instance.getProjects();
         this.projects.push(...projects);
         super.render();
-        this.router.updatePageLinks();
     }
 
     createProject = async (e) => {
-        const { id } = await this.instance.createProject({ ...e.detail });
+        const metadata = new Metadata({ ...e.detail });
+        const { id } = await this.instance.createProject({ ...metadata });
         if (id) {
-            this.router.navigate(`/projects/${id}`);
+            const routerOutlet = document.querySelector('router-outlet');
+            routerOutlet.navigateTo(`/projects/${id}`);
         }
+    }
+
+    cancelCreation = async (e) => {
+        this.step = 'PROJECT_HOME';
+        super.render();
+        this.initCreationProjectButton();
     }
 
     initCreationProjectButton() {
@@ -83,7 +102,7 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
     deleteProject = async (e) => {
         const { projectId } = e.detail;
-        this.instance.deleteProject(projectId);
+        await this.instance.deleteProject(projectId);
         const element = this.querySelector(`[project-id='${projectId}']`);
         element.parentNode.removeChild(element);
         e.preventDefault();
@@ -98,12 +117,21 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
     };
 
+    disconnectedCallback() {
+        this.removeEventListener('create-project', e => this.createProject(e));
+        this.removeEventListener('delete-project', e => this.deleteProject(e));
+        this.removeEventListener('update-visibility', e => this.hideProject(e));
+        this.removeEventListener('cancel-creation', e => this.cancelCreation(e));
+    }
+
 
     connectedCallback() {
         super.connectedCallback();
         this.addEventListener('create-project', e => this.createProject(e));
         this.addEventListener('delete-project', e => this.deleteProject(e));
         this.addEventListener('update-visibility', e => this.hideProject(e));
+        this.addEventListener('cancel-creation', e => this.cancelCreation(e));
+        // this.remove
         this.initCreationProjectButton();
         this.getProjects();
     }

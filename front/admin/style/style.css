@@ -35,20 +35,7 @@
     font-family: 'Poppins', sans-serif;
 }
 
-.main-content {
-    margin-left: 345px;
-}
 
-main {
-    margin-top: 85px;
-    padding: 2rem 1.5rem;
-    background: var(--light-cream-color);
-    min-height: calc(100vh - 90px);
-}
-
-.main-content.toggled {
-    margin-left: 70px;
-}
 
 .cards {
     display: grid;

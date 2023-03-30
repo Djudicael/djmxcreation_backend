@@ -4,7 +4,7 @@ import PortfolioApi from '../api/portfolio.api.js';
 export class ProjectComponent extends TemplateRenderer {
     constructor(params) {
         super();
-        this.projectId = params.data.id;
+        this.projectId = null;
         this.noShadow = true;
         this.instance = new PortfolioApi();
         this.title;
@@ -17,14 +17,15 @@ export class ProjectComponent extends TemplateRenderer {
 
 
     get template() {
-        const checkVisibility = `<input type="checkbox" class="toggle" ${this.visible ? 'checked' : ''} >`
-        const content = this.content ? this.content.map(({ id, url }) => `<div id=${id} class="image-area">
-                <img src=${url} alt="Preview">
-                    <button class="remove-image" data-image-id=${id}>delete</button>
-                </div>`) : '';
+        const checkVisibility = html`<input type="checkbox" class="toggle" ${this.visible ? 'checked' : ''} >`
+        const content = this.content ? html`${this.content.map(({ id, url }) => `
+        <div id=${id} class="image-area">
+            <img src=${url} alt="Preview">
+            <button class="remove-image" data-image-id=${id}>delete</button>
+        </div>`)}` : '';
         return html`
-        <section class="main-content">
-            <c-header></c-header>
+        <section class="content-page">
+        
             <main class="flex-y">
                 <div class="form__group field">
                     <div>
@@ -248,9 +249,17 @@ export class ProjectComponent extends TemplateRenderer {
         });
     }
 
+    getId = async () => {
+        const routerOutlet = document.querySelector('router-outlet');
+        const location = await routerOutlet.getLocation(window.location.pathname);
+        this.projectId = location.params.id;
+    }
+
     async connectedCallback() {
         super.connectedCallback();
         this.addEventListener('upload-file', e => this.sendFile(e));
+        await this.getId();
+        console.log(this.projectId);
         await this.getProject();
         this.init();
         this.initRemoveImageEvent();
