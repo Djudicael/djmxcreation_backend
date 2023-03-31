@@ -39,8 +39,8 @@ export class DragDropComponent extends TemplateRenderer {
 
         this.$fileInput.addEventListener('change', (event) => {
 
-            for (var i = 0; i < this.$fileInput.files.length; i++) {
-                this.fileList.push(this.$fileInput.files[i]);
+            for (const file of this.$fileInput.files) {
+                this.fileList.push(file);
             }
             this.renderFileList();
         });

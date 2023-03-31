@@ -6,8 +6,8 @@ use std::{
 
 use crate::{
     router::{
-        about_me_router::AboutMeRouter, observability_router::ObservabilityRouter,
-        project_router::ProjectRouter,
+        about_me_router::AboutMeRouter, contact_router::ContactRouter,
+        observability_router::ObservabilityRouter, project_router::ProjectRouter,
     },
     service::service_register::ServiceRegister,
 };
@@ -33,7 +33,10 @@ use repository::config::{
 };
 use serde_json::json;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{Any, CorsLayer},
+    trace::TraceLayer,
+};
 
 static GLOBAL_CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::new()));
 
@@ -156,6 +159,10 @@ pub async fn start() -> anyhow::Result<()> {
             "/api/portfolio",
             ProjectRouter::new_router(service_register.clone()),
         )
+        .nest(
+            "/api/contact",
+            ContactRouter::new_router(service_register.clone()),
+        )
         .route("/metrics", get(move || ready(recorder_handle.render())))
         .layer(
             ServiceBuilder::new()
@@ -163,13 +170,22 @@ pub async fn start() -> anyhow::Result<()> {
                 .layer(HandleErrorLayer::new(handle_timeout_error))
                 .timeout(Duration::from_secs(HTTP_TIMEOUT)),
         )
-        .layer(
-            CorsLayer::new()
-                .allow_origin("*".parse::<HeaderValue>().unwrap()) //TODO to modify
-                .allow_methods([Method::GET]),
-        )
-        .route_layer(middleware::from_fn(track_metrics))
-        .layer(middleware::from_fn(auth));
+        .layer(CorsLayer::permissive())
+        .layer(TraceLayer::new_for_http())
+        // .layer(
+        //     CorsLayer::new()
+        //         .allow_origin(Any) //TODO to modify
+        //         // .allow_origin(["http://localhost:3008".parse::<HeaderValue>().unwrap()]) //TODO to modify
+        //         .allow_methods([
+        //             Method::GET,
+        //             Method::POST,
+        //             Method::PUT,
+        //             Method::DELETE,
+        //             Method::OPTIONS,
+        //         ]),
+        // )
+        .route_layer(middleware::from_fn(track_metrics));
+    // .layer(middleware::from_fn(auth));
 
     axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse()?)
         .serve(router.into_make_service())

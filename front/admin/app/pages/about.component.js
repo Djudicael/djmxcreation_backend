@@ -18,15 +18,13 @@ export class AboutComponent extends TemplateRenderer {
     }
 
     get template() {
-        console.log(this.profilePicture);
-        const profilePicture = this.profilePicture ? `<div id=${this.profilePicture.id} class="image-area">
-        <img src=${this.profilePicture.url} alt="Preview" loading="lazy">
+        const profilePicture = this.profilePicture ? html`<div  class="image-area">
+        <img src=${this.profilePicture} alt="Preview" loading="lazy">
             <button class="remove-image" data-image-id=${this.profilePicture.id}>delete</button>
         </div>` : '';
 
         return html`
-        <section class="main-content">
-            <c-header></c-header>
+        <section class="content-page">
             <main class="flex-y">
                 <div class="presentation">
                     <div id="editorjs"></div>
@@ -165,16 +163,17 @@ export class AboutComponent extends TemplateRenderer {
                 console.error('Saving error', error);
             });
 
-            await this.instance.updateAboutMeDescription(this.id, { description: blocks })
+            await this.instance.updateAboutMeDescription(this.id, { lastName: this.lastName, firstName: this.firstName, description: blocks })
         });
     }
 
     async getAboutMe() {
-        const { id, description, image } = await this.instance.getAboutMe();
-        console.log(image);
+        const { id, firstName, lastName, description, photoUrl } = await this.instance.getAboutMe();
         this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.description = description;
-        this.profilePicture = image;
+        this.profilePicture = photoUrl;
         super.render();
     }
 
@@ -190,12 +189,10 @@ export class AboutComponent extends TemplateRenderer {
     deleteImage = async (e) => {
         e.preventDefault();
         console.log("delete");
-        const element = e.currentTarget;
-        const contentID = element.dataset.imageId;
         this.instance.deleteProfileImage(this.id);
-        const card = this.querySelector(`#${contentID}`);
-        card.parentNode.removeChild(card);
 
+        //TODO change this to a better way
+        await this.getAboutMe();
     };
 
     initRemoveImageEvent = () => {
@@ -206,6 +203,9 @@ export class AboutComponent extends TemplateRenderer {
 
     disconnectedCallback() {
         this.$uploadButton.removeEventListener('click', e => this.sendFile(e));
+        this.querySelectorAll('.remove-image').forEach(item => {
+            item.removeEventListener('click', e => this.deleteImage(e))
+        });
     }
 
     async connectedCallback() {

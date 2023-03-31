@@ -4,3 +4,4 @@ pub mod mapper;
 pub mod project;
 pub mod storage;
 pub mod view;
+pub mod contact;

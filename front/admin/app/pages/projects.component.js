@@ -1,6 +1,6 @@
 import { TemplateRenderer, html, sanitizeHtml } from '../utils/template-renderer.js';
 import PortfolioApi from '../api/portfolio.api.js';
-import Metadata from '../models/meadata.js';
+import Metadata from '../models/metadata.js';
 
 export class ProjectManagementComponent extends TemplateRenderer {
     // TODO https://codepen.io/choogoor/pen/YWBxAg
@@ -13,7 +13,6 @@ export class ProjectManagementComponent extends TemplateRenderer {
         this.step = 'PROJECT_HOME';
         this.createProject = this.createProject.bind(this);
         this.deleteProject = this.deleteProject.bind(this);
-        this.hideProject = this.hideProject.bind(this);
         this.create = this.create.bind(this);
         this.cancelCreation = this.cancelCreation.bind(this);
     }
@@ -108,19 +107,9 @@ export class ProjectManagementComponent extends TemplateRenderer {
         e.preventDefault();
     };
 
-    hideProject = async (e) => {
-        const { projectId, visible } = e.detail;
-        e.preventDefault();
-        this.instance.updateVisibility(projectId, { isVisible: visible });
-        const element = this.querySelector(`[project-id='${projectId}']`);
-        element.setAttribute("visible", visible.toString());
-
-    };
-
     disconnectedCallback() {
         this.removeEventListener('create-project', e => this.createProject(e));
         this.removeEventListener('delete-project', e => this.deleteProject(e));
-        this.removeEventListener('update-visibility', e => this.hideProject(e));
         this.removeEventListener('cancel-creation', e => this.cancelCreation(e));
     }
 
@@ -129,7 +118,6 @@ export class ProjectManagementComponent extends TemplateRenderer {
         super.connectedCallback();
         this.addEventListener('create-project', e => this.createProject(e));
         this.addEventListener('delete-project', e => this.deleteProject(e));
-        this.addEventListener('update-visibility', e => this.hideProject(e));
         this.addEventListener('cancel-creation', e => this.cancelCreation(e));
         // this.remove
         this.initCreationProjectButton();

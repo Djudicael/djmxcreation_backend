@@ -29,14 +29,13 @@ content-type: application/json
 
 
 ### create a todo
-POST  http://127.0.0.1:8080/me
+POST  http://127.0.0.1:8081/api/about/v1/me
 content-type: application/json
 
 {
-  "description": "tata",
   "firstName": "Judicael",
   "lastName": "dubray",
-  "picture": "tata"
+
 }
 
 ### create a todo

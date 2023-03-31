@@ -33,10 +33,8 @@ export class TemplateRenderer extends HTMLElement {
 
     render(template) {
         if (this.noShadow) {
-            // this.innerHTML = template || this.template;
             render(template || this.template, this);
         } else {
-            // this.innerHTML = template || this.template;
             render(template || this.template, this);
         }
     }

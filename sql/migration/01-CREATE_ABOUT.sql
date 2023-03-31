@@ -6,3 +6,4 @@ CREATE TABLE about(
     description jsonb
 );
 
+

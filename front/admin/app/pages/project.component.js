@@ -1,8 +1,10 @@
 import { TemplateRenderer, html } from '../utils/template-renderer.js';
 import PortfolioApi from '../api/portfolio.api.js';
+import Metadata from '../models/metadata.js';
+import ProjectPayload from '../models/projectPayload.js';
 
 export class ProjectComponent extends TemplateRenderer {
-    constructor(params) {
+    constructor() {
         super();
         this.projectId = null;
         this.noShadow = true;
@@ -11,21 +13,21 @@ export class ProjectComponent extends TemplateRenderer {
         this.subTitle;
         this.client;
         this.visible;
-        this.content;
+        this.contents;
         this.deleteImage = this.deleteImage.bind(this);
     }
 
 
     get template() {
         const checkVisibility = html`<input type="checkbox" class="toggle" ${this.visible ? 'checked' : ''} >`
-        const content = this.content ? html`${this.content.map(({ id, url }) => `
-        <div id=${id} class="image-area">
+        const contents = this.contents ? html`${this.contents.map(({ id, url }) => html`
+        <div id="area-${id}" class="image-area">
             <img src=${url} alt="Preview">
             <button class="remove-image" data-image-id=${id}>delete</button>
-        </div>`)}` : '';
+        </div>`)}` : html``;
+
         return html`
         <section class="content-page">
-        
             <main class="flex-y">
                 <div class="form__group field">
                     <div>
@@ -44,7 +46,7 @@ export class ProjectComponent extends TemplateRenderer {
                             value=${this.client ? this.client : ''} />
                     </div>
                 </div>
-                <h1>Project description</h1>
+                <h1>Project descriptions</h1>
                 <div id="editorjs"></div>
                 <div class="flex-y">
                     <div>${checkVisibility} <span>Make project
@@ -59,7 +61,7 @@ export class ProjectComponent extends TemplateRenderer {
                     </div>
                     <c-drag-drop></c-drag-drop>
                     <section class="flex-x">
-                        ${content}
+                        ${contents}
                     </section>
                 </div>
             </main>
@@ -68,14 +70,13 @@ export class ProjectComponent extends TemplateRenderer {
     }
 
     async getProject() {
-        const { metadata, visible, description, content } = await this.instance.getProject(this.projectId);
-        console.log(visible);
+        const { metadata, visible, description, contents } = await this.instance.getProject(this.projectId);
         this.title = metadata.title;
         this.subTitle = metadata.subTitle;
         this.client = metadata.client;
         this.visible = visible;
         this.description = description;
-        this.content = content;
+        this.contents = contents;
         super.render();
     }
 
@@ -205,7 +206,7 @@ export class ProjectComponent extends TemplateRenderer {
         const saveButton = document.getElementById('saveButton');
 
         /**
-         * Saving example
+         * Saving contents
          */
         saveButton.addEventListener('click', async () => {
             const { blocks } = await editor.save().catch((error) => {
@@ -216,13 +217,11 @@ export class ProjectComponent extends TemplateRenderer {
             const title = this.querySelector('#title').value;
             const subTitle = this.querySelector('#subtitle').value;
             const client = this.querySelector('#client').value;
-            Promise.all([
-                this.instance.updateProjectMetadata(this.projectId, { title, subTitle, client }),
-                this.instance.updateDescription(this.projectId, { description: blocks }),
-                this.instance.updateVisibility(this.projectId, { isVisible })
-            ]).catch(error => {
-                console.log(error);
-            });
+
+            const metadata = new Metadata({ title, subTitle, client });
+
+            const project = new ProjectPayload({ metadata, visible: isVisible, description: blocks });
+            await this.instance.updateProject(this.projectId, project);
         });
     }
 
@@ -232,15 +231,18 @@ export class ProjectComponent extends TemplateRenderer {
         }
         await this.getProject();
         this.initRemoveImageEvent();
+        //TODO improuve thos system for probably retrieve to push the image after the upload
+        super.render();
     };
 
     deleteImage = async (e) => {
         const element = e.currentTarget;
         const contentID = element.dataset.imageId;
         this.instance.deleteContent(this.projectId, contentID);
-        const card = this.querySelector(`#${contentID}`);
+        const card = this.querySelector(`#area-${contentID}`);
+        // TODO improve the system by refreshing the content and re render the component
         card.parentNode.removeChild(card);
-
+        super.render();
     };
 
     initRemoveImageEvent = () => {
@@ -259,7 +261,6 @@ export class ProjectComponent extends TemplateRenderer {
         super.connectedCallback();
         this.addEventListener('upload-file', e => this.sendFile(e));
         await this.getId();
-        console.log(this.projectId);
         await this.getProject();
         this.init();
         this.initRemoveImageEvent();
