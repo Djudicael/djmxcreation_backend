@@ -1,0 +1,36 @@
+@import "header.css";
+@import "works.css";
+@import "common.css";
+
+:root {
+    --main-bg-color: #e8e8e1;
+}
+
+/* @font-face {
+    font-family: "ivar";
+    src: url(./IvarDisplayCondensed-Light.woff2) format("woff2");
+  } */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "ivar", serif;
+    text-decoration: none;
+    list-style: none;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+a {
+    color: #191919;
+}
+
+html,
+body {
+    width: 100%;
+    background-color: var(--main-bg-color);
+    overscroll-behavior: none;
+}
