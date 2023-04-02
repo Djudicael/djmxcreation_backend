@@ -1,9 +1,11 @@
 @import "header.css";
 @import "works.css";
+@import "work.css";
 @import "common.css";
 
 :root {
     --main-bg-color: #e8e8e1;
+    --app-height: 100%;
 }
 
 /* @font-face {

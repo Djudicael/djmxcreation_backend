@@ -12,6 +12,7 @@ export default class WorksComponent extends TemplateRenderer {
         super();
         const menu = document.querySelector('c-header');
         menu.hideMenu()
+        this.routerOutlet = document.querySelector('router-outlet');
         this.noShadow = true;
         this.api = new PortfolioApi();
         this.projects = [];
@@ -158,7 +159,11 @@ export default class WorksComponent extends TemplateRenderer {
 
             link.addEventListener('mouseleave', () => {
                 this.target = 0;
-            })
+            });
+
+            link.addEventListener('click', () => {
+                this.routerOutlet.navigateTo(`/works/${projectId}`);
+            });
 
         }
 
