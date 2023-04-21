@@ -1,7 +1,7 @@
 use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
-        project_dto::ProjectDto,
+        project_dto::ProjectDto, project_with_thumbnail_dto::ProjectWithThumbnailDto,
     },
     project::project_repository::IProjectRepository,
 };
@@ -13,7 +13,10 @@ use sqlx::types::Json;
 
 use crate::{
     config::db::Db,
-    entity::{project::Project, project_content::ProjectContent},
+    entity::{
+        project::Project, project_content::ProjectContent,
+        project_with_thumbnail::ProjectWithThumbnail,
+    },
     error::to_error,
 };
 
@@ -96,6 +99,45 @@ impl IProjectRepository for ProjectRepository {
             .iter()
             .map(|p| ProjectDto::from(p.clone()))
             .collect())
+    }
+
+    async fn get_projects_with_filter(
+        &self,
+        page: i32,
+        size: i32,
+        is_adult: bool,
+        is_visible: bool,
+    ) -> Result<Vec<ProjectWithThumbnailDto>, Error> {
+        let sql = "
+        SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
+        FROM project p
+        LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
+        LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
+            SELECT id
+            FROM project_content
+            WHERE project_id = p.id
+            ORDER BY created_on ASC
+            LIMIT 1
+        )
+        WHERE p.visible = $1 AND p.adult = $2
+        ORDER BY p.created_on DESC
+        LIMIT $3 OFFSET $4
+        ";
+        let rows = sqlx::query_as::<_, ProjectWithThumbnail>(sql)
+            .bind(is_visible)
+            .bind(is_adult)
+            .bind(size)
+            .bind(page * size)
+            .fetch_all(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+
+        let projects = rows
+            .iter()
+            .map(|p| ProjectWithThumbnailDto::from(p.clone()))
+            .collect();
+
+        Ok(projects)
     }
 
     async fn update_project_entity(

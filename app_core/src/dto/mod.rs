@@ -5,3 +5,5 @@ pub mod metadata_dto;
 pub mod project_content_dto;
 pub mod project_dto;
 pub mod contact_dto;
+pub mod projects_dto;
+pub mod project_with_thumbnail_dto;
