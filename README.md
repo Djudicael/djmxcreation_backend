@@ -55,10 +55,14 @@ This project is still in progress .
 
 - [] add a new endpoint to have a simple selection of project that will only sent project available ( this endpoint will be use for the front only)
 - [] add filter and pagination to retrieve project summary
+- [] The endpoint should send only project with content and visible project
+- [] the new endpoint should send the thumbnail or image
+- [] Modify content upload to have the possibility to select which project should be the main thumbnail for the project(if no thumbnail is selected send the first one by default)
 - [] implement wasi/wasmer ( we should have almost all necessary library for the wasi part)
-- [] add wasi and a new app to upload images
-- [] Add adult only flag for some projects ( database/ backend front)
-- [] continue with the keycloack security
+- [] add new app to upload images in S3/minio
+- [] in new app uploading in S3/minio a possibility to generate thumbnail
+- [] Add adult only flag for some projects ( database/ front)
+- [] continue with the keycloak security
 - [] add test using test-container
 - [] add observability
 - [] add openAPI

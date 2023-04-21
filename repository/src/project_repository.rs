@@ -33,10 +33,11 @@ impl IProjectRepository for ProjectRepository {
         let metadata_json = Json(json!(metadata));
         let now_utc: DateTime<Utc> = Utc::now();
         let sql =
-            "INSERT INTO project(metadata, created_on, visible) VALUES($1, $2, $3) RETURNING *";
+            "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3) RETURNING *";
         let query = sqlx::query_as::<_, Project>(sql)
             .bind(metadata_json)
             .bind(now_utc)
+            .bind(false)
             .bind(false);
         let project = ProjectDto::from(
             query
@@ -112,12 +113,14 @@ impl IProjectRepository for ProjectRepository {
             metadata,
             description,
             visible,
+            adult,
             ..
         } = project.clone();
-        sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, updated_on = $4 WHERE id = $5 ")
+        sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6 ")
             .bind(description)
             .bind(metadata.map(|metadata| Json(json!(metadata))))
             .bind(visible)
+            .bind(adult)
             .bind(now_utc)
             .bind(project_id)
             .execute(&mut tx)

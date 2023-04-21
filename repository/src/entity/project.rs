@@ -8,6 +8,7 @@ pub struct Project {
     pub metadata: Option<Json<Value>>,
     pub description: Option<Json<Value>>,
     pub visible: bool,
+    pub adult: bool,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_on: Option<chrono::DateTime<chrono::Utc>>,
 }
@@ -18,6 +19,7 @@ impl Project {
         metadata: Option<Json<Value>>,
         description: Option<Json<Value>>,
         visible: bool,
+        adult: bool,
         created_on: Option<chrono::DateTime<chrono::Utc>>,
         updated_on: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Self {
@@ -26,6 +28,7 @@ impl Project {
             metadata,
             description,
             visible,
+            adult,
             created_on,
             updated_on,
         }
@@ -41,6 +44,7 @@ impl From<Project> for ProjectDto {
                 .and_then(to_metadata),
             val.description.map(|description_json| description_json.0),
             val.visible,
+            val.adult,
             val.created_on,
             val.updated_on,
         )

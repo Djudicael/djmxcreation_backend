@@ -9,6 +9,7 @@ pub struct ProjectDto {
     pub metadata: Option<MetadataDto>,
     pub description: Option<Value>,
     pub visible: bool,
+    pub adult: bool,
     pub created_on: Option<DateTime<Utc>>,
     pub updated_on: Option<DateTime<Utc>>,
 }
@@ -19,6 +20,7 @@ impl ProjectDto {
         metadata: Option<MetadataDto>,
         description: Option<Value>,
         visible: bool,
+        adult: bool,
         created_on: Option<DateTime<Utc>>,
         updated_on: Option<DateTime<Utc>>,
     ) -> Self {
@@ -27,6 +29,7 @@ impl ProjectDto {
             metadata,
             description,
             visible,
+            adult,
             created_on,
             updated_on,
         }

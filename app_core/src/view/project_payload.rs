@@ -9,14 +9,21 @@ pub struct ProjectPayload {
     pub metadata: Option<MetadataDto>,
     pub description: Option<Value>,
     pub visible: bool,
+    pub adult: bool,
 }
 
 impl ProjectPayload {
-    pub fn new(metadata: Option<MetadataDto>, description: Option<Value>, visible: bool) -> Self {
+    pub fn new(
+        metadata: Option<MetadataDto>,
+        description: Option<Value>,
+        visible: bool,
+        adult: bool,
+    ) -> Self {
         Self {
             metadata,
             description,
             visible,
+            adult,
         }
     }
 }
@@ -30,6 +37,7 @@ impl From<ProjectPayload> for ProjectDto {
             val.metadata,
             description_json,
             val.visible,
+            val.adult,
             None,
             None,
         )
