@@ -53,9 +53,12 @@ This project is still in progress .
 
 ### TODO LIST
 
-- [] Add a backend for ACTIX (not important for now)
-- [] implement wasmcloud
-- [] implement wasmer
+- [] add a new endpoint to have a simple selection of project that will only sent project available ( this endpoint will be use for the front only)
+- [] add filter and pagination to retrieve project summary
+- [] implement wasi/wasmer ( we should have almost all necessary library for the wasi part)
+- [] add wasi and a new app to upload images
+- [] Add adult only flag for some projects ( database/ backend front)
+- [] continue with the keycloack security
 - [] add test using test-container
 - [] add observability
 - [] add openAPI

@@ -4,7 +4,8 @@ CREATE TABLE project(
     created_on TIMESTAMPTZ NOT NULL,
     updated_on TIMESTAMPTZ,
     description jsonb,
-    visible boolean
+    visible boolean,
+    adult boolean
 );
 
 CREATE TABLE project_content(
