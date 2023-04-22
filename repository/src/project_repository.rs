@@ -2,6 +2,7 @@ use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
         project_dto::ProjectDto, project_with_thumbnail_dto::ProjectWithThumbnailDto,
+        projects_dto::ProjectsDto,
     },
     project::project_repository::IProjectRepository,
 };
@@ -107,7 +108,7 @@ impl IProjectRepository for ProjectRepository {
         size: i32,
         is_adult: bool,
         is_visible: bool,
-    ) -> Result<Vec<ProjectWithThumbnailDto>, Error> {
+    ) -> Result<ProjectsDto, Error> {
         let sql = "
         SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
         FROM project p
@@ -123,6 +124,15 @@ impl IProjectRepository for ProjectRepository {
         ORDER BY p.created_on DESC
         LIMIT $3 OFFSET $4
         ";
+
+        let total_sql = "SELECT COUNT(*) FROM project WHERE visible = $1 AND adult = $2";
+        let total_count: i64 = sqlx::query_scalar(total_sql)
+            .bind(is_visible)
+            .bind(is_adult)
+            .fetch_one(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+
         let rows = sqlx::query_as::<_, ProjectWithThumbnail>(sql)
             .bind(is_visible)
             .bind(is_adult)
@@ -136,6 +146,9 @@ impl IProjectRepository for ProjectRepository {
             .iter()
             .map(|p| ProjectWithThumbnailDto::from(p.clone()))
             .collect();
+
+        let total_pages = (total_count as f64 / size as f64).ceil() as i32;
+        let projects = ProjectsDto::new(page, size, total_pages, projects);
 
         Ok(projects)
     }

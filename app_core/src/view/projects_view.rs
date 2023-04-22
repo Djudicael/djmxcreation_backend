@@ -1,20 +1,18 @@
-use super::project_with_thumbnail_dto::ProjectWithThumbnailDto;
+use super::project_with_thumbnail_view::ProjectWithThumbnailView;
 
-
-#[derive(Default, Debug, Clone)]
-pub struct ProjectsDto {
+pub struct ProjectsView {
     pub page: i32,
     pub size: i32,
     pub total_pages: i32,
-    pub projects: Vec<ProjectWithThumbnailDto>,
+    pub projects: Vec<ProjectWithThumbnailView>,
 }
 
-impl ProjectsDto {
+impl ProjectsView {
     pub fn new(
         page: i32,
         size: i32,
         total_pages: i32,
-        projects: Vec<ProjectWithThumbnailDto>,
+        projects: Vec<ProjectWithThumbnailView>,
     ) -> Self {
         Self {
             page,

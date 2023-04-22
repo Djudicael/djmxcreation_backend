@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use crate::dto::{
     content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
-    project_dto::ProjectDto, project_with_thumbnail_dto::ProjectWithThumbnailDto,
+    project_dto::ProjectDto, projects_dto::ProjectsDto,
 };
 
 pub type DynIProjectRepository = Arc<dyn IProjectRepository + Send + Sync>;
@@ -30,7 +30,13 @@ pub trait IProjectRepository {
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error>;
 
-    async fn get_projects_with_filter(&self, page: i32, size:i32, is_adult:bool, is_visible: bool) -> Result<Vec<ProjectWithThumbnailDto>, Error>;
+    async fn get_projects_with_filter(
+        &self,
+        page: i32,
+        size: i32,
+        is_adult: bool,
+        is_visible: bool,
+    ) -> Result<ProjectsDto, Error>;
 
     async fn update_project_entity(
         &self,

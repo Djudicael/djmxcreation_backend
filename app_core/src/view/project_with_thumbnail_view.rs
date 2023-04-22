@@ -1,20 +1,23 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
-use super::{metadata_dto::MetadataDto, content_dto::ContentDto};
+use crate::dto::metadata_dto::MetadataDto;
 
+use super::content_view::ContentView;
 
-#[derive(Default, Debug, Clone)]
-pub struct ProjectWithThumbnailDto {
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectWithThumbnailView {
     pub id: Option<i32>,
     pub metadata: Option<MetadataDto>,
     pub visible: bool,
     pub adult: bool,
     pub created_on: Option<DateTime<Utc>>,
     pub updated_on: Option<DateTime<Utc>>,
-    pub thumbnail: Option<ContentDto>,
+    pub thumbnail: Option<ContentView>,
 }
 
-impl ProjectWithThumbnailDto {
+impl ProjectWithThumbnailView {
     pub fn new(
         id: Option<i32>,
         metadata: Option<MetadataDto>,
@@ -22,7 +25,7 @@ impl ProjectWithThumbnailDto {
         adult: bool,
         created_on: Option<DateTime<Utc>>,
         updated_on: Option<DateTime<Utc>>,
-        thumbnail: Option<ContentDto>,
+        thumbnail: Option<ContentView>,
     ) -> Self {
         Self {
             id,

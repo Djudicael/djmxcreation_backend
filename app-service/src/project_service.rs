@@ -1,12 +1,15 @@
 use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
-        project_dto::ProjectDto,
+        project_dto::ProjectDto, projects_dto::ProjectsDto,
     },
     mapper::project_mapper::to_view,
     project::{project_repository::DynIProjectRepository, project_service::IProjectService},
     storage::storage_repository::DynIStorageRepository,
-    view::{content_view::ContentView, project_view::ProjectView},
+    view::{
+        content_view::ContentView, project_view::ProjectView,
+        project_with_thumbnail_view::ProjectWithThumbnailView, projects_view::ProjectsView,
+    },
 };
 use app_error::Error;
 use async_trait::async_trait;
@@ -204,5 +207,56 @@ impl IProjectService for ProjectService {
             .await;
 
         Ok(result)
+    }
+
+    async fn get_projects_with_filter(
+        &self,
+        page: i32,
+        size: i32,
+        is_adult: bool,
+        is_visible: bool,
+    ) -> Result<ProjectsView, Error> {
+        let ProjectsDto {
+            total_pages,
+            projects,
+            ..
+        } = self
+            .project_repository
+            .get_projects_with_filter(page, size, is_adult, is_visible)
+            .await?;
+        let result = stream::iter(projects)
+            .fold(Vec::new(), |mut vec, data| async move {
+                let content = data.thumbnail;
+                let (url, mime_type, id) = match content {
+                    Some(photo) => {
+                        let id = photo.id;
+                        let url = self
+                            .storage_repository
+                            .get_object_url(&photo.bucket_name, &photo.file_name)
+                            .await
+                            .unwrap(); // TODO handle error
+
+                        (Some(url), None, id)
+                    }
+                    None => (None, None, None),
+                };
+
+                let thumbnail_view = ContentView::new(id, mime_type, url);
+
+                let project_view = ProjectWithThumbnailView::new(
+                    data.id,
+                    data.metadata,
+                    data.visible,
+                    data.adult,
+                    data.created_on,
+                    data.updated_on,
+                    Some(thumbnail_view),
+                );
+                vec.push(project_view);
+                vec
+            })
+            .map(move |vec| vec)
+            .await;
+        Ok(ProjectsView::new(page, size, total_pages, result))
     }
 }
