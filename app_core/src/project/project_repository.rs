@@ -34,7 +34,7 @@ pub trait IProjectRepository {
         &self,
         page: i32,
         size: i32,
-        is_adult: bool,
+        is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error>;
 

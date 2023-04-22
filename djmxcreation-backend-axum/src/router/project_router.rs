@@ -1,11 +1,14 @@
 use app_core::{
     dto::{metadata_dto::MetadataDto, project_dto::ProjectDto},
     project::project_service::DynIProjectService,
-    view::{content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView},
+    view::{
+        content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView,
+        projects_view::ProjectsView,
+    },
 };
 
 use axum::{
-    extract::{Multipart, Path},
+    extract::{Multipart, Path, Query},
     routing::{delete, get, patch, post, put},
     Extension, Json, Router,
 };
@@ -22,11 +25,31 @@ pub struct DeleteContentParams {
     content_id: i32,
 }
 
+#[derive(Deserialize)]
+pub struct PaginationQueryParams {
+    pub page: i32,
+    pub size: i32,
+    pub adult: Option<bool>,
+    pub visible: bool,
+}
+
+impl Default for PaginationQueryParams {
+    fn default() -> Self {
+        Self {
+            page: 0,
+            size: 10,
+            adult: None,
+            visible: true,
+        }
+    }
+}
+
 impl ProjectRouter {
     pub fn new_router(service_register: ServiceRegister) -> Router {
         Router::new()
             .route("/v1/projects", post(ProjectRouter::create_project))
             .route("/v1/projects", get(ProjectRouter::get_projects))
+            .route("/v2/projects", get(ProjectRouter::get_projects_with_filter))
             .route(
                 "/v1/projects/:id/contents",
                 patch(ProjectRouter::add_project),
@@ -45,6 +68,23 @@ impl ProjectRouter {
         Extension(project_service): Extension<DynIProjectService>,
     ) -> ApiResult<Json<Vec<ProjectView>>> {
         let projects = project_service.get_portfolio_projects().await?;
+        Ok(Json(projects))
+    }
+
+    pub async fn get_projects_with_filter(
+        Extension(project_service): Extension<DynIProjectService>,
+        pagination: Option<Query<PaginationQueryParams>>,
+    ) -> ApiResult<Json<ProjectsView>> {
+        let pagination = pagination.unwrap_or_default();
+        let projects = project_service
+            .get_projects_with_filter(
+                pagination.page,
+                pagination.size,
+                pagination.adult,
+                pagination.visible,
+            )
+            .await?;
+
         Ok(Json(projects))
     }
 

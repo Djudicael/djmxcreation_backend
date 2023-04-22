@@ -106,26 +106,32 @@ impl IProjectRepository for ProjectRepository {
         &self,
         page: i32,
         size: i32,
-        is_adult: bool,
+        is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
+        // Use optional parameter syntax to conditionally include the `is_adult` parameter
         let sql = "
-        SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
-        FROM project p
-        LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
-        LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
-            SELECT id
-            FROM project_content
-            WHERE project_id = p.id
-            ORDER BY created_on ASC
-            LIMIT 1
-        )
-        WHERE p.visible = $1 AND p.adult = $2
-        ORDER BY p.created_on DESC
-        LIMIT $3 OFFSET $4
-        ";
+    SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
+    FROM project p
+    LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
+    LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
+        SELECT id
+        FROM project_content
+        WHERE project_id = p.id
+        ORDER BY created_on ASC
+        LIMIT 1
+    )
+    WHERE p.visible = $1
+    $(AND p.adult = $2)?
+    ORDER BY p.created_on DESC
+    LIMIT $3 OFFSET $4
+    ";
 
-        let total_sql = "SELECT COUNT(*) FROM project WHERE visible = $1 AND adult = $2";
+        // Same optional parameter syntax used for the total count query
+        let total_sql = "SELECT COUNT(*)
+    FROM project p
+    WHERE p.visible = $1
+    $(AND p.adult = $2)?";
         let total_count: i64 = sqlx::query_scalar(total_sql)
             .bind(is_visible)
             .bind(is_adult)
@@ -147,10 +153,13 @@ impl IProjectRepository for ProjectRepository {
             .map(|p| ProjectWithThumbnailDto::from(p.clone()))
             .collect();
 
-        let total_pages = (total_count as f64 / size as f64).ceil() as i32;
-        let projects = ProjectsDto::new(page, size, total_pages, projects);
+        // Calculate the total number of pages based on the total count and page size
+        let total_pages = ((total_count as f64) / (size as f64)).ceil() as i32;
 
-        Ok(projects)
+        // Create a new ProjectsDto instance with the relevant information
+        let projects_dto = ProjectsDto::new(page, size, total_pages, projects);
+
+        Ok(projects_dto)
     }
 
     async fn update_project_entity(
