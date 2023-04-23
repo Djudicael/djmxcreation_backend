@@ -23,3 +23,5 @@ CREATE TABLE project_content_thumbnail(
     created_on TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE
 );
+
+ALTER TABLE project_content_thumbnail ADD CONSTRAINT unique_project_id UNIQUE (project_id);

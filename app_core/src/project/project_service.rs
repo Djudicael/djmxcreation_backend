@@ -19,6 +19,11 @@ pub trait IProjectService {
         file_name: String,
         file: &[u8],
     ) -> Result<ContentView, Error>;
+    async fn add_thumbnail_to_project(
+        &self,
+        id: i32,
+        content_id: i32,
+    ) -> Result<ContentView, Error>;
     async fn update_project(&self, id: i32, project: &ProjectDto) -> Result<(), Error>;
     async fn find_project(&self, id: i32) -> Result<ProjectView, Error>;
     async fn delete_project(&self, id: i32) -> Result<(), Error>;

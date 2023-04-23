@@ -74,10 +74,25 @@ impl IProjectRepository for ProjectRepository {
 
     async fn add_project_thumbnail(
         &self,
-        _project_id: i32,
-        _thumbnail: &ContentDto,
-    ) -> Result<(), Error> {
-        todo!()
+        project_id: i32,
+        thumbnail: &ContentDto,
+    ) -> Result<ProjectContentDto, Error> {
+        let thumbnail_json = Json(json!(thumbnail));
+        let now_utc: DateTime<Utc> = Utc::now();
+        let sql = "INSERT INTO project_content_thumbnail (content, project_id, created_on)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (project_id) DO UPDATE
+        SET content = EXCLUDED.content, created_on = EXCLUDED.created_on;
+        ";
+        let query = sqlx::query_as::<_, ProjectContent>(sql)
+            .bind(thumbnail_json)
+            .bind(project_id)
+            .bind(now_utc);
+        let content_entity = query
+            .fetch_one(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        Ok(ProjectContentDto::from(content_entity))
     }
 
     async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error> {
@@ -290,5 +305,42 @@ impl IProjectRepository for ProjectRepository {
             .iter()
             .map(|c| ProjectContentDto::from(c.clone()))
             .collect())
+    }
+
+    async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
+        sqlx::query("DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2 ")
+            .bind(id)
+            .bind(project_id)
+            .execute(&mut tx)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        tx.commit()
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        Ok(())
+    }
+
+    async fn get_thumbnail_by_id(
+        &self,
+        project_id: i32,
+        id: i32,
+    ) -> Result<Option<ProjectContentDto>, Error> {
+        let sql = "SELECT * FROM project_content_thumbnail AS pt
+        WHERE pt.content ->> 'id' = $1 and pt.project_id = $2
+        ";
+        let query = sqlx::query_as::<_, ProjectContent>(sql)
+            .bind(id)
+            .bind(project_id);
+        let content = query
+            .fetch_one(&self.db)
+            .await
+            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+
+        Ok(Some(ProjectContentDto::from(content)))
     }
 }

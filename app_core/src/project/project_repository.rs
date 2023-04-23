@@ -24,7 +24,7 @@ pub trait IProjectRepository {
         &self,
         project_id: i32,
         thumbnail: &ContentDto,
-    ) -> Result<(), Error>;
+    ) -> Result<ProjectContentDto, Error>;
 
     async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error>;
 
@@ -59,4 +59,11 @@ pub trait IProjectRepository {
         &self,
         project_id: i32,
     ) -> Result<Vec<ProjectContentDto>, Error>;
+
+    async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error>;
+    async fn get_thumbnail_by_id(
+        &self,
+        project_id: i32,
+        id: i32,
+    ) -> Result<Option<ProjectContentDto>, Error>;
 }

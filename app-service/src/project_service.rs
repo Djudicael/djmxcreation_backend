@@ -106,6 +106,27 @@ impl IProjectService for ProjectService {
         Ok(content_view)
     }
 
+    async fn add_thumbnail_to_project(
+        &self,
+        id: i32,
+        content_id: i32,
+    ) -> Result<ContentView, Error> {
+        let _ = self.project_repository.get_project_by_id(id).await?;
+        let project_contents = self
+            .project_repository
+            .get_projects_content_by_id(id, content_id)
+            .await?;
+
+        let thumbnail = project_contents.content.unwrap();
+        let content_dto = self
+            .project_repository
+            .add_project_thumbnail(id, &thumbnail)
+            .await?;
+
+        let content_view = ContentView::new(content_dto.id, None, None);
+        Ok(content_view)
+    }
+
     async fn update_project(&self, id: i32, project: &ProjectDto) -> Result<(), Error> {
         let _ = self.project_repository.get_project_by_id(id).await?;
 
@@ -180,6 +201,26 @@ impl IProjectService for ProjectService {
             self.storage_repository
                 .remove_object(&content.bucket_name, &content.file_name)
                 .await?
+        }
+
+        let thumbnail = match __self
+            .project_repository
+            .get_thumbnail_by_id(project_id, content_id)
+            .await
+        {
+            Ok(thumb) => thumb,
+            Err(_) => None,
+        };
+
+        if let Some(thumbnail) = thumbnail {
+            match thumbnail.id {
+                Some(id) => {
+                    self.project_repository
+                        .delete_thumbnail_by_id(project_id, id)
+                        .await?;
+                }
+                None => {}
+            }
         }
 
         Ok(())

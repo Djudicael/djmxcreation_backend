@@ -20,7 +20,7 @@ use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegi
 pub struct ProjectRouter;
 
 #[derive(Deserialize)]
-pub struct DeleteContentParams {
+pub struct Params {
     id: i32,
     content_id: i32,
 }
@@ -55,6 +55,10 @@ impl ProjectRouter {
                 patch(ProjectRouter::add_project),
             )
             .route("/v1/projects/:id", put(ProjectRouter::update_project))
+            .route(
+                "/v1/projects/:id/thumbnails/:content_id",
+                put(ProjectRouter::add_thumbnail_to_project),
+            )
             .route("/v1/projects/:id", get(ProjectRouter::find_project))
             .route("/v1/projects/:id", delete(ProjectRouter::delete_project))
             .route(
@@ -152,12 +156,21 @@ impl ProjectRouter {
     // alternative to the struct:
     //  Path((id, content_id)): Path<(i32, i32)
     pub async fn delete_content_project(
-        Path(DeleteContentParams { id, content_id }): Path<DeleteContentParams>,
+        Path(Params { id, content_id }): Path<Params>,
         Extension(project_service): Extension<DynIProjectService>,
     ) -> ApiResult<()> {
         project_service
             .delete_project_content(id, content_id)
             .await?;
         Ok(())
+    }
+    pub async fn add_thumbnail_to_project(
+        Path(Params { id, content_id }): Path<Params>,
+        Extension(project_service): Extension<DynIProjectService>,
+    ) -> ApiResult<Json<ContentView>> {
+        let thumbnail = project_service
+            .add_thumbnail_to_project(id, content_id)
+            .await?;
+        Ok(Json(thumbnail))
     }
 }
