@@ -13,6 +13,7 @@ export class ProjectComponent extends TemplateRenderer {
         this.subTitle;
         this.client;
         this.visible;
+        this.adult;
         this.contents;
         this.deleteImage = this.deleteImage.bind(this);
     }
@@ -20,6 +21,7 @@ export class ProjectComponent extends TemplateRenderer {
 
     get template() {
         const checkVisibility = html`<input type="checkbox" class="toggle" ${this.visible ? 'checked' : ''} >`
+        const checkAdult = html`<input type="checkbox" class="adult" ${this.adult ? 'checked' : ''} >`
         const contents = this.contents ? html`${this.contents.map(({ id, url }) => html`
         <div id="area-${id}" class="image-area">
             <img src=${url} alt="Preview">
@@ -51,6 +53,8 @@ export class ProjectComponent extends TemplateRenderer {
                 <div class="flex-y">
                     <div>${checkVisibility} <span>Make project
                             visible</span>
+                    </div>
+                    <div>${checkAdult} <span>This project is for adult</span>
                     </div>
                     <div id="saveButton" class="cta">
                         <span>Save project</span>
@@ -214,13 +218,14 @@ export class ProjectComponent extends TemplateRenderer {
             });
 
             const isVisible = this.querySelector('.toggle').checked;
+            const isAdult = this.querySelector('.adult').checked;
             const title = this.querySelector('#title').value;
             const subTitle = this.querySelector('#subtitle').value;
             const client = this.querySelector('#client').value;
 
             const metadata = new Metadata({ title, subTitle, client });
 
-            const project = new ProjectPayload({ metadata, visible: isVisible, description: blocks });
+            const project = new ProjectPayload({ metadata, visible: isVisible, adult: isAdult, description: blocks });
             await this.instance.updateProject(this.projectId, project);
         });
     }

@@ -14,6 +14,7 @@ use app_core::{
 use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
+use log::info;
 
 // fn to_content(value: serde_json::Value) -> ContentDto {
 //     serde_json::from_value(value).unwrap()
@@ -63,6 +64,7 @@ impl ProjectService {
 #[async_trait]
 impl IProjectService for ProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error> {
+        println!("Creating project {:?}", metadata);
         let project = self.project_repository.create(metadata).await?;
         let contents: Vec<ContentView> = vec![];
         let project_view = to_view(&contents, &project);

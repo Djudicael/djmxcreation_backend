@@ -5,8 +5,8 @@ export default class PortfolioApi {
         this.instance = new Http();
     }
 
-    async getProjects() {
-        return await this.instance.doGet("/api/portfolio/v1/projects");
+    async getProjects({ page, pageSize }) {
+        return await this.instance.doGet(`/api/portfolio/v2/projects?page=${page}&size=${pageSize}&visible=true`);
     }
 
     async getAboutMe() {

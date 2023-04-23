@@ -62,6 +62,7 @@ export default class PortfolioApi {
     }
 
     async updateProject(projectId, project) {
+        console.log(project);
 
         return await this.instance.doPut({ path: `/api/portfolio/v1/projects/${projectId}`, body: project });
     }

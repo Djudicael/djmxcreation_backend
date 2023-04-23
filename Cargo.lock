@@ -67,6 +67,7 @@ dependencies = [
  "app_core",
  "async-trait",
  "futures",
+ "log",
  "serde_json",
 ]
 
@@ -782,6 +783,7 @@ dependencies = [
  "axum",
  "futures",
  "hyper",
+ "log",
  "metrics",
  "metrics-exporter-prometheus",
  "migration",

@@ -34,10 +34,11 @@ impl ProjectRepository {
 #[async_trait]
 impl IProjectRepository for ProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error> {
+        println!("metadata: {:?}", metadata);
         let metadata_json = Json(json!(metadata));
         let now_utc: DateTime<Utc> = Utc::now();
         let sql =
-            "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3) RETURNING *";
+            "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3, $4) RETURNING *";
         let query = sqlx::query_as::<_, Project>(sql)
             .bind(metadata_json)
             .bind(now_utc)
@@ -109,41 +110,50 @@ impl IProjectRepository for ProjectRepository {
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
-        // Use optional parameter syntax to conditionally include the `is_adult` parameter
-        let sql = "
-    SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
-    FROM project p
-    LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
-    LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
-        SELECT id
-        FROM project_content
-        WHERE project_id = p.id
-        ORDER BY created_on ASC
-        LIMIT 1
-    )
-    WHERE p.visible = $1
-    $(AND p.adult = $2)?
-    ORDER BY p.created_on DESC
-    LIMIT $3 OFFSET $4
-    ";
+        let adult_filter = match is_adult {
+            Some(adult) => format!("AND p.adult = {}", adult),
+            None => "".to_owned(),
+        };
 
-        // Same optional parameter syntax used for the total count query
-        let total_sql = "SELECT COUNT(*)
-    FROM project p
-    WHERE p.visible = $1
-    $(AND p.adult = $2)?";
-        let total_count: i64 = sqlx::query_scalar(total_sql)
+        // Use optional parameter syntax to conditionally include the `is_adult` parameter
+        let sql = format!(
+            "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
+            FROM project p
+            LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
+            LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
+                SELECT id
+                FROM project_content
+                WHERE project_id = p.id
+                ORDER BY created_on ASC
+                LIMIT 1
+            )
+            WHERE p.visible = $1
+            {}
+            ORDER BY p.created_on DESC
+            LIMIT $2 OFFSET $3",
+            adult_filter
+        );
+
+        // Construct the total count SQL query
+        let total_sql = format!(
+            "SELECT COUNT(*)
+        FROM project p
+        WHERE p.visible = $1
+        {}",
+            adult_filter
+        );
+
+        let total_count: i64 = sqlx::query_scalar(&total_sql)
             .bind(is_visible)
-            .bind(is_adult)
+            .bind(&is_adult)
             .fetch_one(&self.db)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, None))?;
 
-        let rows = sqlx::query_as::<_, ProjectWithThumbnail>(sql)
+        let rows = sqlx::query_as::<_, ProjectWithThumbnail>(&sql)
             .bind(is_visible)
-            .bind(is_adult)
             .bind(size)
-            .bind(page * size)
+            .bind((page - 1) * size)
             .fetch_all(&self.db)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, None))?;

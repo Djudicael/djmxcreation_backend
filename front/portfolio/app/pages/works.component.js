@@ -19,6 +19,9 @@ export default class WorksComponent extends TemplateRenderer {
         this.canvas = null;
         this.ctx = null;
         this.links = [];
+        this.page = 1;
+        this.pageSize = 100;
+        this.totalPages = 0;
 
         // Canvas mousemove variables
 
@@ -52,7 +55,11 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     async getProjects() {
-        const projects = await this.api.getProjects();
+        const { totalPages, page, size, projects } = await this.api.getProjects({ page: this.page, pageSize: this.pageSize });
+        this.totalPages = totalPages;
+        this.page = page;
+        this.pageSize = size;
+        console.log(projects);
         this.projects.push(...projects);
         super.render();
     }
@@ -102,6 +109,8 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     init() {
+
+
         this.imgIndex = this.projects[0].id;
 
         this.canvas = document.querySelector('canvas');
@@ -170,7 +179,7 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     getThumbnailImage(imgIndex) {
-        const projectImage = this.projects.filter(project => project.id == imgIndex).map(project => project.contents[0].url)[0];
+        const projectImage = this.projects.filter(project => project.id == imgIndex).map(project => project.thumbnail.url)[0];
         return projectImage;
     }
 
@@ -187,7 +196,10 @@ export default class WorksComponent extends TemplateRenderer {
     async connectedCallback() {
         super.connectedCallback();
         await this.getProjects();
-        this.init();
-        this.animate();
+
+        if (this.projects.length) {
+            this.init();
+            this.animate();
+        }
     }
 }

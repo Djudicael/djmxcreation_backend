@@ -4,11 +4,11 @@ use server::starter::start;
 #[tokio::main]
 async fn main() {
     // Add backtrace for debug purposes
-    std::env::set_var("RUST_BACKTRACE", "1");
-    println!(
-        "printing backtrace: {}",
-        std::backtrace::Backtrace::capture()
-    );
+    // std::env::set_var("RUST_BACKTRACE", "1");
+    // println!(
+    //     "printing backtrace: {}",
+    //     std::backtrace::Backtrace::capture()
+    // );
 
     match start().await {
         Ok(_) => println!("Server ended"),
