@@ -1,6 +1,5 @@
 use super::project_with_thumbnail_dto::ProjectWithThumbnailDto;
 
-
 #[derive(Default, Debug, Clone)]
 pub struct ProjectsDto {
     pub page: i32,

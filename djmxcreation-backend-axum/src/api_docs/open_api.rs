@@ -1,6 +1,5 @@
 use aide::{openapi::Tag, transform::TransformOpenApi};
 
-
 pub fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
     api.title("Aide axum Open API")
         .summary("An example Todo application")

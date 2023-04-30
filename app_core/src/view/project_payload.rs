@@ -31,15 +31,11 @@ impl ProjectPayload {
 impl From<ProjectPayload> for ProjectDto {
     fn from(val: ProjectPayload) -> Self {
         let description_json = val.description.map(|description| json!(description));
-
-        ProjectDto::new(
-            None,
-            val.metadata,
-            description_json,
-            val.visible,
-            val.adult,
-            None,
-            None,
-        )
+        ProjectDto::new()
+            .metadata(val.metadata)
+            .description(description_json)
+            .visible(val.visible)
+            .adult(val.adult)
+            .build()
     }
 }

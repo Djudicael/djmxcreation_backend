@@ -16,6 +16,7 @@ pub struct ProjectView {
     created_on: Option<chrono::DateTime<chrono::Utc>>,
     updated_on: Option<chrono::DateTime<chrono::Utc>>,
     pub contents: Vec<ContentView>,
+    pub thumbnail: Option<ContentView>,
 }
 
 impl ProjectView {
@@ -29,6 +30,7 @@ impl ProjectView {
             created_on: None,
             updated_on: None,
             contents: vec![],
+            thumbnail: None,
         }
     }
 
@@ -72,6 +74,11 @@ impl ProjectView {
         self
     }
 
+    pub fn thumbnail(mut self, thumbnail: Option<ContentView>) -> Self {
+        self.thumbnail = thumbnail;
+        self
+    }
+
     pub fn build(self) -> ProjectView {
         ProjectView {
             id: self.id,
@@ -82,6 +89,7 @@ impl ProjectView {
             created_on: self.created_on,
             updated_on: self.updated_on,
             contents: self.contents,
+            thumbnail: self.thumbnail,
         }
     }
 }

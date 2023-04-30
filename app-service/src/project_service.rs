@@ -14,7 +14,6 @@ use app_core::{
 use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
-use log::info;
 
 // fn to_content(value: serde_json::Value) -> ContentDto {
 //     serde_json::from_value(value).unwrap()
@@ -64,7 +63,7 @@ impl ProjectService {
 #[async_trait]
 impl IProjectService for ProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error> {
-        println!("Creating project {:?}", metadata);
+        println!("Creating project {metadata:?}");
         let project = self.project_repository.create(metadata).await?;
         let contents: Vec<ContentView> = vec![];
         let project_view = to_view(&contents, &project);
@@ -140,28 +139,49 @@ impl IProjectService for ProjectService {
     async fn find_project(&self, id: i32) -> Result<ProjectView, Error> {
         let project_entity = self.project_repository.get_project_by_id(id).await?;
 
-        let project_contents = self.project_repository.get_projects_contents(id).await?;
+        // println!("Project entity: {:#?}", project_entity);
 
+        let mut project_view: ProjectView = ProjectView::from(project_entity.clone());
         let mut contents: Vec<ContentView> = vec![];
 
-        for content_dto in project_contents {
+        for content_dto in project_entity.contents {
             let content = content_dto.content;
-            let (url, mime_type) = match content {
-                Some(photo) => {
-                    let url = self
-                        .storage_repository
-                        .get_object_url(&photo.bucket_name, &photo.file_name)
-                        .await?;
+            if let Some(photo) = content {
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await
+                    .ok();
 
-                    (Some(url), None)
-                }
-                None => (None, None),
+                let content_view = ContentView::new(content_dto.id, photo.mime_type, url);
+                contents.push(content_view);
             };
-
-            let content_view = ContentView::new(content_dto.id, mime_type, url);
-            contents.push(content_view);
         }
-        let project_view = to_view(&contents, &project_entity);
+
+        let thumbnail = match project_entity.thumbnail {
+            Some(photo) => {
+                let id = photo.id;
+                let content_thumbnail = photo.content;
+
+                match content_thumbnail {
+                    Some(photo) => {
+                        let url = self
+                            .storage_repository
+                            .get_object_url(&photo.bucket_name, &photo.file_name)
+                            .await
+                            .ok();
+
+                        Some(ContentView::new(id, photo.mime_type, url))
+                    }
+                    None => None,
+                }
+            }
+            None => None,
+        };
+
+        project_view.contents = contents.to_vec();
+        project_view.thumbnail = thumbnail;
+
         Ok(project_view)
     }
 
@@ -213,13 +233,10 @@ impl IProjectService for ProjectService {
         };
 
         if let Some(thumbnail) = thumbnail {
-            match thumbnail.id {
-                Some(id) => {
-                    self.project_repository
-                        .delete_thumbnail_by_id(project_id, id)
-                        .await?;
-                }
-                None => {}
+            if let Some(id) = thumbnail.id {
+                self.project_repository
+                    .delete_thumbnail_by_id(project_id, id)
+                    .await?;
             }
         }
 
@@ -270,21 +287,19 @@ impl IProjectService for ProjectService {
         let result = stream::iter(projects)
             .fold(Vec::new(), |mut vec, data| async move {
                 let content = data.thumbnail;
-                let (url, mime_type, id) = match content {
+                let thumbnail_view = match content {
                     Some(photo) => {
                         let id = photo.id;
                         let url = self
                             .storage_repository
                             .get_object_url(&photo.bucket_name, &photo.file_name)
                             .await
-                            .unwrap(); // TODO handle error
+                            .ok();
 
-                        (Some(url), None, id)
+                        Some(ContentView::new(id, photo.mime_type, url))
                     }
-                    None => (None, None, None),
+                    None => None,
                 };
-
-                let thumbnail_view = ContentView::new(id, mime_type, url);
 
                 let project_view = ProjectWithThumbnailView::new(
                     data.id,
@@ -293,7 +308,7 @@ impl IProjectService for ProjectService {
                     data.adult,
                     data.created_on,
                     data.updated_on,
-                    Some(thumbnail_view),
+                    thumbnail_view,
                 );
                 vec.push(project_view);
                 vec

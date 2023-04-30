@@ -1,8 +1,9 @@
 use app_core::dto::{content_dto::ContentDto, project_content_dto::ProjectContentDto};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::{chrono, Json};
 
-#[derive(sqlx::FromRow, Default, Debug, Clone)]
+#[derive(sqlx::FromRow, Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectContent {
     id: Option<i32>,
     project_id: i32,

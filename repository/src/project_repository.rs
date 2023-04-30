@@ -34,7 +34,7 @@ impl ProjectRepository {
 #[async_trait]
 impl IProjectRepository for ProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error> {
-        println!("metadata: {:?}", metadata);
+        println!("metadata: {metadata:?}");
         let metadata_json = Json(json!(metadata));
         let now_utc: DateTime<Utc> = Utc::now();
         let sql =
@@ -96,12 +96,33 @@ impl IProjectRepository for ProjectRepository {
     }
 
     async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error> {
-        let sql = "SELECT * FROM project where id= $1";
+        let sql = "SELECT 
+        p.id, 
+        p.metadata, 
+        p.created_on, 
+        p.updated_on, 
+        p.description, 
+        p.visible, 
+        p.adult, 
+        c.content AS thumbnail_content, 
+        array_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) AS contents
+    FROM 
+        project p
+    LEFT JOIN 
+        project_content_thumbnail c ON c.project_id = p.id
+    LEFT JOIN 
+        project_content ct ON ct.project_id = p.id 
+    WHERE 
+        p.id = $1
+    GROUP BY 
+        p.id, 
+        c.content";
         let query = sqlx::query_as::<_, Project>(sql).bind(id);
         let project = query
             .fetch_one(&self.db)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
+
         Ok(ProjectDto::from(project))
     }
 
@@ -126,7 +147,7 @@ impl IProjectRepository for ProjectRepository {
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
         let adult_filter = match is_adult {
-            Some(adult) => format!("AND p.adult = {}", adult),
+            Some(adult) => format!("AND p.adult = {adult}"),
             None => "".to_owned(),
         };
 
@@ -143,10 +164,9 @@ impl IProjectRepository for ProjectRepository {
                 LIMIT 1
             )
             WHERE p.visible = $1
-            {}
+            {adult_filter}
             ORDER BY p.created_on DESC
-            LIMIT $2 OFFSET $3",
-            adult_filter
+            LIMIT $2 OFFSET $3"
         );
 
         // Construct the total count SQL query
@@ -154,13 +174,12 @@ impl IProjectRepository for ProjectRepository {
             "SELECT COUNT(*)
         FROM project p
         WHERE p.visible = $1
-        {}",
-            adult_filter
+        {adult_filter}"
         );
 
         let total_count: i64 = sqlx::query_scalar(&total_sql)
             .bind(is_visible)
-            .bind(&is_adult)
+            .bind(is_adult)
             .fetch_one(&self.db)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, None))?;

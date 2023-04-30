@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use super::{metadata_dto::MetadataDto, content_dto::ContentDto};
-
+use super::{content_dto::ContentDto, metadata_dto::MetadataDto};
 
 #[derive(Default, Debug, Clone)]
 pub struct ProjectWithThumbnailDto {
