@@ -15,10 +15,6 @@ use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
 
-// fn to_content(value: serde_json::Value) -> ContentDto {
-//     serde_json::from_value(value).unwrap()
-// }
-
 pub struct ProjectService {
     pub project_repository: DynIProjectRepository,
     pub storage_repository: DynIStorageRepository,
@@ -116,14 +112,28 @@ impl IProjectService for ProjectService {
             .get_projects_content_by_id(id, content_id)
             .await?;
 
-        let thumbnail = project_contents.content.unwrap();
-        let content_dto = self
-            .project_repository
-            .add_project_thumbnail(id, &thumbnail)
-            .await?;
+        let thumbnail = project_contents.content;
 
-        let content_view = ContentView::new(content_dto.id, None, None);
-        Ok(content_view)
+        match thumbnail {
+            Some(photo) => {
+                let mut content = photo.clone();
+                content.id = project_contents.id;
+                let thumbnail_saved = self
+                    .project_repository
+                    .add_project_thumbnail(id, &content)
+                    .await?;
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await?;
+
+                let content_view = ContentView::new(thumbnail_saved.id, photo.mime_type, Some(url));
+                Ok(content_view)
+            }
+            None => Err(Error::ContentNotFoundButWasSave(format!(
+                "Content was found but no images was associated"
+            ))),
+        }
     }
 
     async fn update_project(&self, id: i32, project: &ProjectDto) -> Result<(), Error> {
@@ -161,20 +171,12 @@ impl IProjectService for ProjectService {
         let thumbnail = match project_entity.thumbnail {
             Some(photo) => {
                 let id = photo.id;
-                let content_thumbnail = photo.content;
-
-                match content_thumbnail {
-                    Some(photo) => {
-                        let url = self
-                            .storage_repository
-                            .get_object_url(&photo.bucket_name, &photo.file_name)
-                            .await
-                            .ok();
-
-                        Some(ContentView::new(id, photo.mime_type, url))
-                    }
-                    None => None,
-                }
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await
+                    .ok();
+                Some(ContentView::new(id, photo.mime_type, url))
             }
             None => None,
         };

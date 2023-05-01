@@ -82,7 +82,8 @@ impl IProjectRepository for ProjectRepository {
         let sql = "INSERT INTO project_content_thumbnail (content, project_id, created_on)
         VALUES ($1, $2, $3)
         ON CONFLICT (project_id) DO UPDATE
-        SET content = EXCLUDED.content, created_on = EXCLUDED.created_on;
+        SET content = EXCLUDED.content, created_on = EXCLUDED.created_on
+        RETURNING *;
         ";
         let query = sqlx::query_as::<_, ProjectContent>(sql)
             .bind(thumbnail_json)
@@ -350,7 +351,7 @@ impl IProjectRepository for ProjectRepository {
         id: i32,
     ) -> Result<Option<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content_thumbnail AS pt
-        WHERE pt.content ->> 'id' = $1 and pt.project_id = $2
+        WHERE pt.content ->> 'id' = CAST($1 AS TEXT) and pt.project_id = $2
         ";
         let query = sqlx::query_as::<_, ProjectContent>(sql)
             .bind(id)

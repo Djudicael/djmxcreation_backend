@@ -104,7 +104,7 @@ export default class Http {
             body: JSON.stringify(body)
         });
 
-        return response;
+        return response.json();
     }
 
     async doDelete({ path, authToken }) {
@@ -120,7 +120,7 @@ export default class Http {
             headers: headers,
             method: 'DELETE',
         });
-        return response;
+        return response.json();
     }
 
     async doGet(path) {

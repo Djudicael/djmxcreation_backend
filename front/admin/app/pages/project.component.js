@@ -15,7 +15,9 @@ export class ProjectComponent extends TemplateRenderer {
         this.visible;
         this.adult;
         this.contents;
+        this.thumbnail;
         this.deleteImage = this.deleteImage.bind(this);
+        // this.thumbImage = this.thumbImage.bind(this);
     }
 
 
@@ -24,9 +26,17 @@ export class ProjectComponent extends TemplateRenderer {
         const checkAdult = html`<input type="checkbox" class="adult" ${this.adult ? 'checked' : ''} >`
         const contents = this.contents ? html`${this.contents.map(({ id, url }) => html`
         <div id="area-${id}" class="image-area">
-            <img src=${url} alt="Preview">
-            <button class="remove-image" data-image-id=${id}>delete</button>
-        </div>`)}` : html``;
+            <img src=${url} alt="Preview">        
+            <button class="thumb-image" data-image-id=${id}>thumb</button>
+            <button class="remove-image" data-image-id=${id}>delete</button>       
+        </div>
+        `)}` : html``;
+
+        const thumbnail = this.thumbnail ? html`
+        <div id="thumbnail-area" class="image-area">
+            <img src=${this.thumbnail} alt="Preview">
+        </div>
+            ` : html``;
 
         return html`
         <section class="content-page">
@@ -48,6 +58,10 @@ export class ProjectComponent extends TemplateRenderer {
                             value=${this.client ? this.client : ''} />
                     </div>
                 </div>
+
+                <h2>Thumbnail</h2>
+                ${thumbnail}
+
                 <h1>Project descriptions</h1>
                 <div id="editorjs"></div>
                 <div class="flex-y">
@@ -74,13 +88,17 @@ export class ProjectComponent extends TemplateRenderer {
     }
 
     async getProject() {
-        const { metadata, visible, description, contents } = await this.instance.getProject(this.projectId);
+        const { metadata, visible, description, contents, thumbnail } = await this.instance.getProject(this.projectId);
         this.title = metadata.title;
         this.subTitle = metadata.subTitle;
         this.client = metadata.client;
         this.visible = visible;
         this.description = description;
         this.contents = contents;
+
+        if (thumbnail) {
+            this.thumbnail = thumbnail.url;
+        }
         super.render();
     }
 
@@ -236,7 +254,6 @@ export class ProjectComponent extends TemplateRenderer {
         }
         await this.getProject();
         this.initRemoveImageEvent();
-        //TODO improuve thos system for probably retrieve to push the image after the upload
         super.render();
     };
 
@@ -245,14 +262,32 @@ export class ProjectComponent extends TemplateRenderer {
         const contentID = element.dataset.imageId;
         this.instance.deleteContent(this.projectId, contentID);
         const card = this.querySelector(`#area-${contentID}`);
-        // TODO improve the system by refreshing the content and re render the component
         card.parentNode.removeChild(card);
+        this.thumbnail = null;
+        super.render();
+    };
+
+
+    thumbImage = async (e) => {
+        const element = e.currentTarget;
+        const contentID = element.dataset.imageId;
+        const thumbnail = await this.instance.addThumbnail(this.projectId, contentID);
+        console.log(thumbnail)
+        const url = thumbnail.url;
+        console.log(url);
+        this.thumbnail = url;
         super.render();
     };
 
     initRemoveImageEvent = () => {
         this.querySelectorAll('.remove-image').forEach(item => {
             item.addEventListener('click', e => this.deleteImage(e))
+        });
+    }
+
+    initThumbImageEvent = () => {
+        this.querySelectorAll('.thumb-image').forEach(item => {
+            item.addEventListener('click', e => this.thumbImage(e))
         });
     }
 
@@ -269,5 +304,6 @@ export class ProjectComponent extends TemplateRenderer {
         await this.getProject();
         this.init();
         this.initRemoveImageEvent();
+        this.initThumbImageEvent();
     }
 }

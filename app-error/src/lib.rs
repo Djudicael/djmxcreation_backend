@@ -20,4 +20,6 @@ pub enum Error {
     StorageDeleteObject,
     #[error("Entity Not Found - {0}] ")]
     EntityNotFound(String),
+    #[error("Content Not Found - {0}] ")]
+    ContentNotFoundButWasSave(String),
 }

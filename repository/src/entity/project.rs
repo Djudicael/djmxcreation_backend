@@ -1,5 +1,6 @@
 use app_core::dto::{
-    metadata_dto::MetadataDto, project_content_dto::ProjectContentDto, project_dto::ProjectDto,
+    content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
+    project_dto::ProjectDto,
 };
 use serde_json::Value;
 use sqlx::types::{chrono, Json};
@@ -119,14 +120,16 @@ impl From<Project> for ProjectDto {
             .thumbnail(
                 val.thumbnail_content
                     .map(|thumbnail_json| thumbnail_json.0)
-                    .and_then(to_content)
-                    .map(ProjectContentDto::from),
+                    .and_then(to_thumbnail),
             )
             .build()
     }
 }
 
 fn to_content(value: Value) -> Option<ProjectContent> {
+    serde_json::from_value(value).ok()
+}
+fn to_thumbnail(value: Value) -> Option<ContentDto> {
     serde_json::from_value(value).ok()
 }
 

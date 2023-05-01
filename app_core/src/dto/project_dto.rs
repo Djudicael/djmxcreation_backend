@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use super::{metadata_dto::MetadataDto, project_content_dto::ProjectContentDto};
+use super::{
+    content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct ProjectDto {
@@ -13,7 +15,7 @@ pub struct ProjectDto {
     pub created_on: Option<DateTime<Utc>>,
     pub updated_on: Option<DateTime<Utc>>,
     pub contents: Vec<ProjectContentDto>,
-    pub thumbnail: Option<ProjectContentDto>,
+    pub thumbnail: Option<ContentDto>,
 }
 
 impl ProjectDto {
@@ -71,7 +73,7 @@ impl ProjectDto {
         self
     }
 
-    pub fn thumbnail(mut self, thumbnail: Option<ProjectContentDto>) -> Self {
+    pub fn thumbnail(mut self, thumbnail: Option<ContentDto>) -> Self {
         self.thumbnail = thumbnail;
         self
     }

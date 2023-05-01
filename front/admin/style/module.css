@@ -190,3 +190,11 @@ input[type=checkbox]:focus {
     color: rgb(243, 11, 11);
     font-size: 12px;
 }
+
+.thumb-image {
+    position: absolute;
+    left: 5px;
+    margin-top: 5px;
+    color: rgb(6, 76, 19);
+    font-size: 12px;
+}

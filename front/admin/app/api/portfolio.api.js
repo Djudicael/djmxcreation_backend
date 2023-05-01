@@ -15,6 +15,12 @@ export default class PortfolioApi {
         return await this.instance.doDelete({ path: `/api/portfolio/v1/projects/${id}/contents/${contentID}` });
     }
 
+
+    async addThumbnail(id, contentID) {
+
+        return this.instance.doPut({ path: `/api/portfolio/v1/projects/${id}/thumbnails/${contentID}` });
+    }
+
     async deleteProject(id) {
         const auth = new Authentication();
         return await this.instance.doDelete({ path: `/api/portfolio/v1/projects/${id}` });
