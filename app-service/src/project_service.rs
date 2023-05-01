@@ -250,18 +250,35 @@ impl IProjectService for ProjectService {
 
         let result = stream::iter(projects)
             .fold(Vec::new(), |mut vec, data| async move {
-                let contents = match data.id {
-                    Some(id) => {
-                        let thumb = self
-                            .project_repository
-                            .get_projects_content_thumbnail(id)
+                let contents = self
+                    .to_contents(&data.contents)
+                    .await
+                    .expect("List of contents");
+
+                let thumbnail_view = match data.clone().thumbnail {
+                    Some(photo) => {
+                        let id = photo.id;
+                        let url = self
+                            .storage_repository
+                            .get_object_url(&photo.bucket_name, &photo.file_name)
                             .await
-                            .unwrap();
-                        self.to_contents(&thumb).await.unwrap()
+                            .ok();
+
+                        Some(ContentView::new(id, photo.mime_type, url))
                     }
-                    None => vec![],
+                    None => None,
                 };
-                let project_view = to_view(&contents, &data);
+                let project_view: ProjectView = ProjectView::new()
+                    .id(data.id)
+                    .description(data.description)
+                    .metadata(data.metadata)
+                    .visible(data.visible)
+                    .adult(data.adult)
+                    .created_on(data.created_on)
+                    .updated_on(data.updated_on)
+                    .thumbnail(thumbnail_view)
+                    .contents(contents)
+                    .build();
                 vec.push(project_view);
                 vec
             })

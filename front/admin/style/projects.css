@@ -11,7 +11,7 @@ button.create-project {
     font: 1.5em Raleway, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    height: 2rem;
+    height: 3rem;
     letter-spacing: 0.05em;
     outline: none;
     -webkit-tap-highlight-color: transparent;
@@ -31,19 +31,17 @@ button.create-project:hover {
     -webkit-animation-iteration-count: 1;
     animation-fill-mode: forwards;
     -webkit-animation-fill-mode: forwards;
+    cursor: pointer;
 }
 
 @keyframes gradient {
     0% {
         background-position: 0% 50%;
     }
+
     100% {
         background-position: 100%;
     }
-}
-
-.hide-project>svg, .delete-project svg {
-    height: 2rem;
 }
 
 .delete-project, .hide-project {
@@ -54,8 +52,17 @@ button.create-project:hover {
     background: var(--main-color);
     opacity: 0.7;
     cursor: pointer;
+    transition: opacity 0.3s ease;
 }
 
-.hide-project.visible{
+.delete-project:hover, .hide-project:hover {
+    opacity: 1;
+}
+
+.hide-project.visible {
     background: var(--green-light-color);
+}
+
+.hide-project>svg, .delete-project svg {
+    height: 2rem;
 }

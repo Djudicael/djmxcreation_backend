@@ -1,5 +1,5 @@
 use app_core::dto::{
-    content_dto::ContentDto, metadata_dto::MetadataDto,
+    content_dto::ContentDto, metadata_dto::MetadataDto, project_dto::ProjectDto,
     project_with_thumbnail_dto::ProjectWithThumbnailDto,
 };
 use serde_json::Value;
@@ -35,6 +35,24 @@ impl From<ProjectWithThumbnail> for ProjectWithThumbnailDto {
                 .map(|content_json| content_json.0)
                 .and_then(to_content),
         )
+    }
+}
+
+impl From<ProjectWithThumbnail> for ProjectDto {
+    fn from(value: ProjectWithThumbnail) -> Self {
+        Self::new()
+            .id(value.id)
+            .metadata(
+                value
+                    .metadata
+                    .map(|metadata_json| metadata_json.0)
+                    .and_then(to_metadata),
+            )
+            .description(value.description)
+            .visible(value.visible)
+            .adult(value.adult)
+            .created_on(Some(value.created_on))
+            .updated_on(value.updated_on)
     }
 }
 

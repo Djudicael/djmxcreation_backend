@@ -128,7 +128,25 @@ impl IProjectRepository for ProjectRepository {
     }
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error> {
-        let sql = "SELECT * FROM project";
+        let sql = "SELECT 
+        p.id, 
+        p.metadata, 
+        p.created_on, 
+        p.updated_on, 
+        p.description, 
+        p.visible, 
+        p.adult, 
+        c.content AS thumbnail_content, 
+        array_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) AS contents
+    FROM 
+        project p
+    LEFT JOIN 
+        project_content_thumbnail c ON c.project_id = p.id
+    LEFT JOIN 
+        project_content ct ON ct.project_id = p.id 
+    GROUP BY 
+        p.id, 
+        c.content";
         let query = sqlx::query_as::<_, Project>(sql);
         let projects = query
             .fetch_all(&self.db)

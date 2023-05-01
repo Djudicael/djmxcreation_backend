@@ -93,10 +93,8 @@ export default class WorkComponent extends TemplateRenderer {
     showImageOverlay(e) {
         const element = e.currentTarget;
         const url = element.dataset.hiRes;
-        console.log(url);
         const overlay = this.querySelector(".image-overlay");
         let image = overlay.querySelector(".overlay-image");
-        console.log(image);
         image.src = url;
         overlay.style.display = "flex";
     }
