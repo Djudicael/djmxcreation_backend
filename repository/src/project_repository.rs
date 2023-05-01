@@ -154,20 +154,24 @@ impl IProjectRepository for ProjectRepository {
 
         // Use optional parameter syntax to conditionally include the `is_adult` parameter
         let sql = format!(
-            "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult, ct.content AS thumbnail_content, ct.created_on AS thumbnail_created_on
-            FROM project p
-            LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
-            LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
-                SELECT id
-                FROM project_content
-                WHERE project_id = p.id
-                ORDER BY created_on ASC
-                LIMIT 1
-            )
-            WHERE p.visible = $1
-            {adult_filter}
-            ORDER BY p.created_on DESC
-            LIMIT $2 OFFSET $3"
+            "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult,
+            COALESCE(c.content, ct.content) AS thumbnail_content,
+            COALESCE(c.created_on, ct.created_on) AS thumbnail_created_on
+        FROM project p
+        LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
+        LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
+            SELECT id
+            FROM project_content
+            WHERE project_id = p.id
+            ORDER BY created_on ASC
+            LIMIT 1
+        )
+        WHERE p.visible = $1
+        {adult_filter}
+        AND (SELECT COUNT(*) FROM project_content WHERE project_id = p.id) > 0
+        ORDER BY p.created_on DESC
+        LIMIT $2 OFFSET $3
+        "
         );
 
         // Construct the total count SQL query

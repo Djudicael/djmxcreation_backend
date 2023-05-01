@@ -14,29 +14,53 @@ export default class WorkComponent extends TemplateRenderer {
         this.subTitle;
         this.client;
         this.contents;
+        this.$image;
+        this.initImageOverlayEvent = this.initImageOverlayEvent.bind(this);
 
-        this.content;
-        // measure translate pixels
-        this.current = 0;
-
-        // Store slide number
-        this.slide = 0;
-        this.init = this.init.bind(this);
-        this.appHeight = this.appHeight.bind(this);
-        this.startMousedown = this.startMousedown.bind(this);
-        this.startTouch = this.startTouch.bind(this);
-        this.moveMousedown = this.moveMousedown.bind(this);
 
     }
 
     get template() {
-        const images = this.contents ? html`${this.contents.map(({ url }) =>
-            html`
-        <c-image cover=${url}></c-image>`)}` : html``;
-        return html`
-            <div class="content">
-                ${images}      
+
+        const projectHeader = html`
+        <div class="project_header">				
+            <div class="project_title" >
+                <h1> ${this.title}</h1>
             </div>
+            <div class="project_subtitle">
+                <h2>${this.subTitle}</h2>
+            </div>
+            <div class="project_client">
+                Client: ${this.client}
+            </div>
+        </div>`;
+
+        const imageOverlay = html`
+      <div class="image-overlay" >
+        <div class="image-overlay-content">
+          <img src="" class="overlay-image">
+        </div>
+      </div>
+    `;
+
+        const images = this.contents
+            ? html`${this.contents.map(({ url }) => html`
+        <img
+          src="${url}"
+          data-hi-res="${url}"
+          class="pro-image"
+          
+        >
+      `)}` : html``;
+
+        return html`
+        <section class="projects-section">
+                ${projectHeader}
+            <div class="project_content">
+                ${images}
+            </div>
+            ${imageOverlay}
+        </section>
         `;
     }
 
@@ -50,65 +74,10 @@ export default class WorkComponent extends TemplateRenderer {
         super.render();
     }
 
-    appHeight = () => {
-        this.doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-        this.current = -slide * window.innerHeight;
-        this.content.style.transform = `translateY(-${slide * window.innerHeight}px)`;
-
-    }
-
     init() {
-
-        window.addEventListener('resize', this.appHeight)
-        this.appHeight();
-
-        mainEl.addEventListener("touchstart", startTouch, { passive: false });
-        mainEl.addEventListener("touchend", endTouch, false);
-        mainEl.addEventListener("touchmove", moveTouch, { passive: false });
-        mainEl.addEventListener("mousedown", startMousedown, false);
-        mainEl.addEventListener("mouseup", startMouseup, false);
-        mainEl.addEventListener('wheel', wheelFunc, { passive: false })
-    }
-
-    wheelFunc(e) {
-        if (canSwipe) {
-            // swipe up
-            if (e.deltaY > 60 && current !== -(window.innerHeight * 5)) {
-                canSwipe = false;
-                current -= window.innerHeight;
-                slide++
-                console.log(slide)
-                content.style.transform = `translateY(${current}px)`;
-                setTimeout(() => {
-                    canSwipe = true;
-                }, 1000)
-            }
-
-            // Swipe down
-            if (e.deltaY < -60 && current !== 0) {
-                canSwipe = false;
-                current += window.innerHeight;
-                slide--
-                console.log(slide)
-                content.style.transform = `translateY(${current}px)`;
-                setTimeout(() => {
-                    canSwipe = true;
-                }, 1000)
-            }
-        }
-    }
-
-    startMousedown(e) {
-        initialStart = Date.now();
-        initialY = e.clientY;
-    }
-
-    startMouseup(e) {
-        initialEnd = Date.now();
-        endY = e.clientY;
-        if (initialEnd - initialStart < 800) {
-            swipe()
-        }
+        this.$image = this.querySelector('.image-overlay');
+        this.$image.addEventListener('click', _ => this.hideImageOverlay());
+        this.initImageOverlayEvent();
     }
 
     async connectedCallback() {
@@ -116,6 +85,30 @@ export default class WorkComponent extends TemplateRenderer {
         const location = await this.routerOutlet.getLocation(window.location.pathname);
         const id = location.params.id;
         await this.getProject(id);
-        this.content = this.shadowRoot.querySelector('.content');
+        this.content = this.querySelector('.content');
+        this.init();
+
+    }
+
+    showImageOverlay(e) {
+        const element = e.currentTarget;
+        const url = element.dataset.hiRes;
+        console.log(url);
+        const overlay = this.querySelector(".image-overlay");
+        let image = overlay.querySelector(".overlay-image");
+        console.log(image);
+        image.src = url;
+        overlay.style.display = "flex";
+    }
+
+    hideImageOverlay() {
+        const overlay = this.querySelector(".image-overlay");
+        overlay.style.display = "none";
+    }
+
+    initImageOverlayEvent = () => {
+        this.querySelectorAll('.pro-image').forEach(item => {
+            item.addEventListener('click', e => this.showImageOverlay(e))
+        });
     }
 }

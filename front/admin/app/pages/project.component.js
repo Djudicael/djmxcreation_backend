@@ -17,7 +17,7 @@ export class ProjectComponent extends TemplateRenderer {
         this.contents;
         this.thumbnail;
         this.deleteImage = this.deleteImage.bind(this);
-        // this.thumbImage = this.thumbImage.bind(this);
+        this.thumbImage = this.thumbImage.bind(this);
     }
 
 
@@ -272,9 +272,7 @@ export class ProjectComponent extends TemplateRenderer {
         const element = e.currentTarget;
         const contentID = element.dataset.imageId;
         const thumbnail = await this.instance.addThumbnail(this.projectId, contentID);
-        console.log(thumbnail)
         const url = thumbnail.url;
-        console.log(url);
         this.thumbnail = url;
         super.render();
     };
