@@ -2,6 +2,7 @@ import { TemplateRenderer, html } from '../utils/template-renderer.js';
 
 import PortfolioApi from '../api/portfolio.api.js';
 import Quill from 'quill';
+import { editorConfig } from '../utils/helper.js';
 
 export class AboutComponent extends TemplateRenderer {
     constructor() {
@@ -79,30 +80,7 @@ export class AboutComponent extends TemplateRenderer {
             this.renderFileList();
         });
 
-        const editor = new Quill('#editorjs', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
-                    ['blockquote', 'code-block'],
-
-                    [{ 'header': 1 }, { 'header': 2 }],               // custom button values
-                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                    [{ 'script': 'sub' }, { 'script': 'super' }],     // superscript/subscript
-                    [{ 'indent': '-1' }, { 'indent': '+1' }],         // outdent/indent
-                    [{ 'direction': 'rtl' }],                         // text direction
-
-                    [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-
-                    [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
-                    [{ 'font': [] }],
-                    [{ 'align': [] }],
-
-                    ['clean']                                         // remove formatting button
-                ]
-            }
-        });
+        const editor = new Quill('#editorjs', editorConfig);
 
         if (this.description) {
             editor.setContents(this.description);

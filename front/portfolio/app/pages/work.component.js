@@ -1,6 +1,6 @@
 import { TemplateRenderer, html, unsafeHTML } from "../utils/template-renderer";
 import PortfolioApi from "../api/portfolio.api.js";
-import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
+import { htmlDescription } from "../utils/helper.js";
 
 export default class WorkComponent extends TemplateRenderer {
     constructor() {
@@ -20,19 +20,10 @@ export default class WorkComponent extends TemplateRenderer {
 
     }
 
-    htmlDescription(description) {
-        if (description) {
-
-            const converter = new QuillDeltaToHtmlConverter(description.ops, {});
-            const html = converter.convert();
-            return html;
-        }
-        return '';
-    }
 
     get template() {
 
-        const description = html`${unsafeHTML(this.htmlDescription(this.description))}`;
+        const description = html`${unsafeHTML(htmlDescription(this.description))}`;
 
         const projectHeader = html`
         <div class="project_header">				
