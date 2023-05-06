@@ -1,6 +1,8 @@
 
 import { html as exportedHtml, render } from 'lit-html';
+import { unsafeHTML as exportedUnsafeHTML } from 'lit-html/directives/unsafe-html.js';
 export const html = exportedHtml;
+export const unsafeHTML = exportedUnsafeHTML;
 
 export function sanitizeHtml(html) {
     // Use a DOM parser to parse the HTML and remove any unsafe tags or attributes

@@ -63,3 +63,14 @@
 .form__field:required, .form__field:invalid {
     box-shadow: none;
 }
+
+#editorjs {
+    height: 375px;
+    width: 100%;
+    color: var(--dark-color);
+}
+
+.ql-editor {
+    width: 100%;
+    color: var(--dark-color);
+}

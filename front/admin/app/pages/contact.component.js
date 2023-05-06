@@ -1,6 +1,7 @@
 import { TemplateRenderer, html } from '../utils/template-renderer.js'
 
 import PortfolioApi from '../api/portfolio.api.js';
+import Quill from 'quill';
 
 export class ContactComponent extends TemplateRenderer {
     constructor() {
@@ -30,81 +31,38 @@ export class ContactComponent extends TemplateRenderer {
     }
 
     init() {
-        const blocks = this.description ? this.description : [
-            {
-                type: 'paragraph',
-                data: {
-                    text: 'Write contact here!'
-                }
+        const editor = new Quill('#editorjs', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+                    ['blockquote', 'code-block'],
+
+                    [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'script': 'sub' }, { 'script': 'super' }],     // superscript/subscript
+                    [{ 'indent': '-1' }, { 'indent': '+1' }],         // outdent/indent
+                    [{ 'direction': 'rtl' }],                         // text direction
+
+                    [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+
+                    [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
+
+                    ['clean']                                         // remove formatting button
+                ]
             }
-        ];
-
-        const editor = new EditorJS({
-            readOnly: false,
-            holder: 'editorjs',
-            tools: {
-                header: {
-                    class: Header,
-                    inlineToolbar: ['marker', 'link'],
-                    config: {
-                        placeholder: 'Header'
-                    },
-                    shortcut: 'CMD+SHIFT+H'
-                },
-                image: SimpleImage,
-
-                list: {
-                    class: List,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+SHIFT+L'
-                },
-
-                checklist: {
-                    class: Checklist,
-                    inlineToolbar: true,
-                },
-
-                quote: {
-                    class: Quote,
-                    inlineToolbar: true,
-                    config: {
-                        quotePlaceholder: 'Enter a quote',
-                        captionPlaceholder: 'Quote\'s author',
-                    },
-                    shortcut: 'CMD+SHIFT+O'
-                },
-                warning: Warning,
-                marker: {
-                    class: Marker,
-                    shortcut: 'CMD+SHIFT+M'
-                },
-                code: {
-                    class: CodeTool,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-                delimiter: Delimiter,
-                inlineCode: {
-                    class: InlineCode,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-                linkTool: LinkTool,
-                embed: Embed,
-                table: {
-                    class: Table,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+ALT+T'
-                },
-            },
-            data: {
-                blocks
-            },
         });
+
+        if (this.description) {
+            editor.setContents(this.description);
+        }
+
         const saveButton = document.getElementById('saveButton');
         saveButton.addEventListener('click', async () => {
-            const { blocks } = await editor.save()
-                .catch((error) => {
-                    console.error('Saving error', error);
-                });
+            const blocks = editor.getContents();
             await this.instance.updateContactDescription(this.id, { description: blocks });
         });
     }

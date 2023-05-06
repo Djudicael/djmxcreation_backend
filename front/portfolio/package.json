@@ -14,7 +14,8 @@
   "dependencies": {
     "@vaadin/router": "^1.7.5",
     "esbuild": "^0.17.14",
-    "lit-html": "^2.7.0"
+    "lit-html": "^2.7.0",
+    "quill-delta-to-html": "^0.12.1"
   },
   "devDependencies": {
     "express": "^4.18.2",

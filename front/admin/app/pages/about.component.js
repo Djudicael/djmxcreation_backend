@@ -67,14 +67,7 @@ export class AboutComponent extends TemplateRenderer {
     };
 
     init() {
-        const blocks = this.description ? this.description : [
-            {
-                type: 'paragraph',
-                data: {
-                    text: 'Write description here!'
-                }
-            }
-        ];
+
 
         this.$fileCatcher = document.getElementById('file-catcher');
         this.$fileInput = document.getElementById('file-input');
@@ -86,83 +79,39 @@ export class AboutComponent extends TemplateRenderer {
             }
             this.renderFileList();
         });
-        const editor = new EditorJS({
-            readOnly: false,
-            holder: 'editorjs',
-            tools: {
-                header: {
-                    class: Header,
-                    inlineToolbar: ['marker', 'link'],
-                    config: {
-                        placeholder: 'Header'
-                    },
-                    shortcut: 'CMD+SHIFT+H'
-                },
-                image: SimpleImage,
+        const editor = new Quill('#editorjs', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+                    ['blockquote', 'code-block'],
 
-                list: {
-                    class: List,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+SHIFT+L'
-                },
+                    [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'script': 'sub' }, { 'script': 'super' }],     // superscript/subscript
+                    [{ 'indent': '-1' }, { 'indent': '+1' }],         // outdent/indent
+                    [{ 'direction': 'rtl' }],                         // text direction
 
-                checklist: {
-                    class: Checklist,
-                    inlineToolbar: true,
-                },
+                    [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
 
-                quote: {
-                    class: Quote,
-                    inlineToolbar: true,
-                    config: {
-                        quotePlaceholder: 'Enter a quote',
-                        captionPlaceholder: 'Quote\'s author',
-                    },
-                    shortcut: 'CMD+SHIFT+O'
-                },
+                    [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
 
-                warning: Warning,
-
-                marker: {
-                    class: Marker,
-                    shortcut: 'CMD+SHIFT+M'
-                },
-
-                code: {
-                    class: CodeTool,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-
-                delimiter: Delimiter,
-
-                inlineCode: {
-                    class: InlineCode,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-
-                linkTool: LinkTool,
-
-                embed: Embed,
-
-                table: {
-                    class: Table,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+ALT+T'
-                },
-
-            },
-            data: {
-                blocks
-            },
+                    ['clean']                                         // remove formatting button
+                ]
+            }
         });
+
+        if (this.description) {
+            editor.setContents(this.description);
+        }
 
         const saveButton = document.getElementById('saveButton');
 
         saveButton.addEventListener('click', async () => {
-            const { blocks } = await editor.save().catch((error) => {
-                console.error('Saving error', error);
-            });
-
+            const blocks = editor.getContents();
             await this.instance.updateAboutMeDescription(this.id, { lastName: this.lastName, firstName: this.firstName, description: blocks })
         });
     }

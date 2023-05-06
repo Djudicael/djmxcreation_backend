@@ -1,5 +1,6 @@
-import { TemplateRenderer, html } from "../utils/template-renderer";
+import { TemplateRenderer, html, unsafeHTML } from "../utils/template-renderer";
 import PortfolioApi from "../api/portfolio.api.js";
+import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 
 export default class WorkComponent extends TemplateRenderer {
     constructor() {
@@ -17,10 +18,21 @@ export default class WorkComponent extends TemplateRenderer {
         this.$image;
         this.initImageOverlayEvent = this.initImageOverlayEvent.bind(this);
 
+    }
 
+    htmlDescription(description) {
+        if (description) {
+
+            const converter = new QuillDeltaToHtmlConverter(description.ops, {});
+            const html = converter.convert();
+            return html;
+        }
+        return '';
     }
 
     get template() {
+
+        const description = html`${unsafeHTML(this.htmlDescription(this.description))}`;
 
         const projectHeader = html`
         <div class="project_header">				
@@ -36,26 +48,27 @@ export default class WorkComponent extends TemplateRenderer {
         </div>`;
 
         const imageOverlay = html`
-      <div class="image-overlay" >
-        <div class="image-overlay-content">
-          <img src="" class="overlay-image">
-        </div>
-      </div>
-    `;
+        <div class="image-overlay" >
+            <div class="image-overlay-content">
+            <img src="" class="overlay-image">
+            </div>
+        </div>`;
 
         const images = this.contents
             ? html`${this.contents.map(({ url }) => html`
-        <img
-          src="${url}"
-          data-hi-res="${url}"
-          class="pro-image"
-          
-        >
-      `)}` : html``;
+            <img
+            src="${url}"
+            data-hi-res="${url}"
+            class="pro-image" 
+            >
+    `)}` : html``;
 
         return html`
         <section class="projects-section">
                 ${projectHeader}
+            <div id="description" class="project_description">
+                ${description}
+            </div>
             <div class="project_content">
                 ${images}
             </div>
@@ -74,10 +87,11 @@ export default class WorkComponent extends TemplateRenderer {
         super.render();
     }
 
-    init() {
+    async init() {
         this.$image = this.querySelector('.image-overlay');
         this.$image.addEventListener('click', _ => this.hideImageOverlay());
         this.initImageOverlayEvent();
+
     }
 
     async connectedCallback() {
@@ -86,7 +100,7 @@ export default class WorkComponent extends TemplateRenderer {
         const id = location.params.id;
         await this.getProject(id);
         this.content = this.querySelector('.content');
-        this.init();
+        await this.init();
 
     }
 

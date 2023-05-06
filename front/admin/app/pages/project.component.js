@@ -2,6 +2,7 @@ import { TemplateRenderer, html } from '../utils/template-renderer.js';
 import PortfolioApi from '../api/portfolio.api.js';
 import Metadata from '../models/metadata.js';
 import ProjectPayload from '../models/projectPayload.js';
+import Quill from 'quill';
 
 export class ProjectComponent extends TemplateRenderer {
     constructor() {
@@ -103,124 +104,37 @@ export class ProjectComponent extends TemplateRenderer {
     }
 
     init() {
-        const blocks = this.description ? this.description : [
-            {
-                type: 'paragraph',
-                data: {
-                    text: 'Write description here!'
-                }
+
+        const editor = new Quill('#editorjs', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+                    ['blockquote', 'code-block'],
+
+                    [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    [{ 'script': 'sub' }, { 'script': 'super' }],     // superscript/subscript
+                    [{ 'indent': '-1' }, { 'indent': '+1' }],         // outdent/indent
+                    [{ 'direction': 'rtl' }],                         // text direction
+
+                    [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+
+                    [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
+
+                    ['clean']                                         // remove formatting button
+                ]
             }
-        ];
-        const editor = new EditorJS({
-            /**
-             * Enable/Disable the read only mode
-             */
-            readOnly: false,
-
-            /**
-             * Wrapper of Editor
-             */
-            holder: 'editorjs',
-
-            /**
-             * Common Inline Toolbar settings
-             * - if true (or not specified), the order from 'tool' property will be used
-             * - if an array of tool names, this order will be used
-             */
-            // inlineToolbar: ['link', 'marker', 'bold', 'italic'],
-            // inlineToolbar: true,
-
-            /**
-             * Tools list
-             */
-            tools: {
-                /**
-                 * Each Tool is a Plugin. Pass them via 'class' option with necessary settings {@link docs/tools.md}
-                 */
-                header: {
-                    class: Header,
-                    inlineToolbar: ['marker', 'link'],
-                    config: {
-                        placeholder: 'Header'
-                    },
-                    shortcut: 'CMD+SHIFT+H'
-                },
-
-                /**
-                 * Or pass class directly without any configuration
-                 */
-                image: SimpleImage,
-
-                list: {
-                    class: List,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+SHIFT+L'
-                },
-
-                checklist: {
-                    class: Checklist,
-                    inlineToolbar: true,
-                },
-
-                quote: {
-                    class: Quote,
-                    inlineToolbar: true,
-                    config: {
-                        quotePlaceholder: 'Enter a quote',
-                        captionPlaceholder: 'Quote\'s author',
-                    },
-                    shortcut: 'CMD+SHIFT+O'
-                },
-
-                warning: Warning,
-
-                marker: {
-                    class: Marker,
-                    shortcut: 'CMD+SHIFT+M'
-                },
-
-                code: {
-                    class: CodeTool,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-
-                delimiter: Delimiter,
-
-                inlineCode: {
-                    class: InlineCode,
-                    shortcut: 'CMD+SHIFT+C'
-                },
-
-                linkTool: LinkTool,
-
-                embed: Embed,
-
-                table: {
-                    class: Table,
-                    inlineToolbar: true,
-                    shortcut: 'CMD+ALT+T'
-                },
-
-            },
-
-            /**
-             * This Tool will be used as default
-             */
-            // defaultBlock: 'paragraph',
-
-            /**
-             * Initial Editor data
-             */
-            data: {
-                blocks
-            },
-            // onReady: function () {
-            //     saveButton.click();
-            // },
-            // onChange: function () {
-            //     console.log('something changed');
-            // }
         });
+
+        if (this.description) {
+            editor.setContents(this.description);
+        }
+
+
 
         /**
          * Saving button
@@ -231,9 +145,7 @@ export class ProjectComponent extends TemplateRenderer {
          * Saving contents
          */
         saveButton.addEventListener('click', async () => {
-            const { blocks } = await editor.save().catch((error) => {
-                console.error('Saving error', error);
-            });
+            const blocks = editor.getContents();
 
             const isVisible = this.querySelector('.toggle').checked;
             const isAdult = this.querySelector('.adult').checked;

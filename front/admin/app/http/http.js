@@ -107,6 +107,24 @@ export default class Http {
         return response.json();
     }
 
+    async doPutVoid({ path, body, authToken }) {
+        const headers = {
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+        };
+        if (authToken) {
+
+            headers['Authorization'] = 'bearer ' + authToken;
+        }
+        const response = await fetch(config.rest_url + path, {
+            headers: headers,
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
+
+        return response;
+    }
+
     async doDelete({ path, authToken }) {
         const headers = {
             'Accept': 'application/json, text/plain, */*',

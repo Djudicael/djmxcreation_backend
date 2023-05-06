@@ -40,6 +40,15 @@
     justify-content: center;
 }
 
+.project_description {
+    margin: 20px auto;
+    /* padding-left: 30px;
+    padding-right: 30px; */
+    text-align: center;
+    max-width: 100%;
+    z-index: 99;
+}
+
 .image-overlay-content {
     position: relative;
     display: flex;
