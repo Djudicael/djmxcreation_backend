@@ -1,6 +1,7 @@
 import { TemplateRenderer, html } from '../utils/template-renderer.js';
 
 import PortfolioApi from '../api/portfolio.api.js';
+import Quill from 'quill';
 
 export class AboutComponent extends TemplateRenderer {
     constructor() {
@@ -67,8 +68,6 @@ export class AboutComponent extends TemplateRenderer {
     };
 
     init() {
-
-
         this.$fileCatcher = document.getElementById('file-catcher');
         this.$fileInput = document.getElementById('file-input');
         this.$fileListDisplay = document.getElementById('file-list-display');
@@ -79,6 +78,7 @@ export class AboutComponent extends TemplateRenderer {
             }
             this.renderFileList();
         });
+
         const editor = new Quill('#editorjs', {
             theme: 'snow',
             modules: {
