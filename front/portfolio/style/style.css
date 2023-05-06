@@ -2,6 +2,7 @@
 @import "works.css";
 @import "work.css";
 @import "common.css";
+@import "editor.css";
 
 :root {
     --main-bg-color: #e8e8e1;

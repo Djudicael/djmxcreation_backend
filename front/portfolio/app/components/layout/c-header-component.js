@@ -14,6 +14,7 @@ export default class HeaderComponent extends TemplateRenderer {
 
     get template() {
         return html`
+
         <div class="menu-tog">
             <span></span>
             <span></span>
@@ -21,7 +22,7 @@ export default class HeaderComponent extends TemplateRenderer {
 
         <div class="menu">
             <div class="links">
-                <ul>
+                <ul class="menu-list">
                     <li class="menu-wrap"><a href="/">Home/<span>01</span></a></li>
                     <li class="menu-wrap"><a href="/works">Works/<span>02</span></a></li>
                     <li class="menu-wrap"><a href="/about">About/<span>03</span></a></li>
