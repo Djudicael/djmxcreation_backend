@@ -26,7 +26,7 @@ export default class HeaderComponent extends TemplateRenderer {
                     <li class="menu-wrap"><a href="/">Home/<span>01</span></a></li>
                     <li class="menu-wrap"><a href="/works">Works/<span>02</span></a></li>
                     <li class="menu-wrap"><a href="/about">About/<span>03</span></a></li>
-                    <li class="menu-wrap"><a href="/contact">Contact/<span>05</span></a></li>
+                    <li class="menu-wrap"><a href="/contact">Contact/<span>04</span></a></li>
                 </ul>
             </div>
         </div>

@@ -15,8 +15,10 @@ export class ContactComponent extends TemplateRenderer {
 
     get template() {
         return html`
-        <section class="main-content">
+        <section class="content-page">
+        <div class="presentation">
             <div id="editorjs"></div>
+        </div>
             <div class="flex-y">
                 <div id="saveButton" class="cta">
                     <span>Save project</span>
