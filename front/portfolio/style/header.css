@@ -36,7 +36,7 @@
     top: 2%;
     left: 2%;
     /* width: 96%; */
-    z-index: 2;
+    z-index: 100;
     mix-blend-mode: difference;
     /* color: #ffffff; */
     text-transform: uppercase;
@@ -68,6 +68,7 @@
     transform: translateY(100%);
     transition: 0.5s;
     will-change: transform;
+    color: black;
 }
 
 .wrap.active h1,

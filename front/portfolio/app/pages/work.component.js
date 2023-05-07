@@ -20,24 +20,42 @@ export default class WorkComponent extends TemplateRenderer {
 
     }
 
+    getTitleFragment(title) {
+        if (title) {
+            return html`<div class="project_title" >
+            <h1> ${title}</h1>
+        </div>`;
+        }
+
+        return html``;
+    }
+
+    getFragmentSubtitle(subTitle) {
+        if (subTitle) {
+            return html`<div class="project_subtitle">
+            <h2>${subTitle}</h2>
+        </div>`;
+        }
+        return html``;
+    }
+
+    getFragmentClient(client) {
+        if (client) {
+            return html`<div class="project_client">
+            Client: ${client}
+        </div>`;
+        }
+        return html``;
+    }
 
     get template() {
-
         const description = html`${unsafeHTML(htmlDescription(this.description))}`;
-
         const projectHeader = html`
-        <div class="project_header">				
-            <div class="project_title" >
-                <h1> ${this.title}</h1>
-            </div>
-            <div class="project_subtitle">
-                <h2>${this.subTitle}</h2>
-            </div>
-            <div class="project_client">
-                Client: ${this.client}
-            </div>
+        <div class="project_header">	
+            ${this.getTitleFragment(this.title)}
+            ${this.getFragmentSubtitle(this.subTitle)}
+            ${this.getFragmentClient(this.client)}
         </div>`;
-
         const imageOverlay = html`
         <div class="image-overlay" >
             <div class="image-overlay-content">

@@ -44,6 +44,7 @@
     margin: 20px auto;
     /* padding-left: 30px;
     padding-right: 30px; */
+    padding: 1%;
     text-align: center;
     max-width: 100%;
     z-index: 99;
@@ -62,4 +63,8 @@
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+}
+
+.project_title, .project_subtitle, .project_client {
+    padding: 1%;
 }

@@ -6,10 +6,10 @@ canvas {
 
 .projects-section, .content-page, .content-page {
     position: relative;
-    /* padding: 10vh 2vw; */
     height: 100vh;
     width: 100vw;
     overflow-y: scroll;
+    padding: 3%;
 }
 
 .projects {

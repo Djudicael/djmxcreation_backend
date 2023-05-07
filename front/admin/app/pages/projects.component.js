@@ -26,7 +26,7 @@ export class ProjectManagementComponent extends TemplateRenderer {
             default:
                 return this.projects
                     ? html`${this.projects.map(
-                        ({ id, createdOn, metadata, visible, contents }) =>
+                        ({ id, createdOn, metadata, visible, thumbnail }) =>
                             html`<c-card-work
                         id=${id}
                         project-id=${id}
@@ -35,7 +35,7 @@ export class ProjectManagementComponent extends TemplateRenderer {
                         ${metadata.client ? `client=${metadata.client}` : ''}
                         creation-date=${createdOn}
                         visible=${visible}
-                        cover=${(contents && contents.length) ? contents[0].url : '/ressource/icon/boy.svg'}
+                        cover=${(thumbnail && thumbnail.url) ? thumbnail.url : '/ressource/icon/boy.svg'}
                         ></c-card-work>`
                     )}`
                     : '';
@@ -56,8 +56,8 @@ export class ProjectManagementComponent extends TemplateRenderer {
     get template() {
         return html`
         <section class="content-page">
+        ${this.creationButton({ step: this.step })}
         <div class="container">
-            ${this.creationButton({ step: this.step })}
             ${this.templateEngine({ step: this.step })}
         </div>
         </section>`;

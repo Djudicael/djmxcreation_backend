@@ -22,10 +22,24 @@ export class ProjectComponent extends TemplateRenderer {
         this.thumbImage = this.thumbImage.bind(this);
     }
 
+    getFragmentWithVisibility(visible) {
+        if (visible) {
+            return html`<input type="checkbox" class="toggle" checked >`;
+        }
+        return html`<input type="checkbox" class="toggle" >`;
+    }
+    getFragmentWithAdult(adult) {
+        if (adult) {
+            return html`<input type="checkbox" class="adult" checked >`;
+        }
+        return html`<input type="checkbox" class="adult" >`;
+    }
+
 
     get template() {
-        const checkVisibility = html`<input type="checkbox" class="toggle" ${this.visible ? 'checked' : ''} >`
-        const checkAdult = html`<input type="checkbox" class="adult" ${this.adult ? 'checked' : ''} >`
+        const checkVisibility = this.getFragmentWithVisibility(this.visible);
+        const checkAdult = this.getFragmentWithAdult(this.adult);
+
         const contents = this.contents ? html`${this.contents.map(({ id, url }) => html`
         <div id="area-${id}" class="image-area">
             <img src=${url} alt="Preview">        
@@ -67,8 +81,7 @@ export class ProjectComponent extends TemplateRenderer {
                 <h1>Project descriptions</h1>
                 <div id="editorjs"></div>
                 <div class="flex-y">
-                    <div>${checkVisibility} <span>Make project
-                            visible</span>
+                    <div>${checkVisibility} <span>Make project visible</span>
                     </div>
                     <div>${checkAdult} <span>This project is for adult</span>
                     </div>
@@ -89,12 +102,15 @@ export class ProjectComponent extends TemplateRenderer {
         `;
     }
 
+
+
     async getProject() {
-        const { metadata, visible, description, contents, thumbnail } = await this.instance.getProject(this.projectId);
+        const { metadata, visible, description, contents, thumbnail, adult } = await this.instance.getProject(this.projectId);
         this.title = metadata.title;
         this.subTitle = metadata.subTitle;
         this.client = metadata.client;
         this.visible = visible;
+        this.adult = adult;
         this.description = description;
         this.contents = contents;
 
