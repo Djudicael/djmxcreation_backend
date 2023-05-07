@@ -6,7 +6,6 @@ export const editorConfig = {
         toolbar: [
             ['bold', 'italic', 'underline', 'strike'],    // toggled buttons
             ['blockquote', 'code-block'],
-
             [{ 'header': 1 }, { 'header': 2 }],           // custom button values
             [{ 'list': 'ordered' }, { 'list': 'bullet' }],
             [{ 'script': 'sub' }, { 'script': 'super' }], // superscript/subscript
@@ -25,6 +24,11 @@ export const editorConfig = {
             [{ 'video': true }],                          // add video option
             [{ 'image': true }],                          // add image option
             [{ 'formula': true }],                        // add formula option
+            [{ 'link': { tooltip: 'Insert link' } }],
+            // [{ 'emoji': true }],                          // add emoji option
+            // [{ 'fullscreen': true }],
+            // [{ 'table': true }],
+            [{ 'code-block': 'code' }],                   // add code option
         ]
     }
 }

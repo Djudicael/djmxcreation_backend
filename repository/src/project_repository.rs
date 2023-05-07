@@ -15,7 +15,8 @@ use sqlx::types::Json;
 use crate::{
     config::db::Db,
     entity::{
-        project::Project, project_content::ProjectContent,
+        project::{Project, ProjectCreated},
+        project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
     error::to_error,
@@ -39,7 +40,7 @@ impl IProjectRepository for ProjectRepository {
         let now_utc: DateTime<Utc> = Utc::now();
         let sql =
             "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3, $4) RETURNING *";
-        let query = sqlx::query_as::<_, Project>(sql)
+        let query = sqlx::query_as::<_, ProjectCreated>(sql)
             .bind(metadata_json)
             .bind(now_utc)
             .bind(false)

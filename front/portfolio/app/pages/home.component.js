@@ -6,13 +6,26 @@ export default class HomeComponent extends TemplateRenderer {
         this.noShadow = true;
         const menu = document.querySelector('c-header');
         menu.hideMenu();
+
     }
 
     get template() {
+
         return html`
         <section class="content-page">
-            <p>This is home page</p>
+            
         </section>
         `;
+    }
+
+    init() {
+
+
+    }
+
+
+    async connectedCallback() {
+        super.connectedCallback();
+
     }
 }

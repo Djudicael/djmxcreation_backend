@@ -20,6 +20,17 @@ pub struct Project {
     pub thumbnail_content: Option<Json<Value>>,
 }
 
+#[derive(sqlx::FromRow, Default, Debug, Clone)]
+pub struct ProjectCreated {
+    pub id: Option<i32>,
+    pub metadata: Option<Json<Value>>,
+    pub description: Option<Json<Value>>,
+    pub visible: bool,
+    pub adult: bool,
+    pub created_on: Option<chrono::DateTime<chrono::Utc>>,
+    pub updated_on: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 impl Project {
     pub fn new() -> Self {
         Self {
@@ -122,6 +133,25 @@ impl From<Project> for ProjectDto {
                     .map(|thumbnail_json| thumbnail_json.0)
                     .and_then(to_thumbnail),
             )
+            .build()
+    }
+}
+impl From<ProjectCreated> for ProjectDto {
+    fn from(val: ProjectCreated) -> ProjectDto {
+        ProjectDto::new()
+            .id(val.id)
+            .metadata(
+                val.metadata
+                    .map(|metadata_json| metadata_json.0)
+                    .and_then(to_metadata),
+            )
+            .description(val.description.map(|description_json| description_json.0))
+            .visible(val.visible)
+            .adult(val.adult)
+            .created_on(val.created_on)
+            .updated_on(val.updated_on)
+            .contents(vec![])
+            .thumbnail(None)
             .build()
     }
 }

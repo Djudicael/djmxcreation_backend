@@ -35,10 +35,10 @@
     position: fixed;
     top: 2%;
     left: 2%;
-    width: 96%;
+    /* width: 96%; */
     z-index: 2;
     mix-blend-mode: difference;
-    color: #ffffff;
+    /* color: #ffffff; */
     text-transform: uppercase;
 }
 
