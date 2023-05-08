@@ -3,7 +3,7 @@ use std::time::Duration;
 use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
 use async_trait::async_trait;
-use aws_sdk_s3::{presigning::config::PresigningConfig, types::ByteStream};
+use aws_sdk_s3::{presigning::PresigningConfig, primitives::ByteStream};
 
 use crate::config::minio::StorageClient;
 

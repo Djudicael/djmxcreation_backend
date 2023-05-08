@@ -1,12 +1,7 @@
-import { TemplateRenderer, html } from "../utils/template-renderer";
+import { TemplateRenderer, html, unsafeHTML } from "../utils/template-renderer";
 
-import PortfolioApi from "../api/portfolio.api";
-
-function lerp(start, end, t) {
-    return start * (1 - t) + end * t;
-}
-
-
+import PortfolioApi from "../api/portfolio.api.js";
+import { lerp } from "../utils/helper.js";
 export default class WorksComponent extends TemplateRenderer {
     constructor() {
         super();
@@ -20,7 +15,7 @@ export default class WorksComponent extends TemplateRenderer {
         this.ctx = null;
         this.links = [];
         this.page = 1;
-        this.pageSize = 100;
+        this.pageSize = 6;
         this.totalPages = 0;
 
         // Canvas mousemove variables
@@ -39,8 +34,21 @@ export default class WorksComponent extends TemplateRenderer {
         this.animate = this.animate.bind(this);
     }
 
+    nsfwFragment(adult) {
+        if (adult) {
+            return '<span class="nsfw">|NSFW🔞</span>';
+        }
+        return '';
+    }
+
     get template() {
-        const projects = this.projects ? html`${this.projects.map(({ id, metadata }) => html`<li class="project" project-id=${id}>${metadata.title}</li>`)}` : html``;
+        const projects = this.projects ? html`${this.projects.map(({ id, metadata, adult }) => html`<li class="project" project-id=${id}>${metadata.title} ${unsafeHTML(this.nsfwFragment(adult))} </li>`)}` : html``;
+        const loadMore = this.page < this.totalPages ? html`<div class="load-more-container">
+        <button class="load-more">
+            <span class="button-text">Load More</span>
+            <span class="button-arrow"></span>
+        </button>
+    </div>` : html``;
         return html`
         <canvas></canvas>
 
@@ -49,6 +57,7 @@ export default class WorksComponent extends TemplateRenderer {
                 <ul>
                     ${projects}
                 </ul>
+               ${loadMore}
             </div>
         </section>
         `;
@@ -59,7 +68,6 @@ export default class WorksComponent extends TemplateRenderer {
         this.totalPages = totalPages;
         this.page = page;
         this.pageSize = size;
-        console.log(projects);
         this.projects.push(...projects);
         super.render();
     }
@@ -193,9 +201,22 @@ export default class WorksComponent extends TemplateRenderer {
         window.requestAnimationFrame(this.animate);
     }
 
+    nextPage() {
+        const loadMore = document.querySelector('.load-more');
+        loadMore.addEventListener('click', async () => {
+            if (this.page < this.totalPages) {
+                this.page++;
+                await this.getProjects();
+                this.init();
+                this.animate();
+            }
+        });
+    }
+
     async connectedCallback() {
         super.connectedCallback();
         await this.getProjects();
+        this.nextPage();
 
         if (this.projects.length) {
             this.init();

@@ -1,7 +1,10 @@
 use app_config::storage_configuration::StorageConfiguration;
 use app_error::Error;
 use aws_sdk_s3::{
-    config, error::HeadBucketErrorKind, types::SdkError, Client, Credentials, Region,
+    config::{self, Credentials, Region},
+    error::SdkError,
+    operation::head_bucket::HeadBucketError,
+    Client,
 };
 use tracing::info;
 
@@ -38,8 +41,8 @@ pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(
     match metadata {
         Ok(_) => println!("Bucket {bucket_name} exists!"),
         Err(err) => match err {
-            SdkError::ServiceError(sdk_err) => match sdk_err.err().kind {
-                HeadBucketErrorKind::NotFound(_) => {
+            SdkError::ServiceError(sdk_err) => match sdk_err.err() {
+                HeadBucketError::NotFound(_) => {
                     client
                         .create_bucket()
                         .bucket(bucket_name)

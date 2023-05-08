@@ -19,6 +19,7 @@
     background-color: #ffffff;
     transition: 0.5s;
     transform-origin: center;
+
 }
 
 .menu-tog.active span:nth-child(1) {

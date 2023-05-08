@@ -130,9 +130,9 @@ impl IProjectService for ProjectService {
                 let content_view = ContentView::new(thumbnail_saved.id, photo.mime_type, Some(url));
                 Ok(content_view)
             }
-            None => Err(Error::ContentNotFoundButWasSave(format!(
-                "Content was found but no images was associated"
-            ))),
+            None => Err(Error::ContentNotFoundButWasSave(
+                "Content was found but no images was associated".to_string(),
+            )),
         }
     }
 

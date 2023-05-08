@@ -19,7 +19,7 @@ export default class ContactComponent extends TemplateRenderer {
 
         return html`
         <section class="content-page">
-           ${description}
+        ${description}
         </section>
         `;
     }

@@ -35,7 +35,6 @@ impl ProjectRepository {
 #[async_trait]
 impl IProjectRepository for ProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error> {
-        println!("metadata: {metadata:?}");
         let metadata_json = Json(json!(metadata));
         let now_utc: DateTime<Utc> = Utc::now();
         let sql =

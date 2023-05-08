@@ -5,3 +5,4 @@ pub mod project_payload;
 pub mod project_view;
 pub mod project_with_thumbnail_view;
 pub mod projects_view;
+pub mod spotlight_view;

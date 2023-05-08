@@ -9,6 +9,7 @@
 :root {
     --main-bg-color: #e8e8e1;
     --app-height: 100%;
+    --main-dark-color: #191919;
 }
 
 /* @font-face {
@@ -30,7 +31,7 @@
 }
 
 a {
-    color: #191919;
+    color: var(--main-dark-color);
 }
 
 html,

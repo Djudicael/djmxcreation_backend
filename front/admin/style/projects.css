@@ -53,6 +53,7 @@ button.create-project:hover {
     opacity: 0.7;
     cursor: pointer;
     transition: opacity 0.3s ease;
+    z-index: 100;
 }
 
 .delete-project:hover, .hide-project:hover {

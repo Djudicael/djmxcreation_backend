@@ -10,3 +10,7 @@ export const htmlDescription = description => {
     }
     return '';
 }
+
+export function lerp(start, end, t) {
+    return start * (1 - t) + end * t;
+}
