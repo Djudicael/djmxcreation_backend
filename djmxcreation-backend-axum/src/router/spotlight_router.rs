@@ -7,6 +7,7 @@ use axum::{
     Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
 
@@ -21,14 +22,11 @@ pub struct SpotlightRouter;
 impl SpotlightRouter {
     pub fn new_router(service_register: ServiceRegister) -> Router {
         Router::new()
-            .route("/v1/spotlights", post(SpotlightRouter::add_spotlight))
-            .route("/v1/spotlights", get(SpotlightRouter::get_spotlights))
-            .route("/v1/spotlights/:id", get(SpotlightRouter::get_spotlight))
-            .route(
-                "/v1/spotlights/:id",
-                delete(SpotlightRouter::delete_spotlight),
-            )
-            .layer(Extension(service_register.spotlight_service))
+            .route("/v1/spotlights", post(Self::add_spotlight))
+            .route("/v1/spotlights", get(Self::get_spotlights))
+            .route("/v1/spotlights/:id", get(Self::get_spotlight))
+            .route("/v1/spotlights/:id", delete(Self::delete_spotlight))
+            .layer(Extension(Arc::new(service_register.spotlight_service)))
     }
 
     pub async fn get_spotlights(
@@ -39,8 +37,8 @@ impl SpotlightRouter {
     }
 
     pub async fn get_spotlight(
-        Extension(spotlight_service): Extension<DynISpotlightService>,
         Path(id): Path<i32>,
+        Extension(spotlight_service): Extension<DynISpotlightService>,
     ) -> ApiResult<Json<SpotlightView>> {
         let spotlight = spotlight_service.get_spotlight(id).await?;
         Ok(Json(spotlight))

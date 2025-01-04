@@ -254,7 +254,7 @@ impl IProjectRepository for ProjectRepository {
             .bind(adult)
             .bind(now_utc)
             .bind(project_id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await.map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
         tx.commit()
@@ -306,7 +306,7 @@ impl IProjectRepository for ProjectRepository {
         sqlx::query("DELETE FROM project_content WHERE id = $1 and project_id = $2 ")
             .bind(id)
             .bind(project_id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         tx.commit()
@@ -323,7 +323,7 @@ impl IProjectRepository for ProjectRepository {
             .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         sqlx::query("DELETE FROM project WHERE id = $1 ")
             .bind(project_id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         tx.commit()
@@ -358,7 +358,7 @@ impl IProjectRepository for ProjectRepository {
         sqlx::query("DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2 ")
             .bind(id)
             .bind(project_id)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await
             .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         tx.commit()

@@ -1,6 +1,5 @@
 use app_core::{
-    dto::spotlight_dto::{self, SpotlightDto},
-    spotlight::spotlight_repository::ISpotlightRepository,
+    dto::spotlight_dto::SpotlightDto, spotlight::spotlight_repository::ISpotlightRepository,
 };
 use app_error::Error;
 use async_trait::async_trait;

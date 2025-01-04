@@ -17,15 +17,18 @@ use app_config::{config::Config, security_config::SecurityConfig};
 use axum::{
     error_handling::HandleErrorLayer,
     extract::MatchedPath,
-    headers::{authorization::Basic, Authorization},
+    // headers::{authorization::Basic, Authorization},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
-    BoxError, Json, Router, TypedHeader,
+    BoxError,
+    Json,
+    Router,
+    // TypedHeader,
 };
 use hyper::{header::HeaderValue, Method, Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
-use migration::init_db_migration;
+// use migration::init_db_migration;
 use once_cell::sync::Lazy;
 use repository::config::{
     db::new_db_pool,
@@ -33,10 +36,7 @@ use repository::config::{
 };
 use serde_json::json;
 use tower::ServiceBuilder;
-use tower_http::{
-    cors::{Any, CorsLayer},
-    trace::TraceLayer,
-};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 static GLOBAL_CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::new()));
 
@@ -64,53 +64,28 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, Json<serde_json::Va
     }
 }
 
-async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> impl IntoResponse {
-    let path = if let Some(matched_path) = request.extensions().get::<MatchedPath>() {
-        matched_path.as_str().to_owned()
-    } else {
-        request.uri().path().to_owned()
-    };
+// pub async fn auth<B>(
+//     // run the `TypedHeader` extractor
+//     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+//     // you can also add more extractors here but the last
+//     // extractor must implement `FromRequest` which
+//     // `Request` does
+//     request: Request<B>,
+//     next: Next<B>,
+// ) -> Result<Response, StatusCode> {
+//     if token_is_valid(auth.0) {
+//         let response = next.run(request).await;
+//         Ok(response)
+//     } else {
+//         Err(StatusCode::UNAUTHORIZED)
+//     }
+// }
 
-    let start = Instant::now();
-    let method = request.method().clone();
-    let response = next.run(request).await;
-    let latency = start.elapsed().as_secs_f64();
-    let status = response.status().as_u16().to_string();
+// fn token_is_valid(token: Basic) -> bool {
+//     let SecurityConfig { username, password } = GLOBAL_CONFIG.clone().get_security();
 
-    let labels = [
-        ("method", method.to_string()),
-        ("path", path),
-        ("status", status),
-    ];
-
-    metrics::increment_counter!("http_requests_total", &labels);
-    metrics::histogram!("http_requests_duration_seconds", latency, &labels);
-
-    response
-}
-
-pub async fn auth<B>(
-    // run the `TypedHeader` extractor
-    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
-    // you can also add more extractors here but the last
-    // extractor must implement `FromRequest` which
-    // `Request` does
-    request: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode> {
-    if token_is_valid(auth.0) {
-        let response = next.run(request).await;
-        Ok(response)
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
-    }
-}
-
-fn token_is_valid(token: Basic) -> bool {
-    let SecurityConfig { username, password } = GLOBAL_CONFIG.clone().get_security();
-
-    username == token.username() && password == token.password()
-}
+//     username == token.username() && password == token.password()
+// }
 
 pub async fn start() -> anyhow::Result<()> {
     // aide::gen::on_error(|error| {
@@ -123,9 +98,9 @@ pub async fn start() -> anyhow::Result<()> {
 
     let config = GLOBAL_CONFIG.clone();
 
-    init_db_migration(&config.database)
-        .await
-        .expect("Failed to migrate database");
+    // init_db_migration(&config.database)
+    //     .await
+    //     .expect("Failed to migrate database");
 
     let db_pool = new_db_pool(&config.database)
         .await
@@ -171,24 +146,24 @@ pub async fn start() -> anyhow::Result<()> {
                 .timeout(Duration::from_secs(HTTP_TIMEOUT)),
         )
         .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http())
-        // .layer(
-        //     CorsLayer::new()
-        //         .allow_origin(Any) //TODO to modify
-        //         // .allow_origin(["http://localhost:3008".parse::<HeaderValue>().unwrap()]) //TODO to modify
-        //         .allow_methods([
-        //             Method::GET,
-        //             Method::POST,
-        //             Method::PUT,
-        //             Method::DELETE,
-        //             Method::OPTIONS,
-        //         ]),
-        // )
-        .route_layer(middleware::from_fn(track_metrics));
+        .layer(TraceLayer::new_for_http());
+    // .layer(
+    //     CorsLayer::new()
+    //         .allow_origin(Any) //TODO to modify
+    //         // .allow_origin(["http://localhost:3008".parse::<HeaderValue>().unwrap()]) //TODO to modify
+    //         .allow_methods([
+    //             Method::GET,
+    //             Method::POST,
+    //             Method::PUT,
+    //             Method::DELETE,
+    //             Method::OPTIONS,
+    //         ]),
+    // )
+    // .route_layer(middleware::from_fn(track_metrics));
     // .layer(middleware::from_fn(auth));
 
-    axum::Server::bind(&format!("0.0.0.0:{}", &config.port).parse()?)
-        .serve(router.into_make_service())
-        .await?;
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", &config.port)).await?;
+
+    axum::serve(listener, router.into_make_service()).await?;
     Ok(())
 }
