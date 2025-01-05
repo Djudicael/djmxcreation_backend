@@ -1,7 +1,10 @@
+use serde::{Deserialize, Serialize};
+
 use crate::dto::metadata_dto::MetadataDto;
 
 use super::content_view::ContentView;
-
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SpotlightView {
     pub id: Option<i32>,
     pub project_id: i32,

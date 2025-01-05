@@ -47,9 +47,18 @@ impl IntoResponse for Error {
         let (status, error_message) = match self {
             Self::NotFound(err) => (StatusCode::NOT_FOUND, err),
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, Self::Unauthorized.to_string()),
-            Self::ServiceError(app_error::Error::EntityNotFound(err)) => {
-                (StatusCode::NOT_FOUND, err)
-            }
+            Self::ServiceError(err) => match err {
+                app_error::Error::EntityNotFound(msg) => (StatusCode::NOT_FOUND, msg),
+                app_error::Error::ContentNotFoundButWasSave(msg) => (StatusCode::NOT_FOUND, msg),
+                app_error::Error::FailAuthMissingXAuth => {
+                    (StatusCode::UNAUTHORIZED, err.to_string())
+                }
+                app_error::Error::Database => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
+            // Self::ServiceError(app_error::Error::EntityNotFound(err)) => {
+            //     (StatusCode::NOT_FOUND, err)
+            // }
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 String::from("unexpected error occurred"),

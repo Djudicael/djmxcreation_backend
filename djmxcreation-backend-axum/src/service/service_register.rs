@@ -3,12 +3,11 @@ use std::sync::Arc;
 use app_core::{
     about_me::about_me_service::DynIAboutMeService, contact::contact_service::DynIContactService,
     project::project_service::DynIProjectService,
-    spotlight::spotlight_service::DynISpotlightService,
 };
 
 use app_service::{
     about_me_service::AboutMeService, contact_service::ContactService,
-    project_service::ProjectService, spotlight_service::SpotlightService,
+    project_service::ProjectService,
 };
 
 use repository::{
@@ -26,7 +25,6 @@ pub struct ServiceRegister {
     pub project_service: DynIProjectService,
     pub about_me_service: DynIAboutMeService,
     pub contact_service: DynIContactService,
-    pub spotlight_service: DynISpotlightService,
 }
 
 impl ServiceRegister {
@@ -41,17 +39,13 @@ impl ServiceRegister {
             project_service: Arc::new(ProjectService::new(
                 project_repository.clone(),
                 storage_repository.clone(),
+                spotlight_repository.clone(),
             )),
             about_me_service: Arc::new(AboutMeService::new(
-                about_me_repository,
+                about_me_repository.clone(),
                 storage_repository.clone(),
             )),
-            contact_service: Arc::new(ContactService::new(contact_repository)),
-            spotlight_service: Arc::new(SpotlightService::new(
-                spotlight_repository,
-                project_repository,
-                storage_repository,
-            )),
+            contact_service: Arc::new(ContactService::new(contact_repository.clone())),
         }
     }
 }

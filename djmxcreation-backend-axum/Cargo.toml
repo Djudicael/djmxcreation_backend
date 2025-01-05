@@ -13,7 +13,7 @@ app_config = { path = "../app_config" }
 repository = { path = "../repository" }
 # migration = { path = "../migration" }
 anyhow = "1.0.95"
-axum = { version = "0.8.1", features = ["multipart"] }
+axum = { version = "0.8.1", features = ["multipart", "macros"] }
 tokio = { version = "1.42.0", features = ["full"] }
 hyper = "1.5.2"
 thiserror = "2.0.9"

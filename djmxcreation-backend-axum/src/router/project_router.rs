@@ -3,7 +3,7 @@ use app_core::{
     project::project_service::DynIProjectService,
     view::{
         content_view::ContentView, project_payload::ProjectPayload, project_view::ProjectView,
-        projects_view::ProjectsView,
+        projects_view::ProjectsView, spotlight_view::SpotlightView,
     },
 };
 
@@ -12,7 +12,7 @@ use axum::{
     routing::{delete, get, patch, post, put},
     Extension, Json, Router,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
@@ -44,26 +44,41 @@ impl Default for PaginationQueryParams {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectToAdd {
+    project_id: i32,
+}
+
 impl ProjectRouter {
     pub fn new_router(service_register: ServiceRegister) -> Router {
         Router::new()
-            .route("/v1/projects", post(ProjectRouter::create_project))
-            .route("/v1/projects", get(ProjectRouter::get_projects))
-            .route("/v2/projects", get(ProjectRouter::get_projects_with_filter))
             .route(
-                "/v1/projects/:id/contents",
-                patch(ProjectRouter::add_project),
+                "/v1/projects",
+                post(Self::create_project).get(Self::get_projects),
             )
-            .route("/v1/projects/:id", put(ProjectRouter::update_project))
+            .route("/v2/projects", get(Self::get_projects_with_filter))
+            .route("/v1/projects/:id/contents", patch(Self::add_project))
+            .route("/v1/projects/:id", put(Self::update_project))
             .route(
                 "/v1/projects/:id/thumbnails/:content_id",
-                put(ProjectRouter::add_thumbnail_to_project),
+                put(Self::add_thumbnail_to_project),
             )
-            .route("/v1/projects/:id", get(ProjectRouter::find_project))
-            .route("/v1/projects/:id", delete(ProjectRouter::delete_project))
+            .route(
+                "/v1/projects/:id",
+                get(Self::find_project).delete(Self::delete_project),
+            )
             .route(
                 "/v1/projects/:id/contents/:content_id",
-                delete(ProjectRouter::delete_content_project),
+                delete(Self::delete_content_project),
+            )
+            .route(
+                "/v1/projects/spotlights",
+                post(Self::add_spotlight).get(Self::get_spotlights),
+            )
+            .route(
+                "/v1/projects/spotlights/:id",
+                get(Self::get_spotlight).delete(Self::delete_spotlight),
             )
             .layer(Extension(service_register.project_service))
     }
@@ -77,9 +92,8 @@ impl ProjectRouter {
 
     pub async fn get_projects_with_filter(
         Extension(project_service): Extension<DynIProjectService>,
-        pagination: Option<Query<PaginationQueryParams>>,
+        Query(pagination): Query<PaginationQueryParams>,
     ) -> ApiResult<Json<ProjectsView>> {
-        let pagination = pagination.unwrap_or_default();
         let projects = project_service
             .get_projects_with_filter(
                 pagination.page,
@@ -172,5 +186,36 @@ impl ProjectRouter {
             .add_thumbnail_to_project(id, content_id)
             .await?;
         Ok(Json(thumbnail))
+    }
+
+    pub async fn get_spotlights(
+        Extension(project_service): Extension<DynIProjectService>,
+    ) -> ApiResult<Json<Vec<SpotlightView>>> {
+        let spotlights = project_service.get_spotlights().await?;
+        Ok(Json(spotlights))
+    }
+
+    pub async fn get_spotlight(
+        Extension(project_service): Extension<DynIProjectService>,
+        Path(spotlight_id): Path<i32>,
+    ) -> ApiResult<Json<SpotlightView>> {
+        let spotlight = project_service.get_spotlight(spotlight_id).await?;
+        Ok(Json(spotlight))
+    }
+
+    pub async fn add_spotlight(
+        Extension(project_service): Extension<DynIProjectService>,
+        Json(payload): Json<ProjectToAdd>,
+    ) -> ApiResult<Json<SpotlightView>> {
+        let spotlight = project_service.add_spotlight(payload.project_id).await?;
+        Ok(Json(spotlight))
+    }
+
+    pub async fn delete_spotlight(
+        Extension(project_service): Extension<DynIProjectService>,
+        Path(spotlight_id): Path<i32>,
+    ) -> ApiResult<()> {
+        project_service.delete_spotlight(spotlight_id).await?;
+        Ok(())
     }
 }

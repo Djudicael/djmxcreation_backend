@@ -5,7 +5,10 @@ use async_trait::async_trait;
 
 use crate::{
     dto::{metadata_dto::MetadataDto, project_dto::ProjectDto},
-    view::{content_view::ContentView, project_view::ProjectView, projects_view::ProjectsView},
+    view::{
+        content_view::ContentView, project_view::ProjectView, projects_view::ProjectsView,
+        spotlight_view::SpotlightView,
+    },
 };
 
 pub type DynIProjectService = Arc<dyn IProjectService + Send + Sync>;
@@ -36,4 +39,8 @@ pub trait IProjectService {
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsView, Error>;
+    async fn add_spotlight(&self, project_id: i32) -> Result<SpotlightView, Error>;
+    async fn get_spotlight(&self, spotlight_id: i32) -> Result<SpotlightView, Error>;
+    async fn get_spotlights(&self) -> Result<Vec<SpotlightView>, Error>;
+    async fn delete_spotlight(&self, spotlight_id: i32) -> Result<(), Error>;
 }

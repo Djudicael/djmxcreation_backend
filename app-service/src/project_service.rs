@@ -1,14 +1,16 @@
 use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
-        project_dto::ProjectDto, projects_dto::ProjectsDto,
+        project_dto::ProjectDto, projects_dto::ProjectsDto, spotlight_dto::SpotlightDto,
     },
     mapper::project_mapper::to_view,
     project::{project_repository::DynIProjectRepository, project_service::IProjectService},
+    spotlight::spotlight_repository::DynISpotlightRepository,
     storage::storage_repository::DynIStorageRepository,
     view::{
         content_view::ContentView, project_view::ProjectView,
         project_with_thumbnail_view::ProjectWithThumbnailView, projects_view::ProjectsView,
+        spotlight_view::SpotlightView,
     },
 };
 use app_error::Error;
@@ -18,17 +20,46 @@ use futures::{stream, FutureExt, StreamExt};
 pub struct ProjectService {
     pub project_repository: DynIProjectRepository,
     pub storage_repository: DynIStorageRepository,
+    pub spotlight_repository: DynISpotlightRepository,
 }
 
 impl ProjectService {
     pub fn new(
         project_repository: DynIProjectRepository,
         storage_repository: DynIStorageRepository,
+        spotlight_repository: DynISpotlightRepository,
     ) -> Self {
         Self {
             project_repository,
             storage_repository,
+            spotlight_repository,
         }
+    }
+
+    async fn to_spotlight_view(&self, spotlight: &SpotlightDto) -> Result<SpotlightView, Error> {
+        let thumbnail = match &spotlight.thumbnail {
+            Some(photo) => {
+                let id = photo.id;
+                let url = self
+                    .storage_repository
+                    .get_object_url(&photo.bucket_name, &photo.file_name)
+                    .await
+                    .ok();
+                Some(ContentView::new(id, photo.mime_type.clone(), url))
+            }
+            None => None,
+        };
+
+        let spot_view = SpotlightView::new(
+            spotlight.id,
+            spotlight.project_id,
+            spotlight.adult,
+            spotlight.metadata.clone(),
+            spotlight.created_on,
+            thumbnail,
+        );
+
+        Ok(spot_view)
     }
 
     async fn to_contents(
@@ -335,5 +366,42 @@ impl IProjectService for ProjectService {
             .map(move |vec| vec)
             .await;
         Ok(ProjectsView::new(page, size, total_pages, result))
+    }
+
+    async fn add_spotlight(&self, project_id: i32) -> Result<SpotlightView, Error> {
+        let _ = self
+            .project_repository
+            .get_project_by_id(project_id)
+            .await?;
+        let spotlight = self.spotlight_repository.add_spotlight(project_id).await?;
+        self.to_spotlight_view(&spotlight).await
+    }
+
+    async fn get_spotlight(&self, spotlight_id: i32) -> Result<SpotlightView, Error> {
+        let spotlight = self
+            .spotlight_repository
+            .get_spotlight(spotlight_id)
+            .await?;
+        self.to_spotlight_view(&spotlight).await
+    }
+
+    async fn get_spotlights(&self) -> Result<Vec<SpotlightView>, Error> {
+        let spotlights = self.spotlight_repository.get_spotlights().await?;
+        let result = stream::iter(spotlights)
+            .fold(Vec::new(), |mut vec, data| async move {
+                let spotlight_view = self.to_spotlight_view(&data).await.expect("msg");
+                vec.push(spotlight_view);
+                vec
+            })
+            .map(move |vec| vec)
+            .await;
+        Ok(result)
+    }
+
+    async fn delete_spotlight(&self, spotlight_id: i32) -> Result<(), Error> {
+        self.spotlight_repository
+            .delete_spotlight(spotlight_id)
+            .await?;
+        Ok(())
     }
 }
