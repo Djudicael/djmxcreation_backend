@@ -10,7 +10,7 @@ use tracing::log::info;
 pub type Db = Pool<Postgres>;
 
 // sql files
-const SQL_DIR: &str = "./sql/migration";
+const SQL_DIR: &str = "../sql/migration";
 
 fn content_hasher(content: &str) -> String {
     // create a SHA3-256 object

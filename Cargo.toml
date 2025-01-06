@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "app-error",
-    "djmxcreation-backend-axum",
-    "repository",
-    "app-service",
-    "migration",
-    "test-util",
-    "app_core",
-    "app_config",
+    "crates/app-error",
+    "crates/djmxcreation-backend-axum",
+    "crates/repository",
+    "crates/app-service",
+    "crates/migration",
+    "crates/test-util",
+    "crates/app_core",
+    "crates/app_config",
 ]
