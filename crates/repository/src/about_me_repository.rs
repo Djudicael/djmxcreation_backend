@@ -1,27 +1,48 @@
-use crate::{config::db::Db, entity::about_me::AboutMe, error::to_error};
+use crate::{
+    config::db::{ClientV2, Db},
+    entity::about_me::AboutMe,
+    error::to_error,
+};
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
     dto::{about_me_dto::AboutMeDto, content_dto::ContentDto},
 };
 use app_error::Error;
 use async_trait::async_trait;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use sqlx::types::Json;
 use sqlx::{Postgres, Transaction};
 
 pub struct AboutMeRepository {
-    db: Db,
+    client: ClientV2,
 }
 
 impl AboutMeRepository {
-    pub fn new(db: Db) -> Self {
-        Self { db }
+    pub fn new(client: ClientV2) -> Self {
+        Self { client }
     }
 
-    // Helper function to handle transactions with error mapping
-    async fn start_transaction<'a>(&'a self) -> Result<Transaction<'a, Postgres>, Error> {
-        self.db.begin().await.map_err(|e| to_error(e, None))
+    // Helper function to execute queries with error mapping
+    async fn execute_query<T>(
+        &self,
+        query: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
+    ) -> Result<T, Error>
+    where
+        T: tokio_postgres::types::FromSqlOwned,
+    {
+        let stmt = self
+            .client
+            .prepare(query)
+            .await
+            .map_err(|e| to_error(e, None))?;
+        let rows = self
+            .client
+            .query_one(&stmt, params)
+            .await
+            .map_err(|e| to_error(e, None))?;
+        Ok(rows.get(0))
     }
 }
 
@@ -36,14 +57,33 @@ impl IAboutMeRepository for AboutMeRepository {
             ..
         } = about.clone();
 
-        let about_me = sqlx::query_as::<_, AboutMe>(sql)
-            .bind(first_name)
-            .bind(last_name)
-            .bind(description)
-            .bind(id)
-            .fetch_one(&self.db)
+        let stmt = self
+            .client
+            .prepare(sql)
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
+        let row = self
+            .client
+            .query_one(
+                &stmt,
+                &[
+                    &first_name,
+                    &last_name,
+                    &description.map(|v| v.to_string()),
+                    &id,
+                ],
+            )
+            .await
+            .map_err(|e| to_error(e, Some(id.to_string())))?;
+
+        let about_me: AboutMe = {
+            let id = row.get(0);
+            let first_name = row.get(1);
+            let last_name = row.get(2);
+            let description: Option<Json<Value>> = row.get(3).map(|desc| Json(desc));
+            let photo = row.get(4);
+            AboutMe::new(id, first_name, last_name, description, photo)
+        };
 
         Ok(AboutMeDto::from(about_me))
     }
