@@ -1,4 +1,5 @@
 use app_error::Error;
+use serde_json::Error as SerdeJsonError;
 use tokio_postgres::{error::SqlState, Error as PgError};
 
 pub fn to_error(pg_error: PgError, message: Option<String>) -> Error {
@@ -16,4 +17,9 @@ pub fn to_error(pg_error: PgError, message: Option<String>) -> Error {
     } else {
         Error::Database
     }
+}
+
+pub fn handle_serde_json_error(error: SerdeJsonError) -> Error {
+    println!("Serde JSON error: {error}");
+    Error::Database // Return a general database error, but can be customized further
 }

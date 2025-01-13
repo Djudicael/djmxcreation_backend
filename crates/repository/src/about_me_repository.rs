@@ -1,7 +1,11 @@
+use std::{future::Future, pin::Pin, sync::Arc};
+
+use tokio::sync::Mutex;
+
 use crate::{
-    config::db::{ClientV2, Db},
+    config::db::ClientV2,
     entity::about_me::AboutMe,
-    error::to_error,
+    error::{handle_serde_json_error, to_error},
 };
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
@@ -11,38 +15,50 @@ use app_error::Error;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use sqlx::types::Json;
-use sqlx::{Postgres, Transaction};
+use tokio_postgres::{Row, Transaction};
 
 pub struct AboutMeRepository {
-    client: ClientV2,
+    client: Arc<Mutex<ClientV2>>,
 }
 
 impl AboutMeRepository {
     pub fn new(client: ClientV2) -> Self {
-        Self { client }
+        Self {
+            client: Arc::new(Mutex::new(client)),
+        }
     }
 
-    // Helper function to execute queries with error mapping
-    async fn execute_query<T>(
-        &self,
-        query: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-    ) -> Result<T, Error>
+    // Helper to map a database row to AboutMe
+    fn map_row_to_about_me(row: &Row) -> Result<AboutMe, Error> {
+        // Try to parse the JSON strings in the 3rd and 4th columns and return the result
+        let description: Option<Value> = row
+            .get::<_, Option<String>>(3)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+
+        let photo: Option<Value> = row
+            .get::<_, Option<String>>(4)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+
+        // Return the AboutMe object with the parsed data
+        Ok(AboutMe::new(
+            row.get(0), // Assuming id is at index 0
+            row.get(1), // Assuming first_name is at index 1
+            row.get(2), // Assuming last_name is at index 2
+            description,
+            photo,
+        ))
+    }
+
+    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
     where
-        T: tokio_postgres::types::FromSqlOwned,
+        F: FnOnce(Transaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send>> + Send, // Expect an async closure
     {
-        let stmt = self
-            .client
-            .prepare(query)
-            .await
-            .map_err(|e| to_error(e, None))?;
-        let rows = self
-            .client
-            .query_one(&stmt, params)
-            .await
-            .map_err(|e| to_error(e, None))?;
-        Ok(rows.get(0))
+        let mut client = self.client.lock().await; // Acquire the lock
+        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
+        let result = f(transaction).await?; // Execute the async closure
+        Ok(result) // Return the result
     }
 }
 
@@ -57,13 +73,13 @@ impl IAboutMeRepository for AboutMeRepository {
             ..
         } = about.clone();
 
-        let stmt = self
-            .client
+        let client = self.client.lock().await;
+        let stmt = client
             .prepare(sql)
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
-        let row = self
-            .client
+
+        let row = client
             .query_one(
                 &stmt,
                 &[
@@ -76,68 +92,58 @@ impl IAboutMeRepository for AboutMeRepository {
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
 
-        let about_me: AboutMe = {
-            let id = row.get(0);
-            let first_name = row.get(1);
-            let last_name = row.get(2);
-            let description: Option<Json<Value>> = row.get(3).map(|desc| Json(desc));
-            let photo = row.get(4);
-            AboutMe::new(id, first_name, last_name, description, photo)
-        };
+        let about_me = Self::map_row_to_about_me(&row)?;
 
         Ok(AboutMeDto::from(about_me))
     }
 
     async fn get_about_me(&self) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about LIMIT 1";
-        let about_me = sqlx::query_as::<_, AboutMe>(sql)
-            .fetch_one(&self.db)
+        let client = self.client.lock().await;
+        let row = client
+            .query_one(sql, &[])
             .await
             .map_err(|e| to_error(e, None))?;
 
+        let about_me = Self::map_row_to_about_me(&row)?;
         Ok(AboutMeDto::from(about_me))
     }
 
     async fn get_about_me_by_id(&self, id: i32) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about WHERE id = $1";
-        let about_me = sqlx::query_as::<_, AboutMe>(sql)
-            .bind(id)
-            .fetch_one(&self.db)
+        let client = self.client.lock().await;
+        let row = client
+            .query_one(sql, &[&id])
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
 
+        let about_me = Self::map_row_to_about_me(&row)?;
         Ok(AboutMeDto::from(about_me))
     }
 
     async fn update_photo(&self, id: i32, content: &ContentDto) -> Result<(), Error> {
-        let mut tx = self.start_transaction().await?;
-        let content_json = Json(json!(content));
+        let content_json = json!(content);
+        let sql = "UPDATE about SET photo = $1 WHERE id = $2";
 
-        sqlx::query("UPDATE about SET photo = $1 WHERE id = $2")
-            .bind(content_json)
-            .bind(id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
-
-        tx.commit()
-            .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
-        Ok(())
+        // Use the `with_transaction` method and return a Result from the closure
+        self.with_transaction(|mut tx| async move {
+            tx.execute(sql, &[&content_json.to_string(), &id])
+                .await
+                .map_err(|e| to_error(e, Some(id.to_string())))?;
+            Ok(()) // Ensure the closure returns a Result
+        })
+        .await // Await the result of `with_transaction`
     }
 
     async fn delete_about_me_photo(&self, id: i32) -> Result<(), Error> {
         let mut tx = self.start_transaction().await?;
 
-        sqlx::query("UPDATE about SET photo = NULL WHERE id = $1")
-            .bind(id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
-
-        tx.commit()
-            .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
-        Ok(())
+        self.with_transaction(|tx| {
+            tx.execute(sql, &[&id])
+                .await
+                .map_err(|e| to_error(e, Some(id.to_string())))?;
+            Ok(())
+        })
+        .await
     }
 }
