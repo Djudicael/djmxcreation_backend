@@ -53,12 +53,15 @@ impl AboutMeRepository {
 
     async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
     where
-        F: FnOnce(Transaction<'_>) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send>> + Send, // Expect an async closure
+        F: for<'a> FnOnce(
+            &'a Transaction<'a>,
+        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
     {
-        let mut client = self.client.lock().await; // Acquire the lock
+        let mut client = self.client.lock().await;
         let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
-        let result = f(transaction).await?; // Execute the async closure
-        Ok(result) // Return the result
+        let result = f(&transaction).await?;
+        transaction.commit().await.map_err(|e| to_error(e, None))?;
+        Ok(result)
     }
 }
 
@@ -125,24 +128,27 @@ impl IAboutMeRepository for AboutMeRepository {
         let content_json = json!(content);
         let sql = "UPDATE about SET photo = $1 WHERE id = $2";
 
-        // Use the `with_transaction` method and return a Result from the closure
-        self.with_transaction(|mut tx| async move {
-            tx.execute(sql, &[&content_json.to_string(), &id])
-                .await
-                .map_err(|e| to_error(e, Some(id.to_string())))?;
-            Ok(()) // Ensure the closure returns a Result
+        self.with_transaction(|tx| {
+            Box::pin(async move {
+                tx.execute(sql, &[&content_json.to_string(), &id])
+                    .await
+                    .map_err(|e| to_error(e, Some(id.to_string())))?;
+                Ok(())
+            })
         })
-        .await // Await the result of `with_transaction`
+        .await
     }
 
     async fn delete_about_me_photo(&self, id: i32) -> Result<(), Error> {
-        let mut tx = self.start_transaction().await?;
+        let sql = "UPDATE about SET photo = NULL WHERE id = $1";
 
         self.with_transaction(|tx| {
-            tx.execute(sql, &[&id])
-                .await
-                .map_err(|e| to_error(e, Some(id.to_string())))?;
-            Ok(())
+            Box::pin(async move {
+                tx.execute(sql, &[&id])
+                    .await
+                    .map_err(|e| to_error(e, Some(id.to_string())))?;
+                Ok(())
+            })
         })
         .await
     }
