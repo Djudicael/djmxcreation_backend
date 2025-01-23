@@ -3,28 +3,27 @@ use app_core::dto::{
     project_dto::ProjectDto,
 };
 use serde_json::Value;
-use sqlx::types::{chrono, Json};
 
 use super::project_content::ProjectContent;
 
-#[derive(sqlx::FromRow, Default, Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Project {
     pub id: Option<i32>,
-    pub metadata: Option<Json<Value>>,
-    pub description: Option<Json<Value>>,
+    pub metadata: Option<Value>,
+    pub description: Option<Value>,
     pub visible: bool,
     pub adult: bool,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_on: Option<chrono::DateTime<chrono::Utc>>,
-    pub contents: Vec<Json<Value>>,
-    pub thumbnail_content: Option<Json<Value>>,
+    pub contents: Vec<Value>,
+    pub thumbnail_content: Option<Value>,
 }
 
-#[derive(sqlx::FromRow, Default, Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct ProjectCreated {
     pub id: Option<i32>,
-    pub metadata: Option<Json<Value>>,
-    pub description: Option<Json<Value>>,
+    pub metadata: Option<Value>,
+    pub description: Option<Value>,
     pub visible: bool,
     pub adult: bool,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,
@@ -51,12 +50,12 @@ impl Project {
         self
     }
 
-    pub fn metadata(mut self, metadata: Option<Json<Value>>) -> Self {
+    pub fn metadata(mut self, metadata: Option<Value>) -> Self {
         self.metadata = metadata;
         self
     }
 
-    pub fn description(mut self, description: Option<Json<Value>>) -> Self {
+    pub fn description(mut self, description: Option<Value>) -> Self {
         self.description = description;
         self
     }
@@ -81,12 +80,12 @@ impl Project {
         self
     }
 
-    pub fn contents(mut self, contents: Vec<Json<Value>>) -> Self {
+    pub fn contents(mut self, contents: Vec<Value>) -> Self {
         self.contents = contents;
         self
     }
 
-    pub fn thumbnail_content(mut self, thumbnail_content: Option<Json<Value>>) -> Self {
+    pub fn thumbnail_content(mut self, thumbnail_content: Option<Value>) -> Self {
         self.thumbnail_content = thumbnail_content;
         self
     }
@@ -112,10 +111,10 @@ impl From<Project> for ProjectDto {
             .id(val.id)
             .metadata(
                 val.metadata
-                    .map(|metadata_json| metadata_json.0)
+                    .map(|metadata_json| metadata_json)
                     .and_then(to_metadata),
             )
-            .description(val.description.map(|description_json| description_json.0))
+            .description(val.description)
             .visible(val.visible)
             .adult(val.adult)
             .created_on(val.created_on)
@@ -123,16 +122,11 @@ impl From<Project> for ProjectDto {
             .contents(
                 val.contents
                     .into_iter()
-                    .map(|content_json| content_json.0)
                     .flat_map(to_content)
                     .map(ProjectContentDto::from)
                     .collect(),
             )
-            .thumbnail(
-                val.thumbnail_content
-                    .map(|thumbnail_json| thumbnail_json.0)
-                    .and_then(to_thumbnail),
-            )
+            .thumbnail(val.thumbnail_content.and_then(to_thumbnail))
             .build()
     }
 }
@@ -140,12 +134,8 @@ impl From<ProjectCreated> for ProjectDto {
     fn from(val: ProjectCreated) -> ProjectDto {
         ProjectDto::new()
             .id(val.id)
-            .metadata(
-                val.metadata
-                    .map(|metadata_json| metadata_json.0)
-                    .and_then(to_metadata),
-            )
-            .description(val.description.map(|description_json| description_json.0))
+            .metadata(val.metadata.and_then(to_metadata))
+            .description(val.description)
             .visible(val.visible)
             .adult(val.adult)
             .created_on(val.created_on)

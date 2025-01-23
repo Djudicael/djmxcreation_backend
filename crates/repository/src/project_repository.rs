@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin, sync::Arc, time::SystemTime};
+
 use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
@@ -8,48 +10,152 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
+use aws_sdk_s3::client;
 use chrono::{DateTime, Utc};
 use serde_json::json;
-use sqlx::types::Json;
+use tokio::sync::Mutex;
+use tokio_postgres::{Row, Transaction};
 
 use crate::{
-    config::db::Db,
+    config::db::ClientV2,
     entity::{
         project::{Project, ProjectCreated},
         project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
-    error::to_error,
+    error::{handle_serde_json_error, to_error},
 };
 
 pub struct ProjectRepository {
-    db: Db,
+    client: Arc<Mutex<ClientV2>>,
 }
 
 impl ProjectRepository {
-    pub fn new(db: Db) -> Self {
-        Self { db }
+    pub fn new(client: ClientV2) -> Self {
+        Self {
+            client: Arc::new(Mutex::new(client)),
+        }
+    }
+
+    fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
+        let metadata: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(1)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let description: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(1)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let thumbnail_content: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(7)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let updated_on: Option<SystemTime> = row.get(3);
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+        let created_on: Option<SystemTime> = row.get(2);
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+        Ok(Project {
+            id: row.get(0),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible: row.get(5),
+            adult: row.get(6),
+            contents: vec![],
+            thumbnail_content,
+        })
+    }
+
+    fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
+        let metadata: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(1)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let description: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(1)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let thumbnail_content: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(7)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let updated_on: Option<SystemTime> = row.get(3);
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+        let created_on: SystemTime = row.get(2);
+        let created_on: DateTime<Utc> = created_on.into();
+        let thumbnail_created_on: Option<SystemTime> = row.get(8);
+        let thumbnail_created_on: Option<DateTime<Utc>> =
+            thumbnail_created_on.map(|time| time.into());
+        Ok(ProjectWithThumbnail {
+            id: row.get(0),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible: row.get(5),
+            adult: row.get(6),
+            thumbnail_content,
+            thumbnail_created_on,
+        })
+    }
+
+    fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
+        let content: Option<serde_json::Value> = row
+            .get::<_, Option<String>>(2)
+            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
+            .transpose()?;
+        let created_on: Option<SystemTime> = row.get(3);
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+        Ok(ProjectContent::new(
+            row.get(0),
+            row.get(1),
+            content,
+            created_on,
+        ))
+    }
+
+    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
+    where
+        F: for<'a> FnOnce(
+            &'a Transaction<'a>,
+        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
+    {
+        let mut client = self.client.lock().await;
+        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
+        let result = f(&transaction).await?;
+        transaction.commit().await.map_err(|e| to_error(e, None))?;
+        Ok(result)
     }
 }
 
 #[async_trait]
 impl IProjectRepository for ProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error> {
-        let metadata_json = Json(json!(metadata));
+        let metadata_json = json!(metadata);
         let now_utc: DateTime<Utc> = Utc::now();
-        let sql =
-            "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3, $4) RETURNING *";
-        let query = sqlx::query_as::<_, ProjectCreated>(sql)
-            .bind(metadata_json)
-            .bind(now_utc)
-            .bind(false)
-            .bind(false);
-        let project = ProjectDto::from(
-            query
-                .fetch_one(&self.db)
-                .await
-                .map_err(|sqlx_error| to_error(sqlx_error, None))?,
-        );
+        let sql = "INSERT INTO project (metadata, created_on, visible, adult) VALUES ($1, $2, $3, $4) RETURNING *";
+
+        let project = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(
+                            sql,
+                            &[
+                                &metadata_json.to_string(),
+                                &now_utc.to_string(),
+                                &true,
+                                &false,
+                            ],
+                        )
+                        .await
+                        .map_err(|e| to_error(e, None))?;
+                    ProjectRepository::map_create_row_to_project(&row).map(ProjectDto::from)
+                })
+            })
+            .await?;
+
         Ok(project)
     }
 
@@ -58,17 +164,23 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
         content: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
-        let content_json = Json(json!(content));
+        let content_json = json!(content);
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project_content(project_id, content, created_on) VALUES($1, $2, $3) RETURNING *";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(project_id)
-            .bind(content_json)
-            .bind(now_utc);
-        let content_entity = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        let content_entity = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(
+                            sql,
+                            &[&project_id, &content_json.to_string(), &now_utc.to_string()],
+                        )
+                        .await
+                        .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+                    ProjectRepository::map_row_to_project_content(&row)
+                })
+            })
+            .await?;
         Ok(ProjectContentDto::from(content_entity))
     }
 
@@ -77,7 +189,7 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
         thumbnail: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
-        let thumbnail_json = Json(json!(thumbnail));
+        let thumbnail_json = json!(thumbnail);
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project_content_thumbnail (content, project_id, created_on)
         VALUES ($1, $2, $3)
@@ -85,14 +197,24 @@ impl IProjectRepository for ProjectRepository {
         SET content = EXCLUDED.content, created_on = EXCLUDED.created_on
         RETURNING *;
         ";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(thumbnail_json)
-            .bind(project_id)
-            .bind(now_utc);
-        let content_entity = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        let content_entity = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(
+                            sql,
+                            &[
+                                &thumbnail_json.to_string(),
+                                &project_id,
+                                &now_utc.to_string(),
+                            ],
+                        )
+                        .await
+                        .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+                    ProjectRepository::map_row_to_project_content(&row)
+                })
+            })
+            .await?;
         Ok(ProjectContentDto::from(content_entity))
     }
 
@@ -118,11 +240,14 @@ impl IProjectRepository for ProjectRepository {
     GROUP BY 
         p.id, 
         c.content";
-        let query = sqlx::query_as::<_, Project>(sql).bind(id);
-        let project = query
-            .fetch_one(&self.db)
+
+        let client = self.client.lock().await;
+        let row = client
+            .query_one(sql, &[&id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
+            .map_err(|e| to_error(e, None))?;
+
+        let project = ProjectRepository::map_create_row_to_project(&row)?;
 
         Ok(ProjectDto::from(project))
     }
@@ -147,11 +272,17 @@ impl IProjectRepository for ProjectRepository {
     GROUP BY 
         p.id, 
         c.content";
-        let query = sqlx::query_as::<_, Project>(sql);
-        let projects = query
-            .fetch_all(&self.db)
+
+        let client = self.client.lock().await;
+        let rows = client
+            .query(sql, &[])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+            .map_err(|e| to_error(e, None))?;
+
+        let projects = rows
+            .iter()
+            .map(|row| ProjectRepository::map_create_row_to_project(row))
+            .collect::<Result<Vec<Project>, Error>>()?;
         Ok(projects
             .iter()
             .map(|p| ProjectDto::from(p.clone()))
@@ -298,37 +429,22 @@ impl IProjectRepository for ProjectRepository {
     }
 
     async fn delete_project_content_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+        let sql = "DELETE FROM project_content WHERE id = $1 and project_id = $2 ";
+        let client = self.client.lock().await;
+        client
+            .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        sqlx::query("DELETE FROM project_content WHERE id = $1 and project_id = $2 ")
-            .bind(id)
-            .bind(project_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
     }
 
     async fn delete_project_by_id(&self, project_id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+        let sql = "DELETE FROM project WHERE id = $1 ";
+        let client = self.client.lock().await;
+        client
+            .execute(sql, &[&project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        sqlx::query("DELETE FROM project WHERE id = $1 ")
-            .bind(project_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
     }
 
