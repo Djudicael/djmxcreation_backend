@@ -10,7 +10,7 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
-use aws_sdk_s3::client;
+
 use chrono::{DateTime, Utc};
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -19,8 +19,7 @@ use tokio_postgres::{Row, Transaction};
 use crate::{
     config::db::ClientV2,
     entity::{
-        project::{Project, ProjectCreated},
-        project_content::ProjectContent,
+        project::Project, project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
     error::{handle_serde_json_error, to_error},
@@ -331,25 +330,28 @@ impl IProjectRepository for ProjectRepository {
         {adult_filter}"
         );
 
-        let total_count: i64 = sqlx::query_scalar(&total_sql)
-            .bind(is_visible)
-            .bind(is_adult)
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+        let client = self.client.lock().await;
 
-        let rows = sqlx::query_as::<_, ProjectWithThumbnail>(&sql)
-            .bind(is_visible)
-            .bind(size)
-            .bind((page - 1) * size)
-            .fetch_all(&self.db)
+        // Execute the total count SQL query to get the total number of projects
+
+        let total_count: i64 = client
+            .query_one(&total_sql, &[&is_visible])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+            .map_err(|e| to_error(e, None))?
+            .get(0);
+
+        // Execute the main SQL query to get the projects for the current page
+
+        let rows = client
+            .query(&sql, &[&is_visible, &size, &((page - 1) * size)])
+            .await
+            .map_err(|e| to_error(e, None))?;
 
         let projects = rows
             .iter()
-            .map(|p| ProjectWithThumbnailDto::from(p.clone()))
-            .collect();
+            .map(|row| ProjectRepository::map_row_to_project_with_thumbnail(row))
+            .map(|r| r.map(ProjectWithThumbnailDto::from))
+            .collect::<Result<Vec<ProjectWithThumbnailDto>, Error>>()?;
 
         // Calculate the total number of pages based on the total count and page size
         let total_pages = ((total_count as f64) / (size as f64)).ceil() as i32;
@@ -365,11 +367,6 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
         project: &ProjectDto,
     ) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         let now_utc: DateTime<Utc> = Utc::now();
         let ProjectDto {
             metadata,
@@ -378,19 +375,23 @@ impl IProjectRepository for ProjectRepository {
             adult,
             ..
         } = project.clone();
-        sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6 ")
-            .bind(description)
-            .bind(metadata.map(|metadata| Json(json!(metadata))))
-            .bind(visible)
-            .bind(adult)
-            .bind(now_utc)
-            .bind(project_id)
-            .execute(&mut *tx)
-            .await.map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
-        tx.commit()
+        let sql="UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6";
+        let client = self.client.lock().await;
+        client
+            .execute(
+                sql,
+                &[
+                    &description.map(|v| v.to_string()),
+                    &metadata.map(|v| json!(v).to_string()),
+                    &visible,
+                    &adult,
+                    &now_utc.to_string(),
+                    &project_id,
+                ],
+            )
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
 
         Ok(())
     }
@@ -400,15 +401,17 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1";
-        let query = sqlx::query_as::<_, ProjectContent>(sql).bind(project_id);
-        let contents = query
-            .fetch_all(&self.db)
+        let client = self.client.lock().await;
+        let row = client
+            .query(sql, &[&project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        Ok(contents
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+        let contents = row
             .iter()
-            .map(|c| ProjectContentDto::from(c.clone()))
-            .collect())
+            .map(|r| ProjectRepository::map_row_to_project_content(r))
+            .map(|r| r.map(ProjectContentDto::from))
+            .collect::<Result<Vec<ProjectContentDto>, Error>>()?;
+        Ok(contents)
     }
 
     async fn get_projects_content_by_id(
@@ -417,13 +420,13 @@ impl IProjectRepository for ProjectRepository {
         id: i32,
     ) -> Result<ProjectContentDto, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 and id= $2";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(project_id)
-            .bind(id);
-        let content = query
-            .fetch_one(&self.db)
+
+        let client = self.client.lock().await;
+        let row = client
+            .query_one(sql, &[&project_id, &id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+        let content = ProjectRepository::map_row_to_project_content(&row)?;
 
         Ok(ProjectContentDto::from(content))
     }
@@ -454,11 +457,17 @@ impl IProjectRepository for ProjectRepository {
         project_id: i32,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
-        let query = sqlx::query_as::<_, ProjectContent>(sql).bind(project_id);
-        let contents = query
-            .fetch_all(&self.db)
+
+        let client = self.client.lock().await;
+        let row = client
+            .query(sql, &[&project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+        let contents = row
+            .iter()
+            .map(|r| ProjectRepository::map_row_to_project_content(r))
+            .collect::<Result<Vec<ProjectContent>, Error>>()?;
+
         Ok(contents
             .iter()
             .map(|c| ProjectContentDto::from(c.clone()))
@@ -466,20 +475,13 @@ impl IProjectRepository for ProjectRepository {
     }
 
     async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+        let sql = "DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2";
+
+        let client = self.client.lock().await;
+        client
+            .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
-        sqlx::query("DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2 ")
-            .bind(id)
-            .bind(project_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
     }
 
@@ -491,13 +493,13 @@ impl IProjectRepository for ProjectRepository {
         let sql = "SELECT * FROM project_content_thumbnail AS pt
         WHERE pt.content ->> 'id' = CAST($1 AS TEXT) and pt.project_id = $2
         ";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(id)
-            .bind(project_id);
-        let content = query
-            .fetch_one(&self.db)
+
+        let client = self.client.lock().await;
+        let row = client
+            .query_one(sql, &[&id, &project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+        let content = ProjectRepository::map_row_to_project_content(&row)?;
 
         Ok(Some(ProjectContentDto::from(content)))
     }

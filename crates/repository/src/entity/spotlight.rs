@@ -2,16 +2,15 @@ use app_core::dto::{
     content_dto::ContentDto, metadata_dto::MetadataDto, spotlight_dto::SpotlightDto,
 };
 use serde_json::Value;
-use sqlx::types::Json;
 
-#[derive(sqlx::FromRow, Default, Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Spotlight {
     pub id: Option<i32>,
     pub project_id: i32,
     pub adult: bool,
-    pub metadata: Option<Json<Value>>,
+    pub metadata: Option<Value>,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,
-    pub thumbnail: Option<Json<Value>>,
+    pub thumbnail: Option<Value>,
 }
 
 impl From<Spotlight> for SpotlightDto {
@@ -21,18 +20,8 @@ impl From<Spotlight> for SpotlightDto {
             .project_id(value.project_id)
             .created_on(value.created_on)
             .id(value.id)
-            .metadata(
-                value
-                    .metadata
-                    .map(|metadata_json| metadata_json.0)
-                    .and_then(to_metadata),
-            )
-            .thumbnail(
-                value
-                    .thumbnail
-                    .map(|thumbnail_json| thumbnail_json.0)
-                    .and_then(to_content),
-            )
+            .metadata(value.metadata.and_then(to_metadata))
+            .thumbnail(value.thumbnail.and_then(to_content))
             .build()
     }
 }
