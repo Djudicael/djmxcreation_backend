@@ -1,5 +1,5 @@
 CREATE TABLE project(
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     metadata jsonb,
     created_on TIMESTAMPTZ NOT NULL,
     updated_on TIMESTAMPTZ,
@@ -9,7 +9,7 @@ CREATE TABLE project(
 );
 
 CREATE TABLE project_content(
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
     project_id INT NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE project_content(
 );
 
 CREATE TABLE project_content_thumbnail(
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
     project_id INT NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,

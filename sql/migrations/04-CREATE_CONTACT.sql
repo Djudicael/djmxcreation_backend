@@ -1,5 +1,5 @@
 CREATE TABLE contact(
-    id serial PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     description jsonb
 );
 

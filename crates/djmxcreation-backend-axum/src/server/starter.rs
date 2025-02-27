@@ -102,12 +102,7 @@ pub async fn start() -> anyhow::Result<()> {
     //     .await
     //     .expect("Failed to migrate database");
 
-    let (client, connection) = db_client(&config.database).await?;
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
+    let client = db_client(&config.database).await?;
 
     let storage = config.clone().get_storage();
 
