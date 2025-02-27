@@ -22,10 +22,8 @@ pub struct SpotlightRepository {
 }
 
 impl SpotlightRepository {
-    pub fn new(client: ClientV2) -> Self {
-        Self {
-            client: Arc::new(Mutex::new(client)),
-        }
+    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+        Self { client }
     }
 
     async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>

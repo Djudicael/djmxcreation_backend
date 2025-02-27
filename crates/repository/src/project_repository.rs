@@ -30,10 +30,8 @@ pub struct ProjectRepository {
 }
 
 impl ProjectRepository {
-    pub fn new(client: ClientV2) -> Self {
-        Self {
-            client: Arc::new(Mutex::new(client)),
-        }
+    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+        Self { client }
     }
 
     fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {

@@ -22,10 +22,8 @@ pub struct AboutMeRepository {
 }
 
 impl AboutMeRepository {
-    pub fn new(client: ClientV2) -> Self {
-        Self {
-            client: Arc::new(Mutex::new(client)),
-        }
+    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+        Self { client }
     }
 
     // Helper to map a database row to AboutMe
