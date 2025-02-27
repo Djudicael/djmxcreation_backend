@@ -6,11 +6,12 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio_postgres::{Row, Transaction};
+use uuid::Uuid;
 
 use crate::{
     config::db::ClientV2,
     entity::contact::Contact,
-    error::{handle_serde_json_error, to_error},
+    error::{handle_serde_json_error, handle_uuid_error, to_error},
 };
 
 pub struct ContactRepository {
@@ -27,7 +28,8 @@ impl ContactRepository {
             .get::<_, Option<String>>(1)
             .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
             .transpose()?;
-        Ok(Contact::new(row.get(0), description))
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
+        Ok(Contact::new(Some(id), description))
     }
 
     async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>

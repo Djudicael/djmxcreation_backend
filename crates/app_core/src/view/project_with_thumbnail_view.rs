@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::dto::metadata_dto::MetadataDto;
 
@@ -8,7 +9,7 @@ use super::content_view::ContentView;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectWithThumbnailView {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<MetadataDto>,
     pub visible: bool,
     pub adult: bool,
@@ -19,7 +20,7 @@ pub struct ProjectWithThumbnailView {
 
 impl ProjectWithThumbnailView {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         metadata: Option<MetadataDto>,
         visible: bool,
         adult: bool,

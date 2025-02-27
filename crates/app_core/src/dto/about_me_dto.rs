@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 use super::content_dto::ContentDto;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMeDto {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub first_name: String,
     pub last_name: String,
     pub description: Option<Value>,
@@ -14,7 +15,7 @@ pub struct AboutMeDto {
 
 impl AboutMeDto {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         first_name: String,
         last_name: String,
         description: Option<Value>,

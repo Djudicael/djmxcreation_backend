@@ -2,11 +2,12 @@ use app_core::dto::{
     content_dto::ContentDto, metadata_dto::MetadataDto, spotlight_dto::SpotlightDto,
 };
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Default, Debug, Clone)]
 pub struct Spotlight {
-    pub id: Option<i32>,
-    pub project_id: i32,
+    pub id: Option<Uuid>,
+    pub project_id: Uuid,
     pub adult: bool,
     pub metadata: Option<Value>,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,

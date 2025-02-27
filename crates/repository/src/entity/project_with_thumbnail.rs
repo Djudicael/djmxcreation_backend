@@ -3,10 +3,11 @@ use app_core::dto::{
     project_with_thumbnail_dto::ProjectWithThumbnailDto,
 };
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct ProjectWithThumbnail {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<Value>,
     pub created_on: chrono::DateTime<chrono::Utc>,
     pub updated_on: Option<chrono::DateTime<chrono::Utc>>,

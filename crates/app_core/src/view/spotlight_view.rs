@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::dto::metadata_dto::MetadataDto;
 
@@ -6,8 +7,8 @@ use super::content_view::ContentView;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SpotlightView {
-    pub id: Option<i32>,
-    pub project_id: i32,
+    pub id: Option<Uuid>,
+    pub project_id: Uuid,
     pub adult: bool,
     pub metadata: Option<MetadataDto>,
     pub created_on: Option<chrono::DateTime<chrono::Utc>>,
@@ -16,8 +17,8 @@ pub struct SpotlightView {
 
 impl SpotlightView {
     pub fn new(
-        id: Option<i32>,
-        project_id: i32,
+        id: Option<Uuid>,
+        project_id: Uuid,
         adult: bool,
         metadata: Option<MetadataDto>,
         created_on: Option<chrono::DateTime<chrono::Utc>>,

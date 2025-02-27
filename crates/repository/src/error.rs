@@ -23,3 +23,8 @@ pub fn handle_serde_json_error(error: SerdeJsonError) -> Error {
     println!("Serde JSON error: {error}");
     Error::Database // Return a general database error, but can be customized further
 }
+
+pub fn handle_uuid_error(error: uuid::Error) -> Error {
+    println!(" uuid error: {error}");
+    Error::Database // Return a general database error, but can be customized further
+}

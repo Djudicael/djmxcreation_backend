@@ -1,10 +1,11 @@
 use app_core::dto::{about_me_dto::AboutMeDto, content_dto::ContentDto};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMe {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub first_name: String,
     pub last_name: String,
     pub description: Option<Value>,
@@ -13,7 +14,7 @@ pub struct AboutMe {
 
 impl AboutMe {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         first_name: String,
         last_name: String,
         description: Option<Value>,

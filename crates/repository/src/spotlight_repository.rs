@@ -10,11 +10,12 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio_postgres::{Row, Transaction};
+use uuid::Uuid;
 
 use crate::{
     config::db::ClientV2,
     entity::spotlight::Spotlight,
-    error::{handle_serde_json_error, to_error},
+    error::{handle_serde_json_error, handle_uuid_error, to_error},
 };
 
 pub struct SpotlightRepository {
@@ -51,10 +52,12 @@ impl SpotlightRepository {
 
         let created_on: Option<SystemTime> = row.get(4);
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
+        let project_id = Uuid::parse_str(row.get(1)).map_err(|e| handle_uuid_error(e))?;
 
         Ok(Spotlight {
-            id: row.get(0),
-            project_id: row.get(1),
+            id: Some(id),
+            project_id,
             adult: row.get(2),
             metadata,
             created_on,
@@ -65,7 +68,7 @@ impl SpotlightRepository {
 
 #[async_trait]
 impl ISpotlightRepository for SpotlightRepository {
-    async fn add_spotlight(&self, project_id: i32) -> Result<SpotlightDto, Error> {
+    async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightDto, Error> {
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO spotlight (project_id, created_on) VALUES ($1, $2)
         RETURNING spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail
@@ -76,7 +79,7 @@ impl ISpotlightRepository for SpotlightRepository {
             .with_transaction(|tx| {
                 Box::pin(async move {
                     let row = tx
-                        .query_one(sql, &[&project_id, &now_utc.to_string()])
+                        .query_one(sql, &[&project_id.to_string(), &now_utc.to_string()])
                         .await
                         .map_err(|error| to_error(error, None))?;
 

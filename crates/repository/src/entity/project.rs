@@ -3,12 +3,13 @@ use app_core::dto::{
     project_dto::ProjectDto,
 };
 use serde_json::Value;
+use uuid::Uuid;
 
 use super::project_content::ProjectContent;
 
 #[derive(Default, Debug, Clone)]
 pub struct Project {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<Value>,
     pub description: Option<Value>,
     pub visible: bool,
@@ -21,7 +22,7 @@ pub struct Project {
 
 #[derive(Default, Debug, Clone)]
 pub struct ProjectCreated {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<Value>,
     pub description: Option<Value>,
     pub visible: bool,
@@ -45,7 +46,7 @@ impl Project {
         }
     }
 
-    pub fn id(mut self, id: Option<i32>) -> Self {
+    pub fn id(mut self, id: Option<Uuid>) -> Self {
         self.id = id;
         self
     }

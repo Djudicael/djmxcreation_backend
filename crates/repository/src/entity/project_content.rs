@@ -1,19 +1,20 @@
 use app_core::dto::{content_dto::ContentDto, project_content_dto::ProjectContentDto};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectContent {
-    id: Option<i32>,
-    project_id: i32,
+    id: Option<Uuid>,
+    project_id: Uuid,
     content: Option<Value>,
     created_on: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl ProjectContent {
     pub fn new(
-        id: Option<i32>,
-        project_id: i32,
+        id: Option<Uuid>,
+        project_id: Uuid,
         content: Option<Value>,
         created_on: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Self {
