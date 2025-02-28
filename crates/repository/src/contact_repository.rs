@@ -59,12 +59,12 @@ impl IContactRepository for ContactRepository {
         Ok(ContactDto::from(contact))
     }
 
-    async fn update_contact(&self, id: i32, contact: &ContactDto) -> Result<ContactDto, Error> {
+    async fn update_contact(&self, id: Uuid, contact: &ContactDto) -> Result<ContactDto, Error> {
         let sql = "UPDATE contact SET description = $1 WHERE id = $2 RETURNING *";
         let description = contact.description.as_ref().map(|v| v.to_string());
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&description, &id])
+            .query_one(sql, &[&description, &id.to_string()])
             .await
             .map_err(|sql_error| to_error(sql_error, None))?;
         let contact = ContactRepository::map_row_to_contact(&row)?;

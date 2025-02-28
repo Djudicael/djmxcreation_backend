@@ -12,3 +12,4 @@ app-error = { path = "../app-error" }
 app_core = { path = "../app_core" }
 async-trait = "0.1.84"
 log = "0.4.22"
+uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }

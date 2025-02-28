@@ -4,6 +4,7 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 pub struct ContactService {
     pub contact_repository: DynIContactRepository,
@@ -22,7 +23,7 @@ impl IContactService for ContactService {
         Ok(contact)
     }
 
-    async fn update_contact(&self, id: i32, contact: &ContactDto) -> Result<ContactDto, Error> {
+    async fn update_contact(&self, id: Uuid, contact: &ContactDto) -> Result<ContactDto, Error> {
         let _ = self.contact_repository.get_contact().await?;
         let contact = self.contact_repository.update_contact(id, contact).await?;
         Ok(contact)

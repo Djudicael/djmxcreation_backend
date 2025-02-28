@@ -38,7 +38,7 @@ impl AboutMeRouter {
 
     pub async fn update_about_me(
         Extension(about_me_service): Extension<DynIAboutMeService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         Json(body): Json<AboutMeView>,
     ) -> ApiResult<Json<MeView>> {
         let about_me = about_me_service
@@ -48,7 +48,7 @@ impl AboutMeRouter {
     }
     pub async fn delete_image_about_me(
         Extension(about_me_service): Extension<DynIAboutMeService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
     ) -> ApiResult<()> {
         about_me_service.delete_photo(id).await?;
         Ok(())
@@ -56,7 +56,7 @@ impl AboutMeRouter {
 
     pub async fn add_image_profile_to_about_me(
         Extension(about_me_service): Extension<DynIAboutMeService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         mut form: Multipart,
     ) -> ApiResult<()> {
         while let Some(field) = form.next_field().await? {

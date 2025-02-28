@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use app_error::Error;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 use crate::dto::{
     content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
@@ -16,17 +17,17 @@ pub trait IProjectRepository {
 
     async fn add_project_content(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         content: &ContentDto,
     ) -> Result<ProjectContentDto, Error>;
 
     async fn add_project_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         thumbnail: &ContentDto,
     ) -> Result<ProjectContentDto, Error>;
 
-    async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error>;
+    async fn get_project_by_id(&self, id: Uuid) -> Result<ProjectDto, Error>;
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error>;
 
@@ -40,30 +41,32 @@ pub trait IProjectRepository {
 
     async fn update_project_entity(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         project: &ProjectDto,
     ) -> Result<(), Error>;
 
-    async fn get_projects_contents(&self, project_id: i32)
-        -> Result<Vec<ProjectContentDto>, Error>;
+    async fn get_projects_contents(
+        &self,
+        project_id: Uuid,
+    ) -> Result<Vec<ProjectContentDto>, Error>;
 
     async fn get_projects_content_by_id(
         &self,
-        project_id: i32,
-        id: i32,
+        project_id: Uuid,
+        id: Uuid,
     ) -> Result<ProjectContentDto, Error>;
 
-    async fn delete_project_content_by_id(&self, project_id: i32, id: i32) -> Result<(), Error>;
-    async fn delete_project_by_id(&self, project_id: i32) -> Result<(), Error>;
+    async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error>;
+    async fn delete_project_by_id(&self, project_id: Uuid) -> Result<(), Error>;
     async fn get_projects_content_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error>;
 
-    async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error>;
+    async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error>;
     async fn get_thumbnail_by_id(
         &self,
-        project_id: i32,
-        id: i32,
+        project_id: Uuid,
+        id: Uuid,
     ) -> Result<Option<ProjectContentDto>, Error>;
 }

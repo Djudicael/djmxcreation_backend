@@ -112,7 +112,7 @@ impl ISpotlightRepository for SpotlightRepository {
 
         Ok(spotlights)
     }
-    async fn get_spotlight(&self, id: i32) -> Result<SpotlightDto, Error> {
+    async fn get_spotlight(&self, id: Uuid) -> Result<SpotlightDto, Error> {
         let sql = "SELECT spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail FROM spotlight
         LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
         LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id
@@ -120,7 +120,7 @@ impl ISpotlightRepository for SpotlightRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id])
+            .query_one(sql, &[&id.to_string()])
             .await
             .map_err(|error| to_error(error, None))?;
         let spotlight = Self::map_row_to_spotlight(&row)?;
@@ -129,12 +129,12 @@ impl ISpotlightRepository for SpotlightRepository {
 
         Ok(spotlight_dto)
     }
-    async fn delete_spotlight(&self, id: i32) -> Result<(), Error> {
+    async fn delete_spotlight(&self, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM spotlight WHERE id = $1";
 
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&id])
+            .execute(sql, &[&id.to_string()])
             .await
             .map_err(|error| to_error(error, Some(id.to_string())))?;
 

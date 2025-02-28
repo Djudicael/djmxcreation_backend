@@ -4,6 +4,7 @@ use axum::{
     routing::{get, put},
     Extension, Json, Router,
 };
+use uuid::Uuid;
 
 use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
 
@@ -26,7 +27,7 @@ impl ContactRouter {
 
     pub async fn update_contact(
         Extension(contact_service): Extension<DynIContactService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         Json(body): Json<ContactDto>,
     ) -> ApiResult<Json<ContactDto>> {
         let contact = contact_service.update_contact(id, &body).await?;

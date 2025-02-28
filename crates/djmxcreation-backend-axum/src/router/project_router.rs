@@ -21,8 +21,8 @@ pub struct ProjectRouter;
 
 #[derive(Deserialize)]
 pub struct Params {
-    id: i32,
-    content_id: i32,
+    id: Uuid,
+    content_id: Uuid,
 }
 
 #[derive(Deserialize)]
@@ -47,7 +47,7 @@ impl Default for PaginationQueryParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectToAdd {
-    project_id: i32,
+    project_id: Uuid,
 }
 
 impl ProjectRouter {
@@ -116,7 +116,7 @@ impl ProjectRouter {
 
     pub async fn add_project(
         Extension(project_service): Extension<DynIProjectService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         mut form: Multipart,
     ) -> ApiResult<Json<Vec<ContentView>>> {
         let mut contents: Vec<ContentView> = vec![];
@@ -142,7 +142,7 @@ impl ProjectRouter {
 
     pub async fn update_project(
         Extension(project_service): Extension<DynIProjectService>,
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         Json(project): Json<ProjectPayload>,
     ) -> ApiResult<()> {
         project_service
@@ -152,7 +152,7 @@ impl ProjectRouter {
     }
 
     pub async fn find_project(
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         Extension(project_service): Extension<DynIProjectService>,
     ) -> ApiResult<Json<ProjectView>> {
         let project = project_service.find_project(id).await?;
@@ -160,7 +160,7 @@ impl ProjectRouter {
     }
 
     pub async fn delete_project(
-        Path(id): Path<i32>,
+        Path(id): Path<Uuid>,
         Extension(project_service): Extension<DynIProjectService>,
     ) -> ApiResult<()> {
         project_service.delete_project(id).await?;
@@ -197,7 +197,7 @@ impl ProjectRouter {
 
     pub async fn get_spotlight(
         Extension(project_service): Extension<DynIProjectService>,
-        Path(spotlight_id): Path<i32>,
+        Path(spotlight_id): Path<Uuid>,
     ) -> ApiResult<Json<SpotlightView>> {
         let spotlight = project_service.get_spotlight(spotlight_id).await?;
         Ok(Json(spotlight))
@@ -213,7 +213,7 @@ impl ProjectRouter {
 
     pub async fn delete_spotlight(
         Extension(project_service): Extension<DynIProjectService>,
-        Path(spotlight_id): Path<i32>,
+        Path(spotlight_id): Path<Uuid>,
     ) -> ApiResult<()> {
         project_service.delete_spotlight(spotlight_id).await?;
         Ok(())

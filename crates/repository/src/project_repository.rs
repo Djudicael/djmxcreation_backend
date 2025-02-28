@@ -15,6 +15,7 @@ use chrono::{DateTime, Utc};
 use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_postgres::{Row, Transaction};
+use uuid::Uuid;
 
 use crate::{
     config::db::ClientV2,
@@ -22,7 +23,7 @@ use crate::{
         project::Project, project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
-    error::{handle_serde_json_error, to_error},
+    error::{handle_serde_json_error, handle_uuid_error, to_error},
 };
 
 pub struct ProjectRepository {
@@ -51,8 +52,9 @@ impl ProjectRepository {
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
         let created_on: Option<SystemTime> = row.get(2);
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
         Ok(Project {
-            id: row.get(0),
+            id: Some(id),
             metadata,
             created_on,
             updated_on,
@@ -65,6 +67,7 @@ impl ProjectRepository {
     }
 
     fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
         let metadata: Option<serde_json::Value> = row
             .get::<_, Option<String>>(1)
             .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
@@ -85,7 +88,7 @@ impl ProjectRepository {
         let thumbnail_created_on: Option<DateTime<Utc>> =
             thumbnail_created_on.map(|time| time.into());
         Ok(ProjectWithThumbnail {
-            id: row.get(0),
+            id: Some(id),
             metadata,
             created_on,
             updated_on,
@@ -104,9 +107,11 @@ impl ProjectRepository {
             .transpose()?;
         let created_on: Option<SystemTime> = row.get(3);
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
+        let project_id = Uuid::parse_str(row.get(1)).map_err(|e| handle_uuid_error(e))?;
         Ok(ProjectContent::new(
-            row.get(0),
-            row.get(1),
+            Some(id),
+            project_id,
             content,
             created_on,
         ))
@@ -158,7 +163,7 @@ impl IProjectRepository for ProjectRepository {
 
     async fn add_project_content(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         content: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
         let content_json = json!(content);
@@ -170,7 +175,11 @@ impl IProjectRepository for ProjectRepository {
                     let row = tx
                         .query_one(
                             sql,
-                            &[&project_id, &content_json.to_string(), &now_utc.to_string()],
+                            &[
+                                &project_id.to_string(),
+                                &content_json.to_string(),
+                                &now_utc.to_string(),
+                            ],
                         )
                         .await
                         .map_err(|e| to_error(e, Some(project_id.to_string())))?;
@@ -183,7 +192,7 @@ impl IProjectRepository for ProjectRepository {
 
     async fn add_project_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         thumbnail: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
         let thumbnail_json = json!(thumbnail);
@@ -202,7 +211,7 @@ impl IProjectRepository for ProjectRepository {
                             sql,
                             &[
                                 &thumbnail_json.to_string(),
-                                &project_id,
+                                &project_id.to_string(),
                                 &now_utc.to_string(),
                             ],
                         )
@@ -215,7 +224,7 @@ impl IProjectRepository for ProjectRepository {
         Ok(ProjectContentDto::from(content_entity))
     }
 
-    async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error> {
+    async fn get_project_by_id(&self, id: Uuid) -> Result<ProjectDto, Error> {
         let sql = "SELECT 
         p.id, 
         p.metadata, 
@@ -240,7 +249,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id])
+            .query_one(sql, &[&id.to_string()])
             .await
             .map_err(|e| to_error(e, None))?;
 
@@ -362,7 +371,7 @@ impl IProjectRepository for ProjectRepository {
 
     async fn update_project_entity(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         project: &ProjectDto,
     ) -> Result<(), Error> {
         let now_utc: DateTime<Utc> = Utc::now();
@@ -385,7 +394,7 @@ impl IProjectRepository for ProjectRepository {
                     &visible,
                     &adult,
                     &now_utc.to_string(),
-                    &project_id,
+                    &project_id.to_string(),
                 ],
             )
             .await
@@ -396,12 +405,12 @@ impl IProjectRepository for ProjectRepository {
 
     async fn get_projects_contents(
         &self,
-        project_id: i32,
+        project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1";
         let client = self.client.lock().await;
         let row = client
-            .query(sql, &[&project_id])
+            .query(sql, &[&project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let contents = row
@@ -414,14 +423,14 @@ impl IProjectRepository for ProjectRepository {
 
     async fn get_projects_content_by_id(
         &self,
-        project_id: i32,
-        id: i32,
+        project_id: Uuid,
+        id: Uuid,
     ) -> Result<ProjectContentDto, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 and id= $2";
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&project_id, &id])
+            .query_one(sql, &[&project_id.to_string(), &id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let content = ProjectRepository::map_row_to_project_content(&row)?;
@@ -429,21 +438,21 @@ impl IProjectRepository for ProjectRepository {
         Ok(ProjectContentDto::from(content))
     }
 
-    async fn delete_project_content_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
+    async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project_content WHERE id = $1 and project_id = $2 ";
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&id, &project_id])
+            .execute(sql, &[&id.to_string(), &project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
     }
 
-    async fn delete_project_by_id(&self, project_id: i32) -> Result<(), Error> {
+    async fn delete_project_by_id(&self, project_id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project WHERE id = $1 ";
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&project_id])
+            .execute(sql, &[&project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
@@ -452,13 +461,13 @@ impl IProjectRepository for ProjectRepository {
     //TODO modify for thumbnail
     async fn get_projects_content_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
 
         let client = self.client.lock().await;
         let row = client
-            .query(sql, &[&project_id])
+            .query(sql, &[&project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let contents = row
@@ -472,12 +481,12 @@ impl IProjectRepository for ProjectRepository {
             .collect())
     }
 
-    async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
+    async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2";
 
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&id, &project_id])
+            .execute(sql, &[&id.to_string(), &project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
@@ -485,8 +494,8 @@ impl IProjectRepository for ProjectRepository {
 
     async fn get_thumbnail_by_id(
         &self,
-        project_id: i32,
-        id: i32,
+        project_id: Uuid,
+        id: Uuid,
     ) -> Result<Option<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content_thumbnail AS pt
         WHERE pt.content ->> 'id' = CAST($1 AS TEXT) and pt.project_id = $2
@@ -494,7 +503,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id, &project_id])
+            .query_one(sql, &[&id.to_string(), &project_id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let content = ProjectRepository::map_row_to_project_content(&row)?;

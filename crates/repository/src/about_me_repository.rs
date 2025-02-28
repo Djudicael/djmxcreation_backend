@@ -1,11 +1,12 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use crate::{
     config::db::ClientV2,
     entity::about_me::AboutMe,
-    error::{handle_serde_json_error, to_error},
+    error::{handle_serde_json_error, handle_uuid_error, to_error},
 };
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
@@ -39,9 +40,11 @@ impl AboutMeRepository {
             .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
             .transpose()?;
 
+        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
+
         // Return the AboutMe object with the parsed data
         Ok(AboutMe::new(
-            row.get(0), // Assuming id is at index 0
+            Some(id),   // Assuming id is at index 0
             row.get(1), // Assuming first_name is at index 1
             row.get(2), // Assuming last_name is at index 2
             description,
@@ -65,7 +68,7 @@ impl AboutMeRepository {
 
 #[async_trait]
 impl IAboutMeRepository for AboutMeRepository {
-    async fn update_about_me(&self, id: i32, about: &AboutMeDto) -> Result<AboutMeDto, Error> {
+    async fn update_about_me(&self, id: Uuid, about: &AboutMeDto) -> Result<AboutMeDto, Error> {
         let sql = "UPDATE about SET first_name = $1, last_name = $2, description = $3 WHERE id = $4 RETURNING *";
         let AboutMeDto {
             first_name,
@@ -87,7 +90,7 @@ impl IAboutMeRepository for AboutMeRepository {
                     &first_name,
                     &last_name,
                     &description.map(|v| v.to_string()),
-                    &id,
+                    &id.to_string(),
                 ],
             )
             .await
@@ -110,11 +113,11 @@ impl IAboutMeRepository for AboutMeRepository {
         Ok(AboutMeDto::from(about_me))
     }
 
-    async fn get_about_me_by_id(&self, id: i32) -> Result<AboutMeDto, Error> {
+    async fn get_about_me_by_id(&self, id: Uuid) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about WHERE id = $1";
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id])
+            .query_one(sql, &[&id.to_string()])
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
 
@@ -122,13 +125,13 @@ impl IAboutMeRepository for AboutMeRepository {
         Ok(AboutMeDto::from(about_me))
     }
 
-    async fn update_photo(&self, id: i32, content: &ContentDto) -> Result<(), Error> {
+    async fn update_photo(&self, id: Uuid, content: &ContentDto) -> Result<(), Error> {
         let content_json = json!(content);
         let sql = "UPDATE about SET photo = $1 WHERE id = $2";
 
         self.with_transaction(|tx| {
             Box::pin(async move {
-                tx.execute(sql, &[&content_json.to_string(), &id])
+                tx.execute(sql, &[&content_json.to_string(), &id.to_string()])
                     .await
                     .map_err(|e| to_error(e, Some(id.to_string())))?;
                 Ok(())
@@ -137,12 +140,12 @@ impl IAboutMeRepository for AboutMeRepository {
         .await
     }
 
-    async fn delete_about_me_photo(&self, id: i32) -> Result<(), Error> {
+    async fn delete_about_me_photo(&self, id: Uuid) -> Result<(), Error> {
         let sql = "UPDATE about SET photo = NULL WHERE id = $1";
 
         self.with_transaction(|tx| {
             Box::pin(async move {
-                tx.execute(sql, &[&id])
+                tx.execute(sql, &[&id.to_string()])
                     .await
                     .map_err(|e| to_error(e, Some(id.to_string())))?;
                 Ok(())
