@@ -27,3 +27,10 @@ tokio-postgres = "0.7.12"
 tokio = { version = "1.42.0", features = ["full"] }
 refinery = { version = "0.8.16", features = ["tokio-postgres"] }
 uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }
+
+[dev-dependencies]
+testcontainers = "0.23.3"
+
+[lib]
+name = "repository"
+path = "src/lib.rs"

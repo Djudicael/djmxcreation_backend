@@ -34,7 +34,7 @@ pub async fn db_client(config: &DatabaseConfiguration) -> Result<ClientV2, Error
 }
 
 async fn apply_migrations(client: &mut ClientV2) -> Result<(), Error> {
-    migrations::runner().run_async(client).await.map_err(|e| {
+    let _ = migrations::runner().run_async(client).await.map_err(|e| {
         eprintln!("Migration error: {}", e);
         // Error::from(std::io::Error::new(
         //     std::io::ErrorKind::Other,

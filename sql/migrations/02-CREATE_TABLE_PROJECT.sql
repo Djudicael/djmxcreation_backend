@@ -1,4 +1,4 @@
-CREATE TABLE project(
+CREATE TABLE IF NOT EXISTS project(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     metadata jsonb,
     created_on TIMESTAMPTZ NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE project(
     adult boolean
 );
 
-CREATE TABLE project_content(
+CREATE TABLE IF NOT EXISTS project_content(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
     project_id INT NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE project_content(
     CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE
 );
 
-CREATE TABLE project_content_thumbnail(
+CREATE TABLE IF NOT EXISTS project_content_thumbnail(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
     project_id INT NOT NULL,

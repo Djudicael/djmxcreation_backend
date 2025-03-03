@@ -1,4 +1,4 @@
-CREATE TABLE project_spotlight(
+CREATE TABLE IF NOT EXISTS project_spotlight(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
