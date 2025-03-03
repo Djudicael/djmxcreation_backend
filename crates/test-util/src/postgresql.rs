@@ -1,14 +1,14 @@
-use std::{borrow::Cow, collections::HashMap};
-
+use app_config::database_configuration::DatabaseConfiguration;
 use rustainers::images::Postgres;
-use rustainers::runner::{RunOption, Runner};
+use rustainers::runner::Runner;
+use rustainers::runner::RunnerError;
 
-pub fn init_postgresql(pg_db: &str, pg_user: &str, pg_password: &str) -> (Cli, Postgres) {
+pub fn init_postgresql(config: &DatabaseConfiguration) -> Result<(Runner, Postgres), RunnerError> {
     let image = Postgres::default()
-        .with_db(pg_db)
-        .with_user(user)
-        .with_password(password);
+        .with_db(config.pg_db.as_str())
+        .with_user(config.pg_user.as_str())
+        .with_password(config.pg_password.as_str());
 
-    let podman = Runner::podman();
-    (podman, image)
+    let podman = Runner::podman()?;
+    Ok((podman, image))
 }

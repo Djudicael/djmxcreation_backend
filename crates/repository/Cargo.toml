@@ -30,6 +30,7 @@ uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }
 
 [dev-dependencies]
 testcontainers = "0.23.3"
+test-util = { path = "../test-util" }
 
 [lib]
 name = "repository"

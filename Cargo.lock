@@ -2876,6 +2876,7 @@ dependencies = [
  "rust-s3",
  "serde",
  "serde_json",
+ "test-util",
  "testcontainers",
  "tokio",
  "tokio-postgres",
@@ -3935,6 +3936,7 @@ dependencies = [
 name = "test-util"
 version = "0.1.0"
 dependencies = [
+ "app_config",
  "rustainers",
 ]
 
