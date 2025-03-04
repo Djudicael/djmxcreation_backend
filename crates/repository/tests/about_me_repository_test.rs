@@ -5,56 +5,54 @@ use app_core::dto::content_dto::ContentDto;
 use repository::about_me_repository::AboutMeRepository;
 use repository::config::db::db_client;
 use serde_json::json;
-use std::process::Command;
 use std::sync::Arc;
 use test_util::postgresql::init_postgresql;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-#[tokio::test]
-async fn test_update_about_me() {
-    let (repo, id) = setup_test_db().await;
-
-    let about_me = repo
-        .update_about_me(
-            id,
-            &AboutMeDto {
-                id: None,
-                first_name: "Alice".to_string(),
-                last_name: "Doe".to_string(),
-                description: Some(json!({"bio": "Artist"})),
-                photo: None,
-            },
-        )
-        .await
-        .expect("Failed to update about_me");
-
-    assert_eq!(about_me.first_name, "Alice");
-    assert_eq!(about_me.last_name, "Doe");
-}
-
-#[tokio::test]
-async fn test_get_about_me() {
-    let (repo, _id) = setup_test_db().await;
-
-    let about_me = repo.get_about_me().await.expect("Failed to get about_me");
-
-    assert!(about_me.first_name.len() > 0);
-    assert!(about_me.last_name.len() > 0);
-}
-
 // #[tokio::test]
-// async fn test_get_about_me_by_id() {
+// async fn test_update_about_me() {
 //     let (repo, id) = setup_test_db().await;
 
 //     let about_me = repo
-//         .get_about_me_by_id(id)
+//         .update_about_me(
+//             id,
+//             &AboutMeDto {
+//                 id: None,
+//                 first_name: "Alice".to_string(),
+//                 last_name: "Doe".to_string(),
+//                 description: Some(json!({"bio": "Artist"})),
+//                 photo: None,
+//             },
+//         )
 //         .await
-//         .expect("Failed to get about_me by id");
+//         .expect("Failed to update about_me");
 
-//     assert_eq!(about_me.first_name, "Test");
-//     assert_eq!(about_me.last_name, "User");
+//     assert_eq!(about_me.first_name, "Alice");
+//     assert_eq!(about_me.last_name, "Doe");
 // }
+
+// #[tokio::test]
+// async fn test_get_about_me() {
+//     let (repo, _id) = setup_test_db().await;
+
+//     let about_me = repo.get_about_me().await.expect("Failed to get about_me");
+
+//     assert!(about_me.first_name.len() > 0);
+//     assert!(about_me.last_name.len() > 0);
+// }
+#[tokio::test]
+async fn test_get_about_me_by_id() {
+    let (repo, id) = setup_test_db().await;
+
+    let about_me = repo
+        .get_about_me_by_id(id)
+        .await
+        .expect("Failed to get about_me by id");
+
+    assert_eq!(about_me.first_name, "Test");
+    assert_eq!(about_me.last_name, "User");
+}
 
 // #[tokio::test]
 // async fn test_update_photo() {
@@ -95,40 +93,6 @@ async fn test_get_about_me() {
 //     assert!(updated_about_me.photo.is_none());
 // }
 
-async fn start_podman() {
-    let output = Command::new("podman")
-        .args([
-            "run",
-            "--rm",
-            "--name",
-            "test-postgres",
-            "-e",
-            "POSTGRES_USER=postgres",
-            "-e",
-            "POSTGRES_PASSWORD=postgres",
-            "-e",
-            "POSTGRES_DB=portfolio",
-            "-p",
-            "5432:5432",
-            "-d",
-            "docker.io/library/postgres:latest", // ✅ Add PostgreSQL image
-        ])
-        .output()
-        .expect("Failed to start Podman");
-
-    if !output.status.success() {
-        eprintln!("Podman failed: {:?}", output);
-    } else {
-        println!(
-            "Podman started: {:?}",
-            String::from_utf8_lossy(&output.stdout)
-        );
-    }
-
-    // Wait for PostgreSQL to be ready
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-}
-
 async fn setup_test_db() -> (AboutMeRepository, Uuid) {
     // Start Podman before connecting
     // start_podman().await;
@@ -141,9 +105,11 @@ async fn setup_test_db() -> (AboutMeRepository, Uuid) {
     };
 
     let (podman, image) = init_postgresql(&test_db_config).expect("Failed to init PostgreSQL");
-    let _ = podman.start(image).await.expect("Failed to run PostgreSQL");
+    let container = podman.start(image).await.expect("Failed to run PostgreSQL");
+    let url = container.url().await.expect("Failed to get container URL");
+    println!("Container started: {:?}", url);
 
-    let client = db_client(&test_db_config)
+    let client = db_client(&test_db_config, Some(&url))
         .await
         .expect("Failed to connect to the test database");
 

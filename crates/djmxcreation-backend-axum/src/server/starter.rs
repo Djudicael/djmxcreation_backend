@@ -102,7 +102,7 @@ pub async fn start() -> anyhow::Result<()> {
     //     .await
     //     .expect("Failed to migrate database");
 
-    let client = db_client(&config.database).await?;
+    let client = db_client(&config.database, None).await?;
 
     let storage = config.clone().get_storage();
 
