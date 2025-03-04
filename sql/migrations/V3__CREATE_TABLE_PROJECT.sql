@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS project(
 CREATE TABLE IF NOT EXISTS project_content(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
-    project_id INT NOT NULL,
+    project_id UUID NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE
 );
@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS project_content(
 CREATE TABLE IF NOT EXISTS project_content_thumbnail(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
-    project_id INT NOT NULL,
+    project_id UUID NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE
 );
 
-ALTER TABLE project_content_thumbnail ADD CONSTRAINT unique_project_id UNIQUE (project_id);
+ALTER TABLE project_content_thumbnail ADD CONSTRAINT unique_content_thumbnail_project_id UNIQUE (project_id);

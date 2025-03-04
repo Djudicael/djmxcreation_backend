@@ -33,6 +33,10 @@ pub async fn db_client(
 }
 
 async fn apply_migrations(client: &mut ClientV2) -> Result<(), Error> {
+    // println!(
+    //     "Found migrations: {:?}",
+    //     migrations::runner().get_migrations()
+    // );
     let _ = migrations::runner()
         .run_async(client)
         .await
