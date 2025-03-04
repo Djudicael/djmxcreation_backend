@@ -1,18 +1,14 @@
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 use app_core::{contact::contact_repository::IContactRepository, dto::contact_dto::ContactDto};
 use app_error::Error;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::Mutex;
-use tokio_postgres::{Row, Transaction};
+use tokio_postgres::{types::Json, Row};
 use uuid::Uuid;
 
-use crate::{
-    config::db::ClientV2,
-    entity::contact::Contact,
-    error::{handle_serde_json_error, handle_uuid_error, to_error},
-};
+use crate::{config::db::ClientV2, entity::contact::Contact, error::to_error};
 
 pub struct ContactRepository {
     client: Arc<Mutex<ClientV2>>,
@@ -25,24 +21,12 @@ impl ContactRepository {
 
     fn map_row_to_contact(row: &Row) -> Result<Contact, Error> {
         let description: Option<Value> = row
-            .get::<_, Option<String>>(1)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
-        Ok(Contact::new(Some(id), description))
-    }
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
 
-    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
-    where
-        F: for<'a> FnOnce(
-            &'a Transaction<'a>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
-    {
-        let mut client = self.client.lock().await;
-        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
-        let result = f(&transaction).await?;
-        transaction.commit().await.map_err(|e| to_error(e, None))?;
-        Ok(result)
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        Ok(Contact::new(Some(id), description))
     }
 }
 
@@ -64,7 +48,7 @@ impl IContactRepository for ContactRepository {
         let description = contact.description.as_ref().map(|v| v.to_string());
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&description, &id.to_string()])
+            .query_one(sql, &[&Json(description), &id])
             .await
             .map_err(|sql_error| to_error(sql_error, None))?;
         let contact = ContactRepository::map_row_to_contact(&row)?;

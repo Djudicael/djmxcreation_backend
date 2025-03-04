@@ -3,11 +3,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::{
-    config::db::ClientV2,
-    entity::about_me::AboutMe,
-    error::{handle_serde_json_error, handle_uuid_error, to_error},
-};
+use crate::{config::db::ClientV2, entity::about_me::AboutMe, error::to_error};
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
     dto::{about_me_dto::AboutMeDto, content_dto::ContentDto},
@@ -29,21 +25,25 @@ impl AboutMeRepository {
 
     // Helper to map a database row to AboutMe
     fn map_row_to_about_me(row: &Row) -> Result<AboutMe, Error> {
-        // Try to parse the JSON strings in the 3rd and 4th columns and return the result
-        let photo: Option<Value> = row.get::<_, Option<Json<Value>>>(3).map(|json| json.0);
+        let photo: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("photo")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
 
-        let description: Option<Value> = row.get::<_, Option<Json<Value>>>(4).map(|json| json.0);
+        let description: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
 
-        let id: Uuid = row.get(0);
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
 
-        // Return the AboutMe object with the parsed data
-        Ok(AboutMe::new(
-            Some(id),   // Assuming id is at index 0
-            row.get(1), // Assuming first_name is at index 1
-            row.get(2), // Assuming last_name is at index 2
-            description,
-            photo,
-        ))
+        let first_name: String = row.try_get("first_name").map_err(|e| to_error(e, None))?;
+
+        let last_name: String = row.try_get("last_name").map_err(|e| to_error(e, None))?;
+
+        let about_me = AboutMe::new(Some(id), first_name, last_name, description, photo);
+
+        Ok(about_me)
     }
 
     async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
@@ -104,13 +104,13 @@ impl IAboutMeRepository for AboutMeRepository {
         let sql = "SELECT * FROM about WHERE id = $1";
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id.to_string()])
+            .query_one(sql, &[&id])
             .await
             .map_err(|e| to_error(e, Some(id.to_string())))?;
 
         let about_me = Self::map_row_to_about_me(&row)?;
-        println!("about_me: {:?}", about_me);
-        Ok(AboutMeDto::from(about_me))
+        let dto = AboutMeDto::from(about_me);
+        Ok(dto)
     }
 
     async fn update_photo(&self, id: Uuid, content: &ContentDto) -> Result<(), Error> {
@@ -119,7 +119,7 @@ impl IAboutMeRepository for AboutMeRepository {
 
         self.with_transaction(|tx| {
             Box::pin(async move {
-                tx.execute(sql, &[&content_json.to_string(), &id.to_string()])
+                tx.execute(sql, &[&Json(content_json), &id])
                     .await
                     .map_err(|e| to_error(e, Some(id.to_string())))?;
                 Ok(())
@@ -133,7 +133,7 @@ impl IAboutMeRepository for AboutMeRepository {
 
         self.with_transaction(|tx| {
             Box::pin(async move {
-                tx.execute(sql, &[&id.to_string()])
+                tx.execute(sql, &[&id])
                     .await
                     .map_err(|e| to_error(e, Some(id.to_string())))?;
                 Ok(())

@@ -12,9 +12,9 @@ use app_error::Error;
 use async_trait::async_trait;
 
 use chrono::{DateTime, Utc};
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::Mutex;
-use tokio_postgres::{Row, Transaction};
+use tokio_postgres::{types::Json, Row, Transaction};
 use uuid::Uuid;
 
 use crate::{
@@ -37,78 +37,108 @@ impl ProjectRepository {
 
     fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
         let metadata: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(1)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
         let description: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(1)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
         let thumbnail_content: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(7)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let updated_on: Option<SystemTime> = row.get(3);
+            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> =
+            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
-        let created_on: Option<SystemTime> = row.get(2);
+
+        let created_on: Option<SystemTime> =
+            row.try_get("created_on").map_err(|e| to_error(e, None))?;
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
+
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+
+        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+
+        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
         Ok(Project {
             id: Some(id),
             metadata,
             created_on,
             updated_on,
             description,
-            visible: row.get(5),
-            adult: row.get(6),
+            visible,
+            adult,
             contents: vec![],
             thumbnail_content,
         })
     }
 
     fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
-        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
-        let metadata: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(1)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let description: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(1)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let thumbnail_content: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(7)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let updated_on: Option<SystemTime> = row.get(3);
+        let metadata: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let description: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let thumbnail_content: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> =
+            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
-        let created_on: SystemTime = row.get(2);
+
+        let created_on: SystemTime = row.try_get("created_on").map_err(|e| to_error(e, None))?;
         let created_on: DateTime<Utc> = created_on.into();
-        let thumbnail_created_on: Option<SystemTime> = row.get(8);
+
+        let thumbnail_created_on: Option<SystemTime> = row
+            .try_get("thumbnail_created_on")
+            .map_err(|e| to_error(e, None))?;
         let thumbnail_created_on: Option<DateTime<Utc>> =
             thumbnail_created_on.map(|time| time.into());
+
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+
+        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+
+        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
+
         Ok(ProjectWithThumbnail {
             id: Some(id),
             metadata,
             created_on,
             updated_on,
             description,
-            visible: row.get(5),
-            adult: row.get(6),
+            visible,
+            adult,
             thumbnail_content,
             thumbnail_created_on,
         })
     }
 
     fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
-        let content: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(2)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let created_on: Option<SystemTime> = row.get(3);
+        let content: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("content")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let created_on: Option<SystemTime> =
+            row.try_get("created_on").map_err(|e| to_error(e, None))?;
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
-        let project_id = Uuid::parse_str(row.get(1)).map_err(|e| handle_uuid_error(e))?;
+
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+
+        let project_id: Uuid = row.try_get("project_id").map_err(|e| to_error(e, None))?;
+
         Ok(ProjectContent::new(
             Some(id),
             project_id,
@@ -142,15 +172,7 @@ impl IProjectRepository for ProjectRepository {
             .with_transaction(|tx| {
                 Box::pin(async move {
                     let row = tx
-                        .query_one(
-                            sql,
-                            &[
-                                &metadata_json.to_string(),
-                                &now_utc.to_string(),
-                                &true,
-                                &false,
-                            ],
-                        )
+                        .query_one(sql, &[&Json(metadata_json), &now_utc, &true, &false])
                         .await
                         .map_err(|e| to_error(e, None))?;
                     ProjectRepository::map_create_row_to_project(&row).map(ProjectDto::from)
@@ -173,14 +195,7 @@ impl IProjectRepository for ProjectRepository {
             .with_transaction(|tx| {
                 Box::pin(async move {
                     let row = tx
-                        .query_one(
-                            sql,
-                            &[
-                                &project_id.to_string(),
-                                &content_json.to_string(),
-                                &now_utc.to_string(),
-                            ],
-                        )
+                        .query_one(sql, &[&project_id, &Json(content_json), &now_utc])
                         .await
                         .map_err(|e| to_error(e, Some(project_id.to_string())))?;
                     ProjectRepository::map_row_to_project_content(&row)
@@ -207,14 +222,7 @@ impl IProjectRepository for ProjectRepository {
             .with_transaction(|tx| {
                 Box::pin(async move {
                     let row = tx
-                        .query_one(
-                            sql,
-                            &[
-                                &thumbnail_json.to_string(),
-                                &project_id.to_string(),
-                                &now_utc.to_string(),
-                            ],
-                        )
+                        .query_one(sql, &[&Json(thumbnail_json), &project_id, &now_utc])
                         .await
                         .map_err(|e| to_error(e, Some(project_id.to_string())))?;
                     ProjectRepository::map_row_to_project_content(&row)
@@ -249,7 +257,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id.to_string()])
+            .query_one(sql, &[&id])
             .await
             .map_err(|e| to_error(e, None))?;
 
@@ -389,12 +397,12 @@ impl IProjectRepository for ProjectRepository {
             .execute(
                 sql,
                 &[
-                    &description.map(|v| v.to_string()),
-                    &metadata.map(|v| json!(v).to_string()),
+                    &Json(description),
+                    &Json(metadata),
                     &visible,
                     &adult,
-                    &now_utc.to_string(),
-                    &project_id.to_string(),
+                    &now_utc,
+                    &project_id,
                 ],
             )
             .await
@@ -410,7 +418,7 @@ impl IProjectRepository for ProjectRepository {
         let sql = "SELECT * FROM project_content where project_id = $1";
         let client = self.client.lock().await;
         let row = client
-            .query(sql, &[&project_id.to_string()])
+            .query(sql, &[&project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let contents = row
@@ -430,7 +438,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&project_id.to_string(), &id.to_string()])
+            .query_one(sql, &[&project_id, &id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let content = ProjectRepository::map_row_to_project_content(&row)?;
@@ -442,7 +450,7 @@ impl IProjectRepository for ProjectRepository {
         let sql = "DELETE FROM project_content WHERE id = $1 and project_id = $2 ";
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&id.to_string(), &project_id.to_string()])
+            .execute(sql, &[&id, &project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
@@ -467,7 +475,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query(sql, &[&project_id.to_string()])
+            .query(sql, &[&project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let contents = row
@@ -486,7 +494,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&id.to_string(), &project_id.to_string()])
+            .execute(sql, &[&id, &project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
@@ -503,7 +511,7 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
         let row = client
-            .query_one(sql, &[&id.to_string(), &project_id.to_string()])
+            .query_one(sql, &[&id, &project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         let content = ProjectRepository::map_row_to_project_content(&row)?;

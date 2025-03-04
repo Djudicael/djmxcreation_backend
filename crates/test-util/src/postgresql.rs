@@ -4,6 +4,8 @@ use rustainers::runner::Runner;
 use rustainers::runner::RunnerError;
 use rustainers::ExposedPort;
 
+pub type PostgresContainer = rustainers::Container<Postgres>;
+
 pub fn init_postgresql(config: &DatabaseConfiguration) -> Result<(Runner, Postgres), RunnerError> {
     let image = Postgres::default()
         .with_db(config.pg_db.as_str())
