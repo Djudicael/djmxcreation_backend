@@ -25,3 +25,7 @@ CREATE TABLE IF NOT EXISTS project_content_thumbnail(
 );
 
 ALTER TABLE project_content_thumbnail ADD CONSTRAINT unique_content_thumbnail_project_id UNIQUE (project_id);
+
+CREATE INDEX idx_project_visible_adult ON project(visible, adult);
+CREATE INDEX idx_project_content_project_id ON project_content(project_id);
+CREATE INDEX idx_project_content_thumbnail_project_id ON project_content_thumbnail(project_id);

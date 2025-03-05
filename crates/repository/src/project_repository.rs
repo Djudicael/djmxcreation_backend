@@ -350,6 +350,17 @@ impl IProjectRepository for ProjectRepository {
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
+        // Validate input parameters
+        if size <= 0 {
+            return Err(Error::InvalidInput(
+                "Page size must be greater than 0".to_string(),
+            ));
+        }
+        if page <= 0 {
+            return Err(Error::InvalidInput(
+                "Page number must be greater than 0".to_string(),
+            ));
+        }
         let adult_filter = match is_adult {
             Some(adult) => format!("AND p.adult = {}", adult),
             None => "".to_owned(),
