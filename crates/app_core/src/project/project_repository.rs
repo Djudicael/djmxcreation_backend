@@ -27,14 +27,14 @@ pub trait IProjectRepository {
         thumbnail: &ContentDto,
     ) -> Result<ProjectContentDto, Error>;
 
-    async fn get_project_by_id(&self, id: Uuid) -> Result<ProjectDto, Error>;
+    async fn get_project_by_id(&self, id: Uuid) -> Result<Option<ProjectDto>, Error>;
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error>;
 
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error>;
@@ -54,7 +54,7 @@ pub trait IProjectRepository {
         &self,
         project_id: Uuid,
         id: Uuid,
-    ) -> Result<ProjectContentDto, Error>;
+    ) -> Result<Option<ProjectContentDto>, Error>;
 
     async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error>;
     async fn delete_project_by_id(&self, project_id: Uuid) -> Result<(), Error>;

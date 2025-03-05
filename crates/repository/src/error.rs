@@ -4,17 +4,37 @@ use tokio_postgres::{error::SqlState, Error as PgError};
 
 pub fn to_error(pg_error: PgError, message: Option<String>) -> Error {
     println!("pg_error: {pg_error:?}");
+
+    match pg_error.to_string().as_str() {
+        s if s.contains("RowCount") => {
+            return Error::EntityNotFound(
+                message.unwrap_or_else(|| "Entity not found".to_string()),
+            );
+        }
+        _ => {}
+    }
+
     if let Some(db_error) = pg_error.as_db_error() {
-        if db_error.code() == &SqlState::UNDEFINED_TABLE {
-            Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
-        } else {
-            // Print detailed error information for debugging purposes
-            if let Some(cause) = pg_error.code() {
-                println!("Underlying cause: {cause:?}");
+        println!("db_error code: {:?}", db_error.code());
+        match db_error.code() {
+            code if code == &SqlState::UNDEFINED_TABLE => {
+                Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
             }
-            Error::Database
+            code if code == &SqlState::INVALID_PARAMETER_VALUE => Error::InvalidInput(
+                message.unwrap_or_else(|| "Invalid parameter value".to_string()),
+            ),
+            code if code == &SqlState::NO_DATA_FOUND => {
+                Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
+            }
+            _ => {
+                // Print detailed error information for debugging purposes
+                println!("Database error code: {:?}", db_error.code());
+                Error::Database
+            }
         }
     } else {
+        // Handle non-database errors
+        println!("Non-database error: {:?}", pg_error);
         Error::Database
     }
 }

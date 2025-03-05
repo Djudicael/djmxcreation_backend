@@ -1,6 +1,7 @@
 use app_config::database_configuration::DatabaseConfiguration;
 use app_core::dto::{content_dto::ContentDto, metadata_dto::MetadataDto, project_dto::ProjectDto};
 use app_core::project::project_repository::IProjectRepository;
+
 use repository::config::db::db_client;
 use repository::project_repository::ProjectRepository;
 use serde_json::json;
@@ -37,7 +38,6 @@ impl TestContext {
             .expect("Failed to connect to the test database");
 
         let repo = ProjectRepository::new(Arc::new(Mutex::new(client)));
-        let id = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid parse error");
 
         // Initialize test data
         let project = repo
@@ -61,12 +61,27 @@ impl TestContext {
 async fn test_project_crud_operations() {
     let ctx = TestContext::new().await;
 
+    // test for non-existent project
+    let non_existent_id = Uuid::new_v4();
+    let non_existent_project = ctx
+        .repo
+        .get_project_by_id(non_existent_id)
+        .await
+        .expect("Failed to query non-existent project");
+
+    assert!(
+        non_existent_project.is_none(),
+        "Non-existent project should return None"
+    );
+
     // Test 1: Get initial project
     let project = ctx
         .repo
         .get_project_by_id(ctx.id)
         .await
-        .expect("Failed to get project");
+        .expect("Failed to query project")
+        .expect("Project should exist");
+
     let metadata = project.metadata.expect("Project metadata should exist");
 
     // Assert title
@@ -117,7 +132,8 @@ async fn test_project_crud_operations() {
         .repo
         .get_project_by_id(ctx.id)
         .await
-        .expect("Failed to get updated project");
+        .expect("Failed to query updated project")
+        .expect("Updated project should exist");
 
     let updated_metadata = updated.metadata.expect("Updated metadata should exist");
     assert_eq!(
@@ -170,6 +186,7 @@ async fn test_project_crud_operations() {
         .add_project_thumbnail(ctx.id, &thumbnail)
         .await
         .expect("Failed to add thumbnail");
+    println!("Thumbnail: {:?}", thumbnail_result);
     assert!(thumbnail_result.content.is_some());
 
     // Test 5: Get projects with filter
@@ -199,4 +216,241 @@ async fn test_project_crud_operations() {
         .delete_project_by_id(ctx.id)
         .await
         .expect("Failed to delete project");
+}
+
+#[tokio::test]
+async fn test_project_complete_lifecycle() {
+    let ctx = TestContext::new().await;
+
+    // Test 1: Create and verify multiple projects
+    let project2 = ctx
+        .repo
+        .create(&MetadataDto::new(
+            Some("Second Project".to_string()),
+            Some("Second Subtitle".to_string()),
+            Some("Second Client".to_string()),
+        ))
+        .await
+        .expect("Failed to create second project");
+
+    // Test 2: Get all projects
+    let all_projects = ctx
+        .repo
+        .get_projects()
+        .await
+        .expect("Failed to get all projects");
+    assert_eq!(all_projects.len(), 2, "Should have two projects");
+
+    // Test 3: Test filtering with different parameters
+    let adult_projects = ctx
+        .repo
+        .get_projects_with_filter(1, 10, Some(true), true)
+        .await
+        .expect("Failed to get adult projects");
+    println!("Adult projects: {:?}", adult_projects);
+
+    let non_adult_projects = ctx
+        .repo
+        .get_projects_with_filter(1, 10, Some(false), true)
+        .await
+        .expect("Failed to get non-adult projects");
+    println!("Non-adult projects: {:?}", non_adult_projects);
+
+    let hidden_projects = ctx
+        .repo
+        .get_projects_with_filter(1, 10, None, false)
+        .await
+        .expect("Failed to get hidden projects");
+    println!("Hidden projects: {:?}", hidden_projects);
+
+    // Test 4: Add and verify content
+    let content = ContentDto {
+        id: None,
+        bucket_name: "test_bucket".to_string(),
+        file_name: "test_file.jpg".to_string(),
+        mime_type: Some("image/jpeg".to_string()),
+    };
+
+    let content_result = ctx
+        .repo
+        .add_project_content(ctx.id, &content)
+        .await
+        .expect("Failed to add content");
+
+    // Test 5: Get specific content by ID
+    let content_by_id = ctx
+        .repo
+        .get_projects_content_by_id(ctx.id, content_result.id.unwrap())
+        .await
+        .expect("Failed to query content")
+        .expect("Content should exist");
+
+    assert_eq!(
+        content_by_id.id, content_result.id,
+        "Content IDs should match"
+    );
+
+    // Add test for non-existent content
+    let non_existent_id = Uuid::new_v4();
+    let non_existent_content = ctx
+        .repo
+        .get_projects_content_by_id(ctx.id, non_existent_id)
+        .await
+        .expect("Failed to query non-existent content");
+
+    assert!(
+        non_existent_content.is_none(),
+        "Non-existent content should return None"
+    );
+
+    // Test content for non-existent project
+    let non_existent_project_id = Uuid::new_v4();
+    let content_for_non_existent_project = ctx
+        .repo
+        .get_projects_content_by_id(non_existent_project_id, content_result.id.unwrap())
+        .await
+        .expect("Failed to query content for non-existent project");
+
+    assert!(
+        content_for_non_existent_project.is_none(),
+        "Content for non-existent project should return None"
+    );
+
+    // Test 6: Add and verify thumbnail
+    let thumbnail = ContentDto {
+        id: None,
+        bucket_name: "thumbnails".to_string(),
+        file_name: "thumb.jpg".to_string(),
+        mime_type: Some("image/jpeg".to_string()),
+    };
+
+    let thumbnail_result = ctx
+        .repo
+        .add_project_thumbnail(ctx.id, &thumbnail)
+        .await
+        .expect("Failed to add thumbnail");
+
+    // Test 7: Get thumbnail
+    let thumbnails = ctx
+        .repo
+        .get_projects_content_thumbnail(ctx.id)
+        .await
+        .expect("Failed to get thumbnail");
+    assert!(!thumbnails.is_empty());
+
+    // Test 8: Get specific thumbnail by ID
+    let thumbnail_by_id = ctx
+        .repo
+        .get_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
+        .await
+        .expect("Failed to get thumbnail by ID");
+    assert!(thumbnail_by_id.is_some());
+
+    // Test 9: Delete thumbnail
+    ctx.repo
+        .delete_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
+        .await
+        .expect("Failed to delete thumbnail");
+
+    // Test 10: Verify thumbnail deletion
+    let deleted_thumbnail = ctx
+        .repo
+        .get_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
+        .await
+        .expect("Failed to query deleted thumbnail");
+
+    assert!(
+        deleted_thumbnail.is_none(),
+        "Deleted thumbnail should return None"
+    );
+
+    // Additional test for non-existent thumbnail
+    let non_existent_id = Uuid::new_v4();
+    let non_existent_thumbnail = ctx
+        .repo
+        .get_thumbnail_by_id(ctx.id, non_existent_id)
+        .await
+        .expect("Failed to query non-existent thumbnail");
+
+    assert!(
+        non_existent_thumbnail.is_none(),
+        "Non-existent thumbnail should return None"
+    );
+
+    // Clean up
+    ctx.repo
+        .delete_project_content_by_id(ctx.id, content_result.id.unwrap())
+        .await
+        .expect("Failed to delete content");
+
+    ctx.repo
+        .delete_project_by_id(ctx.id)
+        .await
+        .expect("Failed to delete first project");
+
+    ctx.repo
+        .delete_project_by_id(project2.id.unwrap())
+        .await
+        .expect("Failed to delete second project");
+}
+
+#[tokio::test]
+async fn test_error_cases() {
+    let ctx = TestContext::new().await;
+
+    // Test non-existent project
+    let non_existent_id = Uuid::new_v4();
+    let result = ctx
+        .repo
+        .get_project_by_id(non_existent_id)
+        .await
+        .expect("Failed to query project");
+    assert!(result.is_none());
+
+    // Test invalid content ID
+    let result = ctx
+        .repo
+        .get_projects_content_by_id(ctx.id, Uuid::new_v4())
+        .await
+        .expect("Failed to query content");
+    assert!(result.is_none());
+
+    // Test pagination edge cases
+    let result = ctx
+        .repo
+        .get_projects_with_filter(0, 0, None, true)
+        .await
+        .expect("Failed with 0 page");
+    assert!(result.projects.is_empty());
+
+    // Test invalid thumbnail ID
+    let result = ctx
+        .repo
+        .get_thumbnail_by_id(ctx.id, Uuid::new_v4())
+        .await
+        .expect("Failed to query thumbnail");
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_edge_cases() {
+    let ctx = TestContext::new().await;
+
+    // Test large page sizes
+    let _ = ctx
+        .repo
+        .get_projects_with_filter(1, 1000, None, true)
+        .await
+        .expect("Failed with large page size");
+
+    // Test updating with empty metadata
+    let empty_project = ProjectDto::new()
+        .id(Some(ctx.id))
+        .metadata(Some(MetadataDto::new(None, None, None)))
+        .build();
+
+    ctx.repo
+        .update_project_entity(ctx.id, &empty_project)
+        .await
+        .expect("Failed to update with empty metadata");
 }

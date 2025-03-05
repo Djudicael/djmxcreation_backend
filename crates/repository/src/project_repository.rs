@@ -23,7 +23,7 @@ use crate::{
         project::Project, project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
-    error::{handle_serde_json_error, handle_uuid_error, to_error},
+    error::to_error,
 };
 
 pub struct ProjectRepository {
@@ -35,6 +35,42 @@ impl ProjectRepository {
         Self { client }
     }
 
+    fn map_create_row_to_project_without_thumbnail_content(row: &Row) -> Result<Project, Error> {
+        let metadata: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let description: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(e, None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> =
+            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+
+        let created_on: Option<SystemTime> =
+            row.try_get("created_on").map_err(|e| to_error(e, None))?;
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+
+        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+
+        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+
+        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
+        Ok(Project {
+            id: Some(id),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible,
+            adult,
+            contents: vec![],
+            thumbnail_content: None,
+        })
+    }
     fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
         let metadata: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("metadata")
@@ -175,7 +211,8 @@ impl IProjectRepository for ProjectRepository {
                         .query_one(sql, &[&Json(metadata_json), &now_utc, &true, &false])
                         .await
                         .map_err(|e| to_error(e, None))?;
-                    ProjectRepository::map_create_row_to_project(&row).map(ProjectDto::from)
+                    ProjectRepository::map_create_row_to_project_without_thumbnail_content(&row)
+                        .map(ProjectDto::from)
                 })
             })
             .await?;
@@ -232,7 +269,7 @@ impl IProjectRepository for ProjectRepository {
         Ok(ProjectContentDto::from(content_entity))
     }
 
-    async fn get_project_by_id(&self, id: Uuid) -> Result<ProjectDto, Error> {
+    async fn get_project_by_id(&self, id: Uuid) -> Result<Option<ProjectDto>, Error> {
         let sql = "SELECT 
         p.id, 
         p.metadata, 
@@ -256,14 +293,17 @@ impl IProjectRepository for ProjectRepository {
         c.content";
 
         let client = self.client.lock().await;
-        let row = client
-            .query_one(sql, &[&id])
+        match client
+            .query_opt(sql, &[&id])
             .await
-            .map_err(|e| to_error(e, None))?;
-
-        let project = ProjectRepository::map_create_row_to_project(&row)?;
-
-        Ok(ProjectDto::from(project))
+            .map_err(|e| to_error(e, Some(format!("Project not found for id: {}", id))))?
+        {
+            Some(row) => {
+                let project = ProjectRepository::map_create_row_to_project(&row)?;
+                Ok(Some(ProjectDto::from(project)))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error> {
@@ -305,17 +345,17 @@ impl IProjectRepository for ProjectRepository {
 
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
         let adult_filter = match is_adult {
-            Some(adult) => format!("AND p.adult = {adult}"),
+            Some(adult) => format!("AND p.adult = {}", adult),
             None => "".to_owned(),
         };
 
-        // Use optional parameter syntax to conditionally include the `is_adult` parameter
+        // Rest of the SQL query remains the same
         let sql = format!(
             "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult,
             COALESCE(c.content, ct.content) AS thumbnail_content,
@@ -333,11 +373,10 @@ impl IProjectRepository for ProjectRepository {
         {adult_filter}
         AND (SELECT COUNT(*) FROM project_content WHERE project_id = p.id) > 0
         ORDER BY p.created_on DESC
-        LIMIT $2 OFFSET $3
-        "
+        LIMIT $2 OFFSET $3"
         );
 
-        // Construct the total count SQL query
+        // Rest of the implementation remains the same
         let total_sql = format!(
             "SELECT COUNT(*)
         FROM project p
@@ -347,15 +386,11 @@ impl IProjectRepository for ProjectRepository {
 
         let client = self.client.lock().await;
 
-        // Execute the total count SQL query to get the total number of projects
-
         let total_count: i64 = client
             .query_one(&total_sql, &[&is_visible])
             .await
             .map_err(|e| to_error(e, None))?
             .get(0);
-
-        // Execute the main SQL query to get the projects for the current page
 
         let rows = client
             .query(&sql, &[&is_visible, &size, &((page - 1) * size)])
@@ -368,10 +403,15 @@ impl IProjectRepository for ProjectRepository {
             .map(|r| r.map(ProjectWithThumbnailDto::from))
             .collect::<Result<Vec<ProjectWithThumbnailDto>, Error>>()?;
 
-        // Calculate the total number of pages based on the total count and page size
-        let total_pages = ((total_count as f64) / (size as f64)).ceil() as i32;
+        // Calculate total pages using i64 instead of f64
+        let total_pages = if size <= 0 {
+            0
+        } else if total_count == 0 {
+            0
+        } else {
+            (total_count + size - 1) / size
+        };
 
-        // Create a new ProjectsDto instance with the relevant information
         let projects_dto = ProjectsDto::new(page, size, total_pages, projects);
 
         Ok(projects_dto)
@@ -433,17 +473,21 @@ impl IProjectRepository for ProjectRepository {
         &self,
         project_id: Uuid,
         id: Uuid,
-    ) -> Result<ProjectContentDto, Error> {
+    ) -> Result<Option<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 and id= $2";
 
         let client = self.client.lock().await;
-        let row = client
-            .query_one(sql, &[&project_id, &id])
+        match client
+            .query_opt(sql, &[&project_id, &id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
-        let content = ProjectRepository::map_row_to_project_content(&row)?;
-
-        Ok(ProjectContentDto::from(content))
+            .map_err(|e| to_error(e, Some(format!("Content not found for id: {}", id))))?
+        {
+            Some(row) => {
+                let content = ProjectRepository::map_row_to_project_content(&row)?;
+                Ok(Some(ProjectContentDto::from(content)))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
@@ -460,7 +504,7 @@ impl IProjectRepository for ProjectRepository {
         let sql = "DELETE FROM project WHERE id = $1 ";
         let client = self.client.lock().await;
         client
-            .execute(sql, &[&project_id.to_string()])
+            .execute(sql, &[&project_id])
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;
         Ok(())
@@ -505,17 +549,20 @@ impl IProjectRepository for ProjectRepository {
         project_id: Uuid,
         id: Uuid,
     ) -> Result<Option<ProjectContentDto>, Error> {
-        let sql = "SELECT * FROM project_content_thumbnail AS pt
-        WHERE pt.content ->> 'id' = CAST($1 AS TEXT) and pt.project_id = $2
-        ";
+        let sql = "SELECT * FROM project_content_thumbnail 
+        WHERE id = $1 AND project_id = $2";
 
         let client = self.client.lock().await;
-        let row = client
-            .query_one(sql, &[&id, &project_id])
+        match client
+            .query_opt(sql, &[&id, &project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
-        let content = ProjectRepository::map_row_to_project_content(&row)?;
-
-        Ok(Some(ProjectContentDto::from(content)))
+            .map_err(|e| to_error(e, Some(format!("Thumbnail not found for id: {}", id))))?
+        {
+            Some(row) => {
+                let content = ProjectRepository::map_row_to_project_content(&row)?;
+                Ok(Some(ProjectContentDto::from(content)))
+            }
+            None => Ok(None),
+        }
     }
 }
