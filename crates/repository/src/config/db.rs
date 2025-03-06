@@ -1,3 +1,6 @@
+use std::error::Error as StdError;
+use std::fmt;
+
 use app_config::database_configuration::DatabaseConfiguration;
 
 use deadpool_postgres::{Config, CreatePoolError, Pool, PoolError, Runtime};
@@ -14,6 +17,28 @@ pub enum DatabaseError {
     PoolConnection(PoolError),
     Connection(Error),
     Migration(Error),
+}
+
+impl fmt::Display for DatabaseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DatabaseError::Pool(e) => write!(f, "Pool creation error: {}", e),
+            DatabaseError::PoolConnection(e) => write!(f, "Pool connection error: {}", e),
+            DatabaseError::Connection(e) => write!(f, "Database connection error: {}", e),
+            DatabaseError::Migration(e) => write!(f, "Database migration error: {}", e),
+        }
+    }
+}
+
+impl StdError for DatabaseError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            DatabaseError::Pool(e) => Some(e),
+            DatabaseError::PoolConnection(e) => Some(e),
+            DatabaseError::Connection(e) => Some(e),
+            DatabaseError::Migration(e) => Some(e),
+        }
+    }
 }
 
 pub struct DatabasePool {

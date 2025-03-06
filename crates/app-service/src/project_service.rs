@@ -142,7 +142,8 @@ impl IProjectService for ProjectService {
         let project_contents = self
             .project_repository
             .get_projects_content_by_id(id, content_id)
-            .await?;
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         let thumbnail = project_contents.content;
 
@@ -179,7 +180,11 @@ impl IProjectService for ProjectService {
     }
 
     async fn find_project(&self, id: Uuid) -> Result<ProjectView, Error> {
-        let project_entity = self.project_repository.get_project_by_id(id).await?;
+        let project_entity = self
+            .project_repository
+            .get_project_by_id(id)
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         // println!("Project entity: {:#?}", project_entity);
 
@@ -244,11 +249,17 @@ impl IProjectService for ProjectService {
         let _ = self
             .project_repository
             .get_project_by_id(project_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Project not found with id: {}", project_id))
+            })?;
         let content_dto = self
             .project_repository
             .get_projects_content_by_id(project_id, content_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Content not found with id: {}", content_id))
+            })?;
         let content = content_dto.content;
 
         self.project_repository
@@ -326,8 +337,8 @@ impl IProjectService for ProjectService {
 
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsView, Error> {
@@ -386,7 +397,10 @@ impl IProjectService for ProjectService {
         let spotlight = self
             .spotlight_repository
             .get_spotlight(spotlight_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Spotlight not found with id: {}", spotlight_id))
+            })?;
         self.to_spotlight_view(&spotlight).await
     }
 

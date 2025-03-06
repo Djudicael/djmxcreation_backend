@@ -36,8 +36,8 @@ pub trait IProjectService {
     async fn get_portfolio_projects(&self) -> Result<Vec<ProjectView>, Error>;
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsView, Error>;
