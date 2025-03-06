@@ -12,13 +12,14 @@ use app_error::Error;
 use async_trait::async_trait;
 
 use chrono::{DateTime, Utc};
+use deadpool_postgres::PoolError;
 use serde_json::{json, Value};
-use tokio::sync::Mutex;
+
 use tokio_postgres::{types::Json, Row, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    config::db::ClientV2,
+    config::db::DatabasePool,
     entity::{
         project::Project, project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
@@ -27,38 +28,46 @@ use crate::{
 };
 
 pub struct ProjectRepository {
-    client: Arc<Mutex<ClientV2>>,
+    client: Arc<DatabasePool>,
 }
 
 impl ProjectRepository {
-    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+    pub fn new(client: Arc<DatabasePool>) -> Self {
         Self { client }
     }
 
     fn map_create_row_to_project_without_thumbnail_content(row: &Row) -> Result<Project, Error> {
         let metadata: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let description: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
-        let updated_on: Option<SystemTime> =
-            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
 
-        let created_on: Option<SystemTime> =
-            row.try_get("created_on").map_err(|e| to_error(e, None))?;
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
 
-        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         Ok(Project {
             id: Some(id),
             metadata,
@@ -74,32 +83,40 @@ impl ProjectRepository {
     fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
         let metadata: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let description: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let thumbnail_content: Option<serde_json::Value> = row
             .try_get::<_, Option<Json<Value>>>("thumbnail_content")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
-        let updated_on: Option<SystemTime> =
-            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
 
-        let created_on: Option<SystemTime> =
-            row.try_get("created_on").map_err(|e| to_error(e, None))?;
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
 
-        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         Ok(Project {
             id: Some(id),
             metadata,
@@ -116,37 +133,46 @@ impl ProjectRepository {
     fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
         let metadata: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let description: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let thumbnail_content: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("thumbnail_content")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
-        let updated_on: Option<SystemTime> =
-            row.try_get("updated_on").map_err(|e| to_error(e, None))?;
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
 
-        let created_on: SystemTime = row.try_get("created_on").map_err(|e| to_error(e, None))?;
+        let created_on: SystemTime = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let created_on: DateTime<Utc> = created_on.into();
 
         let thumbnail_created_on: Option<SystemTime> = row
             .try_get("thumbnail_created_on")
-            .map_err(|e| to_error(e, None))?;
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let thumbnail_created_on: Option<DateTime<Utc>> =
             thumbnail_created_on.map(|time| time.into());
 
-        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let visible: bool = row.try_get("visible").map_err(|e| to_error(e, None))?;
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let adult: bool = row.try_get("adult").map_err(|e| to_error(e, None))?;
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         Ok(ProjectWithThumbnail {
             id: Some(id),
@@ -164,16 +190,21 @@ impl ProjectRepository {
     fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
         let content: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("content")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
-        let created_on: Option<SystemTime> =
-            row.try_get("created_on").map_err(|e| to_error(e, None))?;
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
 
-        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let project_id: Uuid = row.try_get("project_id").map_err(|e| to_error(e, None))?;
+        let project_id: Uuid = row
+            .try_get("project_id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         Ok(ProjectContent::new(
             Some(id),
@@ -189,10 +220,25 @@ impl ProjectRepository {
             &'a Transaction<'a>,
         ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
     {
-        let mut client = self.client.lock().await;
-        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
+        let mut client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+
+        let transaction = client
+            .build_transaction()
+            .start()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         let result = f(&transaction).await?;
-        transaction.commit().await.map_err(|e| to_error(e, None))?;
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         Ok(result)
     }
 }
@@ -210,7 +256,7 @@ impl IProjectRepository for ProjectRepository {
                     let row = tx
                         .query_one(sql, &[&Json(metadata_json), &now_utc, &true, &false])
                         .await
-                        .map_err(|e| to_error(e, None))?;
+                        .map_err(|e| to_error(PoolError::Backend(e), None))?;
                     ProjectRepository::map_create_row_to_project_without_thumbnail_content(&row)
                         .map(ProjectDto::from)
                 })
@@ -234,7 +280,9 @@ impl IProjectRepository for ProjectRepository {
                     let row = tx
                         .query_one(sql, &[&project_id, &Json(content_json), &now_utc])
                         .await
-                        .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+                        .map_err(|e| {
+                            to_error(PoolError::Backend(e), Some(project_id.to_string()))
+                        })?;
                     ProjectRepository::map_row_to_project_content(&row)
                 })
             })
@@ -261,7 +309,9 @@ impl IProjectRepository for ProjectRepository {
                     let row = tx
                         .query_one(sql, &[&Json(thumbnail_json), &project_id, &now_utc])
                         .await
-                        .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+                        .map_err(|e| {
+                            to_error(PoolError::Backend(e), Some(project_id.to_string()))
+                        })?;
                     ProjectRepository::map_row_to_project_content(&row)
                 })
             })
@@ -292,12 +342,17 @@ impl IProjectRepository for ProjectRepository {
         p.id, 
         c.content";
 
-        let client = self.client.lock().await;
-        match client
-            .query_opt(sql, &[&id])
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|e| to_error(e, Some(format!("Project not found for id: {}", id))))?
-        {
+            .map_err(|e| to_error(e, None))?;
+        match client.query_opt(sql, &[&id]).await.map_err(|e| {
+            to_error(
+                PoolError::Backend(e),
+                Some(format!("Project not found for id: {}", id)),
+            )
+        })? {
             Some(row) => {
                 let project = ProjectRepository::map_create_row_to_project(&row)?;
                 Ok(Some(ProjectDto::from(project)))
@@ -327,11 +382,15 @@ impl IProjectRepository for ProjectRepository {
         p.id, 
         c.content";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let rows = client
             .query(sql, &[])
             .await
-            .map_err(|e| to_error(e, None))?;
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         let projects = rows
             .iter()
@@ -395,18 +454,22 @@ impl IProjectRepository for ProjectRepository {
         {adult_filter}"
         );
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
 
         let total_count: i64 = client
             .query_one(&total_sql, &[&is_visible])
             .await
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .get(0);
 
         let rows = client
             .query(&sql, &[&is_visible, &size, &((page - 1) * size)])
             .await
-            .map_err(|e| to_error(e, None))?;
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         let projects = rows
             .iter()
@@ -443,7 +506,11 @@ impl IProjectRepository for ProjectRepository {
         } = project.clone();
 
         let sql="UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         client
             .execute(
                 sql,
@@ -457,7 +524,7 @@ impl IProjectRepository for ProjectRepository {
                 ],
             )
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
 
         Ok(())
     }
@@ -467,11 +534,15 @@ impl IProjectRepository for ProjectRepository {
         project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let row = client
             .query(sql, &[&project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         let contents = row
             .iter()
             .map(|r| ProjectRepository::map_row_to_project_content(r))
@@ -487,12 +558,20 @@ impl IProjectRepository for ProjectRepository {
     ) -> Result<Option<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 and id= $2";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         match client
             .query_opt(sql, &[&project_id, &id])
             .await
-            .map_err(|e| to_error(e, Some(format!("Content not found for id: {}", id))))?
-        {
+            .map_err(|e| {
+                to_error(
+                    PoolError::Backend(e),
+                    Some(format!("Content not found for id: {}", id)),
+                )
+            })? {
             Some(row) => {
                 let content = ProjectRepository::map_row_to_project_content(&row)?;
                 Ok(Some(ProjectContentDto::from(content)))
@@ -503,21 +582,29 @@ impl IProjectRepository for ProjectRepository {
 
     async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project_content WHERE id = $1 and project_id = $2 ";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         client
             .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
     async fn delete_project_by_id(&self, project_id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project WHERE id = $1 ";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         client
             .execute(sql, &[&project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
@@ -528,11 +615,15 @@ impl IProjectRepository for ProjectRepository {
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let row = client
             .query(sql, &[&project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         let contents = row
             .iter()
             .map(|r| ProjectRepository::map_row_to_project_content(r))
@@ -547,11 +638,15 @@ impl IProjectRepository for ProjectRepository {
     async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         client
             .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|e| to_error(e, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
@@ -563,12 +658,20 @@ impl IProjectRepository for ProjectRepository {
         let sql = "SELECT * FROM project_content_thumbnail 
         WHERE id = $1 AND project_id = $2";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         match client
             .query_opt(sql, &[&id, &project_id])
             .await
-            .map_err(|e| to_error(e, Some(format!("Thumbnail not found for id: {}", id))))?
-        {
+            .map_err(|e| {
+                to_error(
+                    PoolError::Backend(e),
+                    Some(format!("Thumbnail not found for id: {}", id)),
+                )
+            })? {
             Some(row) => {
                 let content = ProjectRepository::map_row_to_project_content(&row)?;
                 Ok(Some(ProjectContentDto::from(content)))

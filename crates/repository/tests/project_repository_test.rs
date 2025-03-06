@@ -1,13 +1,11 @@
 use app_config::database_configuration::DatabaseConfiguration;
 use app_core::dto::{content_dto::ContentDto, metadata_dto::MetadataDto, project_dto::ProjectDto};
 use app_core::project::project_repository::IProjectRepository;
-
-use repository::config::db::db_client;
+use repository::config::db::DatabasePool;
 use repository::project_repository::ProjectRepository;
 use serde_json::json;
 use std::sync::Arc;
 use test_util::postgresql::{init_postgresql, PostgresContainer};
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 struct TestContext {
@@ -24,6 +22,7 @@ impl TestContext {
             pg_host: "localhost".to_string(),
             pg_db: "portfolio".to_string(),
             pg_app_max_con: 5,
+            pg_port: 5432,
         };
 
         let (podman, image) = init_postgresql(&test_db_config).expect("Failed to init PostgreSQL");
@@ -33,11 +32,12 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        let client = db_client(&test_db_config, Some(&url))
+        // Create database pool with the test configuration and URL
+        let pool = DatabasePool::new(&test_db_config, Some(&url))
             .await
-            .expect("Failed to connect to the test database");
+            .expect("Failed to create database pool");
 
-        let repo = ProjectRepository::new(Arc::new(Mutex::new(client)));
+        let repo = ProjectRepository::new(Arc::new(pool));
 
         // Initialize test data
         let project = repo

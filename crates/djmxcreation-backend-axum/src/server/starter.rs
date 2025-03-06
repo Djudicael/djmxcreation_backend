@@ -31,7 +31,7 @@ use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 // use migration::init_db_migration;
 use once_cell::sync::Lazy;
 use repository::config::{
-    db::db_client,
+    db::DatabasePool,
     minio::{create_bucket, get_aws_client},
 };
 use serde_json::json;
@@ -102,7 +102,7 @@ pub async fn start() -> anyhow::Result<()> {
     //     .await
     //     .expect("Failed to migrate database");
 
-    let client = db_client(&config.database, None).await?;
+    let client_db = DatabasePool::new(&config.database, None).await?;
 
     let storage = config.clone().get_storage();
 
@@ -110,7 +110,7 @@ pub async fn start() -> anyhow::Result<()> {
 
     create_bucket("portfolio", storage_client.clone()).await?;
 
-    let service_register = ServiceRegister::new(client, storage_client);
+    let service_register = ServiceRegister::new(Arc::new(client_db), storage_client);
 
     let recorder_handle = PrometheusBuilder::new()
         .set_buckets_for_metric(

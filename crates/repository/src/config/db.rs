@@ -11,6 +11,7 @@ embed_migrations!("../../sql/migrations");
 #[derive(Debug)]
 pub enum DatabaseError {
     Pool(CreatePoolError),
+    PoolConnection(PoolError),
     Connection(Error),
     Migration(Error),
 }
@@ -20,24 +21,32 @@ pub struct DatabasePool {
 }
 
 impl DatabasePool {
-    pub async fn new(config: &DatabaseConfiguration) -> Result<Self, DatabaseError> {
+    pub async fn new(
+        config: &DatabaseConfiguration,
+        database_url: Option<&str>,
+    ) -> Result<Self, DatabaseError> {
         let mut cfg = Config::new();
-        cfg.host = Some(config.pg_host.clone());
-        cfg.user = Some(config.pg_user.clone());
-        cfg.password = Some(config.pg_password.clone());
-        cfg.dbname = Some(config.pg_db.clone());
+
+        if let Some(url) = database_url {
+            cfg.url = Some(url.to_string());
+        } else {
+            cfg.host = Some(config.pg_host.clone());
+            cfg.user = Some(config.pg_user.clone());
+            cfg.password = Some(config.pg_password.clone());
+            cfg.dbname = Some(config.pg_db.clone());
+            cfg.port = Some(config.pg_port);
+        }
 
         let pool = cfg
             .create_pool(Some(Runtime::Tokio1), NoTls)
             .map_err(DatabaseError::Pool)?;
 
         // Apply migrations using raw connection
-        let conn = pool
-            .get()
-            .await
-            .map_err(|e| DatabaseError::Connection(e.into()))?;
-        let mut client = conn.as_ref().clone();
-        apply_migrations(&mut client)
+        let mut conn = pool.get().await.map_err(DatabaseError::PoolConnection)?;
+
+        // Get mutable reference to the underlying client
+        let client = conn.as_mut();
+        apply_migrations(client)
             .await
             .map_err(DatabaseError::Migration)?;
 

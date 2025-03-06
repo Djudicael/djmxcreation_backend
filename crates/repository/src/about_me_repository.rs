@@ -1,9 +1,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
-use tokio::sync::Mutex;
+use deadpool_postgres::PoolError;
+
 use uuid::Uuid;
 
-use crate::{config::db::ClientV2, entity::about_me::AboutMe, error::to_error};
+use crate::{config::db::DatabasePool, entity::about_me::AboutMe, error::to_error};
 use app_core::{
     about_me::about_me_repository::IAboutMeRepository,
     dto::{about_me_dto::AboutMeDto, content_dto::ContentDto},
@@ -15,11 +16,11 @@ use serde_json::{json, Value};
 use tokio_postgres::{types::Json, Row, Transaction};
 
 pub struct AboutMeRepository {
-    client: Arc<Mutex<ClientV2>>,
+    client: Arc<DatabasePool>,
 }
 
 impl AboutMeRepository {
-    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+    pub fn new(client: Arc<DatabasePool>) -> Self {
         Self { client }
     }
 
@@ -27,19 +28,25 @@ impl AboutMeRepository {
     fn map_row_to_about_me(row: &Row) -> Result<AboutMe, Error> {
         let photo: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("photo")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
         let description: Option<Value> = row
             .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(e, None))?
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
             .map(|json| json.0);
 
-        let id: Uuid = row.try_get("id").map_err(|e| to_error(e, None))?;
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let first_name: String = row.try_get("first_name").map_err(|e| to_error(e, None))?;
+        let first_name: String = row
+            .try_get("first_name")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let last_name: String = row.try_get("last_name").map_err(|e| to_error(e, None))?;
+        let last_name: String = row
+            .try_get("last_name")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         let about_me = AboutMe::new(Some(id), first_name, last_name, description, photo);
 
@@ -52,10 +59,25 @@ impl AboutMeRepository {
             &'a Transaction<'a>,
         ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
     {
-        let mut client = self.client.lock().await;
-        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
+        let mut client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+
+        let transaction = client
+            .build_transaction()
+            .start()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         let result = f(&transaction).await?;
-        transaction.commit().await.map_err(|e| to_error(e, None))?;
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         Ok(result)
     }
 }
@@ -72,16 +94,20 @@ impl IAboutMeRepository for AboutMeRepository {
 
         let sql = "UPDATE about SET first_name = $1, last_name = $2, description = $3 WHERE id = $4 RETURNING *";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let stmt = client
             .prepare(sql)
             .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(id.to_string())))?;
 
         let row = client
             .query_one(&stmt, &[&first_name, &last_name, &Json(description), &id])
             .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(id.to_string())))?;
 
         let about_me = Self::map_row_to_about_me(&row)?;
 
@@ -90,11 +116,15 @@ impl IAboutMeRepository for AboutMeRepository {
 
     async fn get_about_me(&self) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about LIMIT 1";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let row = client
             .query_one(sql, &[])
             .await
-            .map_err(|e| to_error(e, None))?;
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         let about_me = Self::map_row_to_about_me(&row)?;
         Ok(AboutMeDto::from(about_me))
@@ -102,11 +132,15 @@ impl IAboutMeRepository for AboutMeRepository {
 
     async fn get_about_me_by_id(&self, id: Uuid) -> Result<AboutMeDto, Error> {
         let sql = "SELECT * FROM about WHERE id = $1";
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
         let row = client
             .query_one(sql, &[&id])
             .await
-            .map_err(|e| to_error(e, Some(id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(id.to_string())))?;
 
         let about_me = Self::map_row_to_about_me(&row)?;
         let dto = AboutMeDto::from(about_me);
@@ -121,7 +155,7 @@ impl IAboutMeRepository for AboutMeRepository {
             Box::pin(async move {
                 tx.execute(sql, &[&Json(content_json), &id])
                     .await
-                    .map_err(|e| to_error(e, Some(id.to_string())))?;
+                    .map_err(|e| to_error(PoolError::Backend(e), Some(id.to_string())))?;
                 Ok(())
             })
         })
@@ -135,7 +169,7 @@ impl IAboutMeRepository for AboutMeRepository {
             Box::pin(async move {
                 tx.execute(sql, &[&id])
                     .await
-                    .map_err(|e| to_error(e, Some(id.to_string())))?;
+                    .map_err(|e| to_error(PoolError::Backend(e), Some(id.to_string())))?;
                 Ok(())
             })
         })

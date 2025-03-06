@@ -1,13 +1,12 @@
 use app_config::database_configuration::DatabaseConfiguration;
 use app_core::contact::contact_repository::IContactRepository;
 use app_core::dto::contact_dto::ContactDto;
-use repository::config::db::db_client;
+use repository::config::db::DatabasePool;
 use repository::contact_repository::ContactRepository;
 use serde_json::json;
 use serde_json::Value;
 use std::sync::Arc;
 use test_util::postgresql::{init_postgresql, PostgresContainer};
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 struct TestContext {
@@ -24,6 +23,7 @@ impl TestContext {
             pg_host: "localhost".to_string(),
             pg_db: "portfolio".to_string(),
             pg_app_max_con: 5,
+            pg_port: 5432,
         };
 
         let (podman, image) = init_postgresql(&test_db_config).expect("Failed to init PostgreSQL");
@@ -33,11 +33,12 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        let client = db_client(&test_db_config, Some(&url))
+        // Create database pool with the test configuration and URL
+        let pool = DatabasePool::new(&test_db_config, Some(&url))
             .await
-            .expect("Failed to connect to the test database");
+            .expect("Failed to create database pool");
 
-        let repo = ContactRepository::new(Arc::new(Mutex::new(client)));
+        let repo = ContactRepository::new(Arc::new(pool));
         let id = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid parse error");
 
         // Initialize test data

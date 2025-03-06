@@ -7,23 +7,24 @@ use app_error::Error;
 use async_trait::async_trait;
 
 use chrono::{DateTime, Utc};
+use deadpool_postgres::PoolError;
 use serde_json::Value;
-use tokio::sync::Mutex;
+
 use tokio_postgres::{Row, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    config::db::ClientV2,
+    config::db::DatabasePool,
     entity::spotlight::Spotlight,
     error::{handle_serde_json_error, handle_uuid_error, to_error},
 };
 
 pub struct SpotlightRepository {
-    client: Arc<Mutex<ClientV2>>,
+    client: Arc<DatabasePool>,
 }
 
 impl SpotlightRepository {
-    pub fn new(client: Arc<Mutex<ClientV2>>) -> Self {
+    pub fn new(client: Arc<DatabasePool>) -> Self {
         Self { client }
     }
 
@@ -33,10 +34,25 @@ impl SpotlightRepository {
             &'a Transaction<'a>,
         ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
     {
-        let mut client = self.client.lock().await;
-        let transaction = client.transaction().await.map_err(|e| to_error(e, None))?;
+        let mut client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+
+        let transaction = client
+            .build_transaction()
+            .start()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         let result = f(&transaction).await?;
-        transaction.commit().await.map_err(|e| to_error(e, None))?;
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
         Ok(result)
     }
 
@@ -81,7 +97,7 @@ impl ISpotlightRepository for SpotlightRepository {
                     let row = tx
                         .query_one(sql, &[&project_id.to_string(), &now_utc.to_string()])
                         .await
-                        .map_err(|error| to_error(error, None))?;
+                        .map_err(|error| to_error(PoolError::Backend(error), None))?;
 
                     let spotlight = Self::map_row_to_spotlight(&row)?;
 
@@ -97,12 +113,16 @@ impl ISpotlightRepository for SpotlightRepository {
         LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
         LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id";
 
-        let client = self.client.lock().await;
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
 
         let rows = client
             .query(sql, &[])
             .await
-            .map_err(|error| to_error(error, None))?;
+            .map_err(|error| to_error(PoolError::Backend(error), None))?;
 
         let spotlights = rows
             .iter()
@@ -112,31 +132,43 @@ impl ISpotlightRepository for SpotlightRepository {
 
         Ok(spotlights)
     }
-    async fn get_spotlight(&self, id: Uuid) -> Result<SpotlightDto, Error> {
+    async fn get_spotlight(&self, id: Uuid) -> Result<Option<SpotlightDto>, Error> {
         let sql = "SELECT spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail FROM spotlight
-        LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
-        LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id
-        WHERE spotlight.id = $1";
+            LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
+            LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id
+            WHERE spotlight.id = $1";
 
-        let client = self.client.lock().await;
-        let row = client
-            .query_one(sql, &[&id.to_string()])
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|error| to_error(error, None))?;
-        let spotlight = Self::map_row_to_spotlight(&row)?;
+            .map_err(|e| to_error(e, None))?;
 
-        let spotlight_dto = SpotlightDto::from(spotlight);
-
-        Ok(spotlight_dto)
+        match client.query_opt(sql, &[&id]).await.map_err(|error| {
+            to_error(
+                PoolError::Backend(error),
+                Some(format!("Failed to fetch spotlight with id: {}", id)),
+            )
+        })? {
+            Some(row) => {
+                let spotlight = Self::map_row_to_spotlight(&row)?;
+                Ok(Some(SpotlightDto::from(spotlight)))
+            }
+            None => Ok(None),
+        }
     }
     async fn delete_spotlight(&self, id: Uuid) -> Result<(), Error> {
         let sql = "DELETE FROM spotlight WHERE id = $1";
 
-        let client = self.client.lock().await;
-        client
-            .execute(sql, &[&id.to_string()])
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|error| to_error(error, Some(id.to_string())))?;
+            .map_err(|e| to_error(e, None))?;
+        client
+            .execute(sql, &[&id])
+            .await
+            .map_err(|error| to_error(PoolError::Backend(error), Some(id.to_string())))?;
 
         Ok(())
     }

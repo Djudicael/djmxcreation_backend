@@ -12,6 +12,6 @@ pub type DynISpotlightRepository = Arc<dyn ISpotlightRepository + Send + Sync>;
 pub trait ISpotlightRepository {
     async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightDto, Error>;
     async fn get_spotlights(&self) -> Result<Vec<SpotlightDto>, Error>;
-    async fn get_spotlight(&self, id: Uuid) -> Result<SpotlightDto, Error>;
+    async fn get_spotlight(&self, id: Uuid) -> Result<Option<SpotlightDto>, Error>;
     async fn delete_spotlight(&self, id: Uuid) -> Result<(), Error>;
 }

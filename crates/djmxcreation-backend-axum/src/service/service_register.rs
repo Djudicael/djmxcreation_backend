@@ -12,7 +12,7 @@ use app_service::{
 
 use repository::{
     about_me_repository::AboutMeRepository,
-    config::{db::ClientV2, minio::StorageClient},
+    config::{db::DatabasePool, minio::StorageClient},
     contact_repository::ContactRepository,
     project_repository::ProjectRepository,
     spotlight_repository::SpotlightRepository,
@@ -29,8 +29,7 @@ pub struct ServiceRegister {
 }
 
 impl ServiceRegister {
-    pub fn new(db_v2: ClientV2, client: StorageClient) -> Self {
-        let client_db = Arc::new(Mutex::new(db_v2));
+    pub fn new(client_db: Arc<DatabasePool>, client: StorageClient) -> Self {
         let project_repository = Arc::new(ProjectRepository::new(client_db.clone()));
         let about_me_repository = Arc::new(AboutMeRepository::new(client_db.clone()));
         let contact_repository = Arc::new(ContactRepository::new(client_db.clone()));

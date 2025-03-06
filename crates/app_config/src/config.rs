@@ -22,7 +22,11 @@ impl Config {
         let pg_db = env::var("PG_DB").expect("Cannot find PG_DB");
         let pg_user = env::var("PG_USER").expect("Cannot find");
         let pg_password = env::var("PG_PASSWORD").expect("Cannot find");
-        let database = DatabaseConfiguration::new(pg_host, pg_db, pg_user, pg_password, 5);
+        let pg_port = env::var("PG_PORT")
+            .expect("Cannot find PG_PORT")
+            .parse::<u16>()
+            .expect("PG_PORT must be a valid number");
+        let database = DatabaseConfiguration::new(pg_host, pg_db, pg_user, pg_password, 5, pg_port);
 
         // Configuration for storage
         let minio_endpoint = env::var("MINIO_ENDPOINT").expect("Cannot find MINIO_ENDPOINT");

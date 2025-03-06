@@ -11,7 +11,7 @@ pub fn init_postgresql(config: &DatabaseConfiguration) -> Result<(Runner, Postgr
         .with_db(config.pg_db.as_str())
         .with_user(config.pg_user.as_str())
         .with_password(config.pg_password.as_str())
-        .with_port(ExposedPort::fixed(5432, 5432));
+        .with_port(ExposedPort::fixed(config.pg_port, config.pg_port));
 
     let podman = Runner::podman()?;
     Ok((podman, image))

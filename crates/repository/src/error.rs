@@ -1,40 +1,67 @@
 use app_error::Error;
+
+use deadpool_postgres::PoolError;
 use serde_json::Error as SerdeJsonError;
+
 use tokio_postgres::{error::SqlState, Error as PgError};
 
-pub fn to_error(pg_error: PgError, message: Option<String>) -> Error {
-    println!("pg_error: {pg_error:?}");
+pub fn to_error(error: PoolError, message: Option<String>) -> Error {
+    println!("Error: {:?}", error);
 
-    match pg_error.to_string().as_str() {
-        s if s.contains("RowCount") => {
-            return Error::EntityNotFound(
-                message.unwrap_or_else(|| "Entity not found".to_string()),
-            );
+    match error {
+        PoolError::Backend(pg_error) => handle_pg_error(&pg_error, message),
+        PoolError::Timeout(_) => {
+            println!("Pool timeout error");
+            Error::Database
         }
-        _ => {}
+        PoolError::NoRuntimeSpecified => {
+            println!("Pool configuration error: No runtime specified");
+            Error::Database
+        }
+        _ => {
+            println!("Unexpected pool error: {:?}", error);
+            Error::Database
+        }
     }
+}
 
-    if let Some(db_error) = pg_error.as_db_error() {
-        println!("db_error code: {:?}", db_error.code());
+fn handle_pg_error(error: &PgError, message: Option<String>) -> Error {
+    if let Some(db_error) = error.as_db_error() {
+        println!("Database error code: {:?}", db_error.code());
+
         match db_error.code() {
+            // Table/view not found
             code if code == &SqlState::UNDEFINED_TABLE => {
                 Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
             }
+            // Invalid parameter value
             code if code == &SqlState::INVALID_PARAMETER_VALUE => Error::InvalidInput(
                 message.unwrap_or_else(|| "Invalid parameter value".to_string()),
             ),
+            // No data found
             code if code == &SqlState::NO_DATA_FOUND => {
                 Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
             }
+            // Foreign key violation
+            code if code == &SqlState::FOREIGN_KEY_VIOLATION => Error::InvalidInput(
+                message.unwrap_or_else(|| "Referenced entity not found".to_string()),
+            ),
+            // Unique violation
+            code if code == &SqlState::UNIQUE_VIOLATION => {
+                Error::InvalidInput(message.unwrap_or_else(|| "Entity already exists".to_string()))
+            }
+            // Not null violation
+            code if code == &SqlState::NOT_NULL_VIOLATION => Error::InvalidInput(
+                message.unwrap_or_else(|| "Required field is missing".to_string()),
+            ),
+            // Other database errors
             _ => {
-                // Print detailed error information for debugging purposes
-                println!("Database error code: {:?}", db_error.code());
+                println!("Unhandled database error: {:?}", error);
                 Error::Database
             }
         }
     } else {
-        // Handle non-database errors
-        println!("Non-database error: {:?}", pg_error);
+        println!("Non-database error: {:?}", error);
         Error::Database
     }
 }
