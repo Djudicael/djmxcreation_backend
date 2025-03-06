@@ -1,11 +1,12 @@
 use app_config::database_configuration::DatabaseConfiguration;
-use app_core::dto::project_dto::ProjectDto;
-use app_core::dto::spotlight_dto::SpotlightDto;
+use app_core::dto::content_dto::ContentDto;
+use app_core::dto::metadata_dto::MetadataDto;
+use app_core::project::project_repository::IProjectRepository;
 use app_core::spotlight::spotlight_repository::ISpotlightRepository;
+use app_error::Error;
 use repository::config::db::DatabasePool;
 use repository::project_repository::ProjectRepository;
 use repository::spotlight_repository::SpotlightRepository;
-use serde_json::json;
 use std::sync::Arc;
 use test_util::postgresql::{init_postgresql, PostgresContainer};
 use uuid::Uuid;
@@ -43,25 +44,33 @@ impl TestContext {
         );
 
         let repo = SpotlightRepository::new(pool.clone());
-        let project_repo = ProjectRepository::new(pool);
-        // Create a project first
-        let project = ProjectDto::new()
-            .metadata(Some(json!({
-                "title": "Test Project",
-                "sub_title": "Test Subtitle",
-                "client": "Test Client"
-            })))
-            .description(Some(json!({"details": "Test description"})))
-            .visible(true)
-            .adult(false)
-            .build();
 
+        let project_repo = ProjectRepository::new(pool.clone());
         let created_project = project_repo
-            .create_project(&project)
+            .create(&MetadataDto::new(
+                Some("Test Project".to_string()),
+                Some("Test Subtitle".to_string()),
+                Some("Test Client".to_string()),
+            ))
             .await
-            .expect("Failed to create project");
+            .expect("Failed to create test project");
 
+        let content = ContentDto {
+            id: None,
+            bucket_name: "test_bucket".to_string(),
+            file_name: "test_file.jpg".to_string(),
+            mime_type: Some("image/jpeg".to_string()),
+        };
         let project_id = created_project.id.expect("Project should have an ID");
+
+        project_repo
+            .add_project_content(project_id, &content)
+            .await
+            .expect("Failed to add content");
+        project_repo
+            .add_project_thumbnail(project_id, &content)
+            .await
+            .expect("Failed to add project thumbnail");
 
         // Then create the spotlight
         let spotlight = repo
@@ -94,8 +103,8 @@ async fn test_spotlight_crud_operations() {
     assert_eq!(spotlight.project_id, ctx.project_id);
     assert!(spotlight.created_on.is_some());
     assert!(!spotlight.adult);
-    assert!(spotlight.metadata.is_none());
-    assert!(spotlight.thumbnail.is_none());
+    assert!(spotlight.metadata.is_some());
+    assert!(spotlight.thumbnail.is_some());
 
     // Test 2: Get all spotlights
     let spotlights = ctx
@@ -123,20 +132,15 @@ async fn test_spotlight_crud_operations() {
     assert!(deleted_spotlight.is_none());
 
     // Test 5: Add new spotlight with new project
-    let new_project = ProjectDto::new()
-        .metadata(Some(json!({
-            "title": "New Test Project",
-            "sub_title": "New Test Subtitle",
-            "client": "New Test Client"
-        })))
-        .description(Some(json!({"details": "New test description"})))
-        .visible(true)
-        .adult(false)
-        .build();
+    let metadata = MetadataDto::new(
+        Some("New Test Project".to_string()),
+        Some("New Test Subtitle".to_string()),
+        Some("New Test Client".to_string()),
+    );
 
     let created_project = ctx
         .project_repo
-        .create_project(&new_project)
+        .create(&metadata)
         .await
         .expect("Failed to create new project");
 

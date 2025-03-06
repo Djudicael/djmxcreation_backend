@@ -18,7 +18,6 @@ use repository::{
     spotlight_repository::SpotlightRepository,
     storage_repository::StorageRepository,
 };
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 

@@ -10,14 +10,10 @@ use chrono::{DateTime, Utc};
 use deadpool_postgres::PoolError;
 use serde_json::Value;
 
-use tokio_postgres::{Row, Transaction};
+use tokio_postgres::{types::Json, Row, Transaction};
 use uuid::Uuid;
 
-use crate::{
-    config::db::DatabasePool,
-    entity::spotlight::Spotlight,
-    error::{handle_serde_json_error, handle_uuid_error, to_error},
-};
+use crate::{config::db::DatabasePool, entity::spotlight::Spotlight, error::to_error};
 
 pub struct SpotlightRepository {
     client: Arc<DatabasePool>,
@@ -58,25 +54,31 @@ impl SpotlightRepository {
 
     fn map_row_to_spotlight(row: &Row) -> Result<Spotlight, Error> {
         let thumbnail: Option<Value> = row
-            .get::<_, Option<String>>(5)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
-        let metadata: Option<serde_json::Value> = row
-            .get::<_, Option<String>>(3)
-            .map(|s| serde_json::from_str(&s).map_err(|e| handle_serde_json_error(e)))
-            .transpose()?;
+            .try_get::<_, Option<Json<Value>>>("thumbnail")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+        let metadata: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
 
-        let created_on: Option<SystemTime> = row.get(4);
-        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-        let id = Uuid::parse_str(row.get(0)).map_err(|e| handle_uuid_error(e))?;
-        let project_id = Uuid::parse_str(row.get(1)).map_err(|e| handle_uuid_error(e))?;
+        let created_on: SystemTime = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let created_on: DateTime<Utc> = created_on.into();
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let project_id = row
+            .try_get("project_id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         Ok(Spotlight {
             id: Some(id),
             project_id,
             adult: row.get(2),
             metadata,
-            created_on,
+            created_on: Some(created_on),
             thumbnail,
         })
     }
@@ -86,16 +88,27 @@ impl SpotlightRepository {
 impl ISpotlightRepository for SpotlightRepository {
     async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightDto, Error> {
         let now_utc: DateTime<Utc> = Utc::now();
-        let sql = "INSERT INTO spotlight (project_id, created_on) VALUES ($1, $2)
-        RETURNING spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail
-        LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
-        LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id";
+        let sql = "WITH inserted AS (
+        INSERT INTO project_spotlight (project_id, created_on) 
+        VALUES ($1, $2) 
+        RETURNING id, project_id, created_on
+    )
+    SELECT 
+        inserted.id, 
+        inserted.project_id, 
+        p.adult,
+        p.metadata, 
+        inserted.created_on,
+        c.content AS thumbnail
+    FROM inserted
+    LEFT JOIN project p ON p.id = inserted.project_id
+    LEFT JOIN project_content_thumbnail c ON c.project_id = inserted.project_id";
 
         let spotlight_dto = self
             .with_transaction(|tx| {
                 Box::pin(async move {
                     let row = tx
-                        .query_one(sql, &[&project_id.to_string(), &now_utc.to_string()])
+                        .query_one(sql, &[&project_id, &now_utc])
                         .await
                         .map_err(|error| to_error(PoolError::Backend(error), None))?;
 
@@ -109,9 +122,16 @@ impl ISpotlightRepository for SpotlightRepository {
         Ok(spotlight_dto)
     }
     async fn get_spotlights(&self) -> Result<Vec<SpotlightDto>, Error> {
-        let sql = "SELECT spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail FROM spotlight 
-        LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
-        LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id";
+        let sql = "SELECT 
+        ps.id, 
+        ps.project_id, 
+        p.adult,
+        p.metadata, 
+        ps.created_on,
+        c.content AS thumbnail
+    FROM project_spotlight ps
+    LEFT JOIN project p ON p.id = ps.project_id
+    LEFT JOIN project_content_thumbnail c ON c.project_id = ps.project_id";
 
         let client = self
             .client
@@ -133,10 +153,17 @@ impl ISpotlightRepository for SpotlightRepository {
         Ok(spotlights)
     }
     async fn get_spotlight(&self, id: Uuid) -> Result<Option<SpotlightDto>, Error> {
-        let sql = "SELECT spotlight.id, spotlight.project_id, spotlight.adult, spotlight.metadata, spotlight.created_on, c.content AS thumbnail FROM spotlight
-            LEFT JOIN project_content_thumbnail c ON c.project_id = spotlight.project_id
-            LEFT JOIN project_content ct ON ct.project_id = spotlight.project_id
-            WHERE spotlight.id = $1";
+        let sql = "SELECT 
+        ps.id, 
+        ps.project_id, 
+        p.adult,
+        p.metadata, 
+        ps.created_on,
+        c.content AS thumbnail
+    FROM project_spotlight ps
+    LEFT JOIN project p ON p.id = ps.project_id
+    LEFT JOIN project_content_thumbnail c ON c.project_id = ps.project_id
+    WHERE ps.id = $1";
 
         let client = self
             .client
@@ -157,8 +184,9 @@ impl ISpotlightRepository for SpotlightRepository {
             None => Ok(None),
         }
     }
+
     async fn delete_spotlight(&self, id: Uuid) -> Result<(), Error> {
-        let sql = "DELETE FROM spotlight WHERE id = $1";
+        let sql = "DELETE FROM project_spotlight WHERE id = $1";
 
         let client = self
             .client

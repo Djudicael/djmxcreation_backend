@@ -170,7 +170,11 @@ impl IProjectService for ProjectService {
     }
 
     async fn update_project(&self, id: Uuid, project: &ProjectDto) -> Result<(), Error> {
-        let _ = self.project_repository.get_project_by_id(id).await?;
+        let _ = self
+            .project_repository
+            .get_project_by_id(id)
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         self.project_repository
             .update_project_entity(id, project)
