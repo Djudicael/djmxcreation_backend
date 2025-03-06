@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 use super::{content_dto::ContentDto, metadata_dto::MetadataDto};
 
 #[derive(Default, Debug, Clone)]
 pub struct ProjectWithThumbnailDto {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<MetadataDto>,
     pub visible: bool,
     pub adult: bool,
@@ -15,7 +16,7 @@ pub struct ProjectWithThumbnailDto {
 
 impl ProjectWithThumbnailDto {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         metadata: Option<MetadataDto>,
         visible: bool,
         adult: bool,

@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin, sync::Arc, time::SystemTime};
+
 use app_core::{
     dto::{
         content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
@@ -8,76 +10,292 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
+
 use chrono::{DateTime, Utc};
-use serde_json::json;
-use sqlx::types::Json;
+use deadpool_postgres::PoolError;
+use serde_json::{json, Value};
+
+use tokio_postgres::{types::Json, Row, Transaction};
+use uuid::Uuid;
 
 use crate::{
-    config::db::Db,
+    config::db::DatabasePool,
     entity::{
-        project::{Project, ProjectCreated},
-        project_content::ProjectContent,
+        project::Project, project_content::ProjectContent,
         project_with_thumbnail::ProjectWithThumbnail,
     },
     error::to_error,
 };
 
 pub struct ProjectRepository {
-    db: Db,
+    client: Arc<DatabasePool>,
 }
 
 impl ProjectRepository {
-    pub fn new(db: Db) -> Self {
-        Self { db }
+    pub fn new(client: Arc<DatabasePool>) -> Self {
+        Self { client }
+    }
+
+    fn map_create_row_to_project_without_thumbnail_content(row: &Row) -> Result<Project, Error> {
+        let metadata: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let description: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        Ok(Project {
+            id: Some(id),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible,
+            adult,
+            contents: vec![],
+            thumbnail_content: None,
+        })
+    }
+    fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
+        let metadata: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let description: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let thumbnail_content: Option<serde_json::Value> = row
+            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        Ok(Project {
+            id: Some(id),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible,
+            adult,
+            contents: vec![],
+            thumbnail_content,
+        })
+    }
+
+    fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
+        let metadata: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("metadata")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let description: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("description")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let thumbnail_content: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let updated_on: Option<SystemTime> = row
+            .try_get("updated_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
+
+        let created_on: SystemTime = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let created_on: DateTime<Utc> = created_on.into();
+
+        let thumbnail_created_on: Option<SystemTime> = row
+            .try_get("thumbnail_created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let thumbnail_created_on: Option<DateTime<Utc>> =
+            thumbnail_created_on.map(|time| time.into());
+
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let visible: bool = row
+            .try_get("visible")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let adult: bool = row
+            .try_get("adult")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        Ok(ProjectWithThumbnail {
+            id: Some(id),
+            metadata,
+            created_on,
+            updated_on,
+            description,
+            visible,
+            adult,
+            thumbnail_content,
+            thumbnail_created_on,
+        })
+    }
+
+    fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
+        let content: Option<Value> = row
+            .try_get::<_, Option<Json<Value>>>("content")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .map(|json| json.0);
+
+        let created_on: Option<SystemTime> = row
+            .try_get("created_on")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
+
+        let id: Uuid = row
+            .try_get("id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let project_id: Uuid = row
+            .try_get("project_id")
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        Ok(ProjectContent::new(
+            Some(id),
+            project_id,
+            content,
+            created_on,
+        ))
+    }
+
+    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
+    where
+        F: for<'a> FnOnce(
+            &'a Transaction<'a>,
+        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
+    {
+        let mut client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+
+        let transaction = client
+            .build_transaction()
+            .start()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let result = f(&transaction).await?;
+
+        transaction
+            .commit()
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        Ok(result)
     }
 }
 
 #[async_trait]
 impl IProjectRepository for ProjectRepository {
     async fn create(&self, metadata: &MetadataDto) -> Result<ProjectDto, Error> {
-        let metadata_json = Json(json!(metadata));
+        let metadata_json = json!(metadata);
         let now_utc: DateTime<Utc> = Utc::now();
-        let sql =
-            "INSERT INTO project(metadata, created_on, visible, adult) VALUES($1, $2, $3, $4) RETURNING *";
-        let query = sqlx::query_as::<_, ProjectCreated>(sql)
-            .bind(metadata_json)
-            .bind(now_utc)
-            .bind(false)
-            .bind(false);
-        let project = ProjectDto::from(
-            query
-                .fetch_one(&self.db)
-                .await
-                .map_err(|sqlx_error| to_error(sqlx_error, None))?,
-        );
+        let sql = "INSERT INTO project (metadata, created_on, visible, adult) VALUES ($1, $2, $3, $4) RETURNING *";
+
+        let project = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(sql, &[&Json(metadata_json), &now_utc, &true, &false])
+                        .await
+                        .map_err(|e| to_error(PoolError::Backend(e), None))?;
+                    ProjectRepository::map_create_row_to_project_without_thumbnail_content(&row)
+                        .map(ProjectDto::from)
+                })
+            })
+            .await?;
+
         Ok(project)
     }
 
     async fn add_project_content(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         content: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
-        let content_json = Json(json!(content));
+        let content_json = json!(content);
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project_content(project_id, content, created_on) VALUES($1, $2, $3) RETURNING *";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(project_id)
-            .bind(content_json)
-            .bind(now_utc);
-        let content_entity = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        let content_entity = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(sql, &[&project_id, &Json(content_json), &now_utc])
+                        .await
+                        .map_err(|e| {
+                            to_error(PoolError::Backend(e), Some(project_id.to_string()))
+                        })?;
+                    ProjectRepository::map_row_to_project_content(&row)
+                })
+            })
+            .await?;
         Ok(ProjectContentDto::from(content_entity))
     }
 
     async fn add_project_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         thumbnail: &ContentDto,
     ) -> Result<ProjectContentDto, Error> {
-        let thumbnail_json = Json(json!(thumbnail));
+        let thumbnail_json = json!(thumbnail);
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project_content_thumbnail (content, project_id, created_on)
         VALUES ($1, $2, $3)
@@ -85,18 +303,23 @@ impl IProjectRepository for ProjectRepository {
         SET content = EXCLUDED.content, created_on = EXCLUDED.created_on
         RETURNING *;
         ";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(thumbnail_json)
-            .bind(project_id)
-            .bind(now_utc);
-        let content_entity = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        let content_entity = self
+            .with_transaction(|tx| {
+                Box::pin(async move {
+                    let row = tx
+                        .query_one(sql, &[&Json(thumbnail_json), &project_id, &now_utc])
+                        .await
+                        .map_err(|e| {
+                            to_error(PoolError::Backend(e), Some(project_id.to_string()))
+                        })?;
+                    ProjectRepository::map_row_to_project_content(&row)
+                })
+            })
+            .await?;
         Ok(ProjectContentDto::from(content_entity))
     }
 
-    async fn get_project_by_id(&self, id: i32) -> Result<ProjectDto, Error> {
+    async fn get_project_by_id(&self, id: Uuid) -> Result<Option<ProjectDto>, Error> {
         let sql = "SELECT 
         p.id, 
         p.metadata, 
@@ -118,13 +341,24 @@ impl IProjectRepository for ProjectRepository {
     GROUP BY 
         p.id, 
         c.content";
-        let query = sqlx::query_as::<_, Project>(sql).bind(id);
-        let project = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
 
-        Ok(ProjectDto::from(project))
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+        match client.query_opt(sql, &[&id]).await.map_err(|e| {
+            to_error(
+                PoolError::Backend(e),
+                Some(format!("Project not found for id: {}", id)),
+            )
+        })? {
+            Some(row) => {
+                let project = ProjectRepository::map_create_row_to_project(&row)?;
+                Ok(Some(ProjectDto::from(project)))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn get_projects(&self) -> Result<Vec<ProjectDto>, Error> {
@@ -147,11 +381,21 @@ impl IProjectRepository for ProjectRepository {
     GROUP BY 
         p.id, 
         c.content";
-        let query = sqlx::query_as::<_, Project>(sql);
-        let projects = query
-            .fetch_all(&self.db)
+
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+            .map_err(|e| to_error(e, None))?;
+        let rows = client
+            .query(sql, &[])
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+
+        let projects = rows
+            .iter()
+            .map(|row| ProjectRepository::map_create_row_to_project(row))
+            .collect::<Result<Vec<Project>, Error>>()?;
         Ok(projects
             .iter()
             .map(|p| ProjectDto::from(p.clone()))
@@ -160,17 +404,28 @@ impl IProjectRepository for ProjectRepository {
 
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsDto, Error> {
+        // Validate input parameters
+        if size <= 0 {
+            return Err(Error::InvalidInput(
+                "Page size must be greater than 0".to_string(),
+            ));
+        }
+        if page <= 0 {
+            return Err(Error::InvalidInput(
+                "Page number must be greater than 0".to_string(),
+            ));
+        }
         let adult_filter = match is_adult {
-            Some(adult) => format!("AND p.adult = {adult}"),
+            Some(adult) => format!("AND p.adult = {}", adult),
             None => "".to_owned(),
         };
 
-        // Use optional parameter syntax to conditionally include the `is_adult` parameter
+        // Rest of the SQL query remains the same
         let sql = format!(
             "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult,
             COALESCE(c.content, ct.content) AS thumbnail_content,
@@ -188,11 +443,10 @@ impl IProjectRepository for ProjectRepository {
         {adult_filter}
         AND (SELECT COUNT(*) FROM project_content WHERE project_id = p.id) > 0
         ORDER BY p.created_on DESC
-        LIMIT $2 OFFSET $3
-        "
+        LIMIT $2 OFFSET $3"
         );
 
-        // Construct the total count SQL query
+        // Rest of the implementation remains the same
         let total_sql = format!(
             "SELECT COUNT(*)
         FROM project p
@@ -200,30 +454,38 @@ impl IProjectRepository for ProjectRepository {
         {adult_filter}"
         );
 
-        let total_count: i64 = sqlx::query_scalar(&total_sql)
-            .bind(is_visible)
-            .bind(is_adult)
-            .fetch_one(&self.db)
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+            .map_err(|e| to_error(e, None))?;
 
-        let rows = sqlx::query_as::<_, ProjectWithThumbnail>(&sql)
-            .bind(is_visible)
-            .bind(size)
-            .bind((page - 1) * size)
-            .fetch_all(&self.db)
+        let total_count: i64 = client
+            .query_one(&total_sql, &[&is_visible])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, None))?;
+            .map_err(|e| to_error(PoolError::Backend(e), None))?
+            .get(0);
+
+        let rows = client
+            .query(&sql, &[&is_visible, &size, &((page - 1) * size)])
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
         let projects = rows
             .iter()
-            .map(|p| ProjectWithThumbnailDto::from(p.clone()))
-            .collect();
+            .map(|row| ProjectRepository::map_row_to_project_with_thumbnail(row))
+            .map(|r| r.map(ProjectWithThumbnailDto::from))
+            .collect::<Result<Vec<ProjectWithThumbnailDto>, Error>>()?;
 
-        // Calculate the total number of pages based on the total count and page size
-        let total_pages = ((total_count as f64) / (size as f64)).ceil() as i32;
+        // Calculate total pages using i64 instead of f64
+        let total_pages = if size <= 0 {
+            0
+        } else if total_count == 0 {
+            0
+        } else {
+            (total_count + size - 1) / size
+        };
 
-        // Create a new ProjectsDto instance with the relevant information
         let projects_dto = ProjectsDto::new(page, size, total_pages, projects);
 
         Ok(projects_dto)
@@ -231,14 +493,9 @@ impl IProjectRepository for ProjectRepository {
 
     async fn update_project_entity(
         &self,
-        project_id: i32,
+        project_id: Uuid,
         project: &ProjectDto,
     ) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
         let now_utc: DateTime<Utc> = Utc::now();
         let ProjectDto {
             metadata,
@@ -247,142 +504,179 @@ impl IProjectRepository for ProjectRepository {
             adult,
             ..
         } = project.clone();
-        sqlx::query("UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6 ")
-            .bind(description)
-            .bind(metadata.map(|metadata| Json(json!(metadata))))
-            .bind(visible)
-            .bind(adult)
-            .bind(now_utc)
-            .bind(project_id)
-            .execute(&mut *tx)
-            .await.map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
-        tx.commit()
+        let sql="UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6";
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, None))?;
+        client
+            .execute(
+                sql,
+                &[
+                    &Json(description),
+                    &Json(metadata),
+                    &visible,
+                    &adult,
+                    &now_utc,
+                    &project_id,
+                ],
+            )
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
 
         Ok(())
     }
 
     async fn get_projects_contents(
         &self,
-        project_id: i32,
+        project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1";
-        let query = sqlx::query_as::<_, ProjectContent>(sql).bind(project_id);
-        let contents = query
-            .fetch_all(&self.db)
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        Ok(contents
+            .map_err(|e| to_error(e, None))?;
+        let row = client
+            .query(sql, &[&project_id])
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
+        let contents = row
             .iter()
-            .map(|c| ProjectContentDto::from(c.clone()))
-            .collect())
+            .map(|r| ProjectRepository::map_row_to_project_content(r))
+            .map(|r| r.map(ProjectContentDto::from))
+            .collect::<Result<Vec<ProjectContentDto>, Error>>()?;
+        Ok(contents)
     }
 
     async fn get_projects_content_by_id(
         &self,
-        project_id: i32,
-        id: i32,
-    ) -> Result<ProjectContentDto, Error> {
+        project_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 and id= $2";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(project_id)
-            .bind(id);
-        let content = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
 
-        Ok(ProjectContentDto::from(content))
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+        match client
+            .query_opt(sql, &[&project_id, &id])
+            .await
+            .map_err(|e| {
+                to_error(
+                    PoolError::Backend(e),
+                    Some(format!("Content not found for id: {}", id)),
+                )
+            })? {
+            Some(row) => {
+                let content = ProjectRepository::map_row_to_project_content(&row)?;
+                Ok(Some(ProjectContentDto::from(content)))
+            }
+            None => Ok(None),
+        }
     }
 
-    async fn delete_project_content_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+    async fn delete_project_content_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
+        let sql = "DELETE FROM project_content WHERE id = $1 and project_id = $2 ";
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        sqlx::query("DELETE FROM project_content WHERE id = $1 and project_id = $2 ")
-            .bind(id)
-            .bind(project_id)
-            .execute(&mut *tx)
+            .map_err(|e| to_error(e, None))?;
+        client
+            .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
-    async fn delete_project_by_id(&self, project_id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+    async fn delete_project_by_id(&self, project_id: Uuid) -> Result<(), Error> {
+        let sql = "DELETE FROM project WHERE id = $1 ";
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        sqlx::query("DELETE FROM project WHERE id = $1 ")
-            .bind(project_id)
-            .execute(&mut *tx)
+            .map_err(|e| to_error(e, None))?;
+        client
+            .execute(sql, &[&project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
     //TODO modify for thumbnail
     async fn get_projects_content_thumbnail(
         &self,
-        project_id: i32,
+        project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
         let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
-        let query = sqlx::query_as::<_, ProjectContent>(sql).bind(project_id);
-        let contents = query
-            .fetch_all(&self.db)
+
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(e, None))?;
+        let row = client
+            .query(sql, &[&project_id])
+            .await
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
+        let contents = row
+            .iter()
+            .map(|r| ProjectRepository::map_row_to_project_content(r))
+            .collect::<Result<Vec<ProjectContent>, Error>>()?;
+
         Ok(contents
             .iter()
             .map(|c| ProjectContentDto::from(c.clone()))
             .collect())
     }
 
-    async fn delete_thumbnail_by_id(&self, project_id: i32, id: i32) -> Result<(), Error> {
-        let mut tx = self
-            .db
-            .begin()
+    async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {
+        let sql = "DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2";
+
+        let client = self
+            .client
+            .get_client()
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(id.to_string())))?;
-        sqlx::query("DELETE FROM project_content_thumbnail WHERE id = $1 and project_id = $2 ")
-            .bind(id)
-            .bind(project_id)
-            .execute(&mut *tx)
+            .map_err(|e| to_error(e, None))?;
+        client
+            .execute(sql, &[&id, &project_id])
             .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
-        tx.commit()
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+            .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
         Ok(())
     }
 
     async fn get_thumbnail_by_id(
         &self,
-        project_id: i32,
-        id: i32,
+        project_id: Uuid,
+        id: Uuid,
     ) -> Result<Option<ProjectContentDto>, Error> {
-        let sql = "SELECT * FROM project_content_thumbnail AS pt
-        WHERE pt.content ->> 'id' = CAST($1 AS TEXT) and pt.project_id = $2
-        ";
-        let query = sqlx::query_as::<_, ProjectContent>(sql)
-            .bind(id)
-            .bind(project_id);
-        let content = query
-            .fetch_one(&self.db)
-            .await
-            .map_err(|sqlx_error| to_error(sqlx_error, Some(project_id.to_string())))?;
+        let sql = "SELECT * FROM project_content_thumbnail 
+        WHERE id = $1 AND project_id = $2";
 
-        Ok(Some(ProjectContentDto::from(content)))
+        let client = self
+            .client
+            .get_client()
+            .await
+            .map_err(|e| to_error(e, None))?;
+        match client
+            .query_opt(sql, &[&id, &project_id])
+            .await
+            .map_err(|e| {
+                to_error(
+                    PoolError::Backend(e),
+                    Some(format!("Thumbnail not found for id: {}", id)),
+                )
+            })? {
+            Some(row) => {
+                let content = ProjectRepository::map_row_to_project_content(&row)?;
+                Ok(Some(ProjectContentDto::from(content)))
+            }
+            None => Ok(None),
+        }
     }
 }

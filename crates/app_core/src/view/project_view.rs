@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::dto::{metadata_dto::MetadataDto, project_dto::ProjectDto};
 
@@ -8,7 +9,7 @@ use super::content_view::ContentView;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectView {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<MetadataDto>,
     pub description: Option<Value>,
     pub visible: bool,
@@ -34,7 +35,7 @@ impl ProjectView {
         }
     }
 
-    pub fn id(mut self, id: Option<i32>) -> Self {
+    pub fn id(mut self, id: Option<Uuid>) -> Self {
         self.id = id;
         self
     }

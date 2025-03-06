@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use uuid::Uuid;
 
 use super::{
     content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
@@ -7,7 +8,7 @@ use super::{
 
 #[derive(Default, Debug, Clone)]
 pub struct ProjectDto {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub metadata: Option<MetadataDto>,
     pub description: Option<Value>,
     pub visible: bool,
@@ -33,7 +34,7 @@ impl ProjectDto {
         }
     }
 
-    pub fn id(mut self, id: Option<i32>) -> Self {
+    pub fn id(mut self, id: Option<Uuid>) -> Self {
         self.id = id;
         self
     }

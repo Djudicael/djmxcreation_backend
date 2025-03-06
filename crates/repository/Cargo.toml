@@ -1,25 +1,42 @@
 [package]
 name = "repository"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[patch.crates-io]
+tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.40.x" }
+socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
+hyper = { git = "https://github.com/second-state/wasi_hyper.git", branch = "v0.14.x" }
+
 [dependencies]
-dotenv = "0.15.0"
-sqlx = { version = "0.8.2", features = [
-    "runtime-tokio-rustls",
-    "postgres",
-    "chrono",
-] }
+dotenv = { version = "0.15.0", optional = true }
 aws-sdk-s3 = "1.67.0"
 rust-s3 = "0.35.1"
 chrono = { version = "0.4.39", features = ["serde"] }
 app-error = { path = "../app-error" }
 serde_json = "1.0.134"
 http = "1.2.0"
-serde = "1.0.217"
+serde = { version = "1.0.217", features = ["derive"] }
 async-trait = "0.1.84"
 app_core = { path = "../app_core" }
 app_config = { path = "../app_config" }
 tracing = "0.1.41"
+tokio-postgres = { version = "0.7.12", features = [
+    'with-serde_json-1',
+    'with-uuid-1',
+    "with-chrono-0_4",
+] }
+deadpool-postgres = "0.14.1"
+tokio = { version = "1.42.0", features = ["full"] }
+refinery = { version = "0.8.16", features = ["tokio-postgres"] }
+uuid = { version = "1", features = ["v4", "fast-rng", "serde"] }
+
+[dev-dependencies]
+testcontainers = "0.23.3"
+test-util = { path = "../test-util" }
+
+[lib]
+name = "repository"
+path = "src/lib.rs"

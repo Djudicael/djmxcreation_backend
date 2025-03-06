@@ -1,23 +1,24 @@
 use app_core::dto::{about_me_dto::AboutMeDto, content_dto::ContentDto};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::types::Json;
-#[derive(sqlx::FromRow, Serialize, Deserialize, Default, Debug, Clone)]
+use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMe {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub first_name: String,
     pub last_name: String,
-    pub description: Option<Json<Value>>,
-    pub photo: Option<Json<Value>>,
+    pub description: Option<Value>,
+    pub photo: Option<Value>,
 }
 
 impl AboutMe {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         first_name: String,
         last_name: String,
-        description: Option<Json<Value>>,
-        photo: Option<Json<Value>>,
+        description: Option<Value>,
+        photo: Option<Value>,
     ) -> Self {
         Self {
             id,
@@ -35,10 +36,8 @@ impl From<AboutMe> for AboutMeDto {
             val.id,
             val.first_name,
             val.last_name,
-            val.description.map(|description_json| description_json.0),
-            val.photo
-                .map(|photo_json| photo_json.0)
-                .and_then(to_content),
+            val.description,
+            val.photo.map(|photo_json| photo_json).and_then(to_content),
         )
     }
 }

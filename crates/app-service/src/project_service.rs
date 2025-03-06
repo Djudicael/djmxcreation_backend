@@ -16,6 +16,7 @@ use app_core::{
 use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
+use uuid::Uuid;
 
 pub struct ProjectService {
     pub project_repository: DynIProjectRepository,
@@ -99,7 +100,7 @@ impl IProjectService for ProjectService {
 
     async fn add_project(
         &self,
-        id: i32,
+        id: Uuid,
         file_name: String,
         file: &[u8],
     ) -> Result<ContentView, Error> {
@@ -134,14 +135,15 @@ impl IProjectService for ProjectService {
 
     async fn add_thumbnail_to_project(
         &self,
-        id: i32,
-        content_id: i32,
+        id: Uuid,
+        content_id: Uuid,
     ) -> Result<ContentView, Error> {
         let _ = self.project_repository.get_project_by_id(id).await?;
         let project_contents = self
             .project_repository
             .get_projects_content_by_id(id, content_id)
-            .await?;
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         let thumbnail = project_contents.content;
 
@@ -167,8 +169,12 @@ impl IProjectService for ProjectService {
         }
     }
 
-    async fn update_project(&self, id: i32, project: &ProjectDto) -> Result<(), Error> {
-        let _ = self.project_repository.get_project_by_id(id).await?;
+    async fn update_project(&self, id: Uuid, project: &ProjectDto) -> Result<(), Error> {
+        let _ = self
+            .project_repository
+            .get_project_by_id(id)
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         self.project_repository
             .update_project_entity(id, project)
@@ -177,8 +183,12 @@ impl IProjectService for ProjectService {
         Ok(())
     }
 
-    async fn find_project(&self, id: i32) -> Result<ProjectView, Error> {
-        let project_entity = self.project_repository.get_project_by_id(id).await?;
+    async fn find_project(&self, id: Uuid) -> Result<ProjectView, Error> {
+        let project_entity = self
+            .project_repository
+            .get_project_by_id(id)
+            .await?
+            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
         // println!("Project entity: {:#?}", project_entity);
 
@@ -218,7 +228,7 @@ impl IProjectService for ProjectService {
         Ok(project_view)
     }
 
-    async fn delete_project(&self, id: i32) -> Result<(), Error> {
+    async fn delete_project(&self, id: Uuid) -> Result<(), Error> {
         let _ = self.project_repository.get_project_by_id(id).await?;
         let project_contents = self.project_repository.get_projects_contents(id).await?;
         self.project_repository.delete_project_by_id(id).await?;
@@ -235,15 +245,25 @@ impl IProjectService for ProjectService {
         Ok(())
     }
 
-    async fn delete_project_content(&self, project_id: i32, content_id: i32) -> Result<(), Error> {
+    async fn delete_project_content(
+        &self,
+        project_id: Uuid,
+        content_id: Uuid,
+    ) -> Result<(), Error> {
         let _ = self
             .project_repository
             .get_project_by_id(project_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Project not found with id: {}", project_id))
+            })?;
         let content_dto = self
             .project_repository
             .get_projects_content_by_id(project_id, content_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Content not found with id: {}", content_id))
+            })?;
         let content = content_dto.content;
 
         self.project_repository
@@ -321,8 +341,8 @@ impl IProjectService for ProjectService {
 
     async fn get_projects_with_filter(
         &self,
-        page: i32,
-        size: i32,
+        page: i64,
+        size: i64,
         is_adult: Option<bool>,
         is_visible: bool,
     ) -> Result<ProjectsView, Error> {
@@ -368,7 +388,7 @@ impl IProjectService for ProjectService {
         Ok(ProjectsView::new(page, size, total_pages, result))
     }
 
-    async fn add_spotlight(&self, project_id: i32) -> Result<SpotlightView, Error> {
+    async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightView, Error> {
         let _ = self
             .project_repository
             .get_project_by_id(project_id)
@@ -377,11 +397,14 @@ impl IProjectService for ProjectService {
         self.to_spotlight_view(&spotlight).await
     }
 
-    async fn get_spotlight(&self, spotlight_id: i32) -> Result<SpotlightView, Error> {
+    async fn get_spotlight(&self, spotlight_id: Uuid) -> Result<SpotlightView, Error> {
         let spotlight = self
             .spotlight_repository
             .get_spotlight(spotlight_id)
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("Spotlight not found with id: {}", spotlight_id))
+            })?;
         self.to_spotlight_view(&spotlight).await
     }
 
@@ -398,7 +421,7 @@ impl IProjectService for ProjectService {
         Ok(result)
     }
 
-    async fn delete_spotlight(&self, spotlight_id: i32) -> Result<(), Error> {
+    async fn delete_spotlight(&self, spotlight_id: Uuid) -> Result<(), Error> {
         self.spotlight_repository
             .delete_spotlight(spotlight_id)
             .await?;

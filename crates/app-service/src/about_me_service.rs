@@ -6,6 +6,7 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 pub struct AboutMeService {
     pub about_me_repository: DynIAboutMeRepository,
@@ -46,7 +47,7 @@ impl IAboutMeService for AboutMeService {
         Ok(me)
     }
 
-    async fn update_me(&self, id: i32, about: &AboutMeDto) -> Result<MeView, Error> {
+    async fn update_me(&self, id: Uuid, about: &AboutMeDto) -> Result<MeView, Error> {
         let _ = self.about_me_repository.get_about_me_by_id(id).await?;
         let result = self.about_me_repository.update_about_me(id, about).await?;
         let content = result.clone().photo;
@@ -67,7 +68,7 @@ impl IAboutMeService for AboutMeService {
 
     async fn add_profile_picture(
         &self,
-        id: i32,
+        id: Uuid,
         file_name: String,
         file: &[u8],
     ) -> Result<(), Error> {
@@ -91,7 +92,7 @@ impl IAboutMeService for AboutMeService {
         Ok(())
     }
 
-    async fn delete_photo(&self, id: i32) -> Result<(), Error> {
+    async fn delete_photo(&self, id: Uuid) -> Result<(), Error> {
         let me = self.about_me_repository.get_about_me_by_id(id).await?;
         let previous_content = me.photo;
         self.about_me_repository.delete_about_me_photo(id).await?;

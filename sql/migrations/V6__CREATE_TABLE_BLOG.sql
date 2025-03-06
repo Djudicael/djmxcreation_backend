@@ -1,5 +1,5 @@
-CREATE TABLE blog(
-    id serial PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS blog(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     metadata jsonb,
     created_on TIMESTAMPTZ NOT NULL,
     updated_on TIMESTAMPTZ,
@@ -8,18 +8,18 @@ CREATE TABLE blog(
     adult boolean
 );
 
-CREATE TABLE blog_content(
-    id serial PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS blog_content(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
-    blog_id INT NOT NULL,
+    blog_id UUID NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_blog FOREIGN KEY (blog_id) REFERENCES blog (id) ON DELETE CASCADE
 );
 
-CREATE TABLE blog_content_thumbnail(
-    id serial PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS blog_content_thumbnail(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content jsonb,
-    blog_id INT NOT NULL,
+    blog_id UUID NOT NULL,
     created_on TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_blog FOREIGN KEY (blog_id) REFERENCES blog (id) ON DELETE CASCADE
 );

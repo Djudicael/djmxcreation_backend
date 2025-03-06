@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContentDto {
-    pub id: Option<i32>,
+    pub id: Option<Uuid>,
     pub bucket_name: String,
     pub file_name: String,
     pub mime_type: Option<String>,
@@ -10,7 +11,7 @@ pub struct ContentDto {
 
 impl ContentDto {
     pub fn new(
-        id: Option<i32>,
+        id: Option<Uuid>,
         bucket_name: String,
         file_name: String,
         mime_type: Option<String>,
