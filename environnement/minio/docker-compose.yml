@@ -1,8 +1,8 @@
-version: '3.7'
+version: "3.7"
 services:
   minio1:
-    image: minio/minio:RELEASE.2022-03-17T06-34-49Z
-    
+    image: minio/minio:latest
+
     # volumes:
     #   - data1-1:/data1
     #   - data1-2:/data2
