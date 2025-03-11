@@ -15,25 +15,22 @@ use crate::{
 use anyhow::Context;
 use app_config::{config::Config, security_config::SecurityConfig};
 use axum::{
+    BoxError,
+    Json,
+    Router,
+    // TypedHeader,
     error_handling::HandleErrorLayer,
     extract::MatchedPath,
     // headers::{authorization::Basic, Authorization},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
-    BoxError,
-    Json,
-    Router,
-    // TypedHeader,
 };
-use hyper::{header::HeaderValue, Method, Request, StatusCode};
+use hyper::{Method, Request, StatusCode, header::HeaderValue};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 // use migration::init_db_migration;
 use once_cell::sync::Lazy;
-use repository::config::{
-    db::DatabasePool,
-    minio::{create_bucket, get_aws_client},
-};
+use repository::config::{db::DatabasePool, minio::get_aws_client};
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -108,7 +105,7 @@ pub async fn start() -> anyhow::Result<()> {
 
     let storage_client = get_aws_client(storage).expect("Failed to create object Storage client");
 
-    create_bucket("portfolio", storage_client.clone()).await?;
+    // create_bucket("portfolio", storage_client.clone()).await?;
 
     let service_register = ServiceRegister::new(Arc::new(client_db), storage_client);
 
@@ -124,7 +121,7 @@ pub async fn start() -> anyhow::Result<()> {
     // let my_auth = MyAuth { basic_auth };
 
     let router = Router::new()
-        .nest("/", ObservabilityRouter::new_router())
+        .merge(ObservabilityRouter::new_router())
         .nest(
             "/api/about",
             AboutMeRouter::new_router(service_register.clone()),

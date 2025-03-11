@@ -6,9 +6,9 @@ use app_core::{
 };
 
 use axum::{
+    Extension, Json, Router,
     extract::{Multipart, Path},
     routing::{get, post, put},
-    Extension, Json, Router,
 };
 use uuid::Uuid;
 
@@ -19,11 +19,11 @@ impl AboutMeRouter {
         Router::new()
             .route("/v1/me", get(AboutMeRouter::get_about_me))
             .route(
-                "/v1/me/:id",
+                "/v1/me/{id}",
                 put(AboutMeRouter::update_about_me).delete(AboutMeRouter::delete_image_about_me),
             )
             .route(
-                "/v1/me/:id/image",
+                "/v1/me/{id}/image",
                 post(AboutMeRouter::add_image_profile_to_about_me),
             )
             .layer(Extension(service_register.about_me_service))

@@ -1,7 +1,7 @@
 GET http://127.0.0.1:8081/api/v1/me
 
 ###
-GET http://127.0.0.1:8081/api/ping
+GET http://127.0.0.1:8081/ping
 
 
 ###

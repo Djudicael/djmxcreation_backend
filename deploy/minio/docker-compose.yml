@@ -1,14 +1,33 @@
-version: '3.9'
+version: "3.9"
 
 services:
   backend_minio:
     container_name: backend_minio
-    image: minio/minio:latest
-    restart: always
+    image: docker.io/minio/minio:latest
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-      MINIO_SITE_REGION: "us-west-0"
-    command: server data1
+      MINIO_SITE_REGION: us-west-1
+    command: server --console-address ":9001" /data
     ports:
-      - "9000:9000"
+      - "9000:9000" # API port
+      - "9001:9001" # Console port
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - minio_network
+
+volumes:
+  minio_data:
+    name: minio_data
+
+networks:
+  minio_network:
+    name: minio_network
+    driver: bridge

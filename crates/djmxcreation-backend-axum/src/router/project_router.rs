@@ -8,9 +8,9 @@ use app_core::{
 };
 
 use axum::{
+    Extension, Json, Router,
     extract::{Multipart, Path, Query},
     routing::{delete, get, patch, post, put},
-    Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -58,18 +58,18 @@ impl ProjectRouter {
                 post(Self::create_project).get(Self::get_projects),
             )
             .route("/v2/projects", get(Self::get_projects_with_filter))
-            .route("/v1/projects/:id/contents", patch(Self::add_project))
-            .route("/v1/projects/:id", put(Self::update_project))
+            .route("/v1/projects/{id}/contents", patch(Self::add_project))
+            .route("/v1/projects/{id}", put(Self::update_project))
             .route(
-                "/v1/projects/:id/thumbnails/:content_id",
+                "/v1/projects/{id}/thumbnails/{content_id}",
                 put(Self::add_thumbnail_to_project),
             )
             .route(
-                "/v1/projects/:id",
+                "/v1/projects/{id}",
                 get(Self::find_project).delete(Self::delete_project),
             )
             .route(
-                "/v1/projects/:id/contents/:content_id",
+                "/v1/projects/{id}/contents/{content_id}",
                 delete(Self::delete_content_project),
             )
             .route(
@@ -77,7 +77,7 @@ impl ProjectRouter {
                 post(Self::add_spotlight).get(Self::get_spotlights),
             )
             .route(
-                "/v1/projects/spotlights/:id",
+                "/v1/projects/spotlights/{id}",
                 get(Self::get_spotlight).delete(Self::delete_spotlight),
             )
             .layer(Extension(service_register.project_service))

@@ -1,8 +1,8 @@
 use app_core::{contact::contact_service::DynIContactService, dto::contact_dto::ContactDto};
 use axum::{
+    Extension, Json, Router,
     extract::Path,
     routing::{get, put},
-    Extension, Json, Router,
 };
 use uuid::Uuid;
 
@@ -14,7 +14,7 @@ impl ContactRouter {
     pub fn new_router(service_register: ServiceRegister) -> Router {
         Router::new()
             .route("/v1/information", get(ContactRouter::get_contact))
-            .route("/v1/information/:id", put(ContactRouter::update_contact))
+            .route("/v1/information/{id}", put(ContactRouter::update_contact))
             .layer(Extension(service_register.contact_service))
     }
 
