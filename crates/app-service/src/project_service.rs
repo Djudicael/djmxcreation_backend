@@ -190,8 +190,6 @@ impl IProjectService for ProjectService {
             .await?
             .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
 
-        // println!("Project entity: {:#?}", project_entity);
-
         let mut project_view: ProjectView = ProjectView::from(project_entity.clone());
         let mut contents: Vec<ContentView> = vec![];
 
@@ -276,14 +274,11 @@ impl IProjectService for ProjectService {
                 .await?
         }
 
-        let thumbnail = match __self
+        let thumbnail = self
             .project_repository
             .get_thumbnail_by_id(project_id, content_id)
             .await
-        {
-            Ok(thumb) => thumb,
-            Err(_) => None,
-        };
+            .unwrap_or_default();
 
         if let Some(thumbnail) = thumbnail {
             if let Some(id) = thumbnail.id {
