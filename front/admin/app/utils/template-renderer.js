@@ -1,87 +1,13 @@
 // import { html as exportedHtml, render } from 'lit-html';
 
-const templateCache = new WeakMap();
-const eventRegistry = new WeakMap();
-const directives = new Map();
+import {
+  html as exportedHtml,
+  render,
+} from "https://cdn.jsdelivr.net/npm/lit-html@3.3.0/+esm";
+import { unsafeHTML as exportedUnsafeHTML } from "https://cdn.jsdelivr.net/npm/lit-html@3.3.0/directives/unsafe-html.js/+esm";
 
-export function html(strings, ...values) {
-  return { strings, values };
-}
-
-export function render(template, container) {
-  if (
-    !template ||
-    typeof template !== "object" ||
-    !Array.isArray(template.strings)
-  ) {
-    throw new Error("Invalid template");
-  }
-
-  let cachedTemplate = templateCache.get(container);
-  if (!cachedTemplate) {
-    cachedTemplate = document.createElement("template");
-    templateCache.set(container, cachedTemplate);
-  }
-
-  let result = "";
-  template.strings.forEach((string, i) => {
-    result += string + (values[i] !== undefined ? processValue(values[i]) : "");
-  });
-
-  cachedTemplate.innerHTML = result;
-
-  const fragment = cachedTemplate.content.cloneNode(true);
-  processEvents(fragment, template.values);
-
-  if (container.shadowRoot) {
-    container.shadowRoot.innerHTML = "";
-    container.shadowRoot.appendChild(fragment);
-  } else {
-    container.innerHTML = "";
-    container.appendChild(fragment);
-  }
-}
-
-function processValue(value) {
-  if (typeof value === "function") {
-    return value();
-  } else if (Array.isArray(value)) {
-    return value.map(processValue).join(" ");
-  } else if (typeof value === "object" && value.__directive) {
-    return "";
-  }
-  return String(value);
-}
-
-function processEvents(fragment, values) {
-  fragment.querySelectorAll("[data-event]").forEach((el, index) => {
-    const eventType = el.getAttribute("data-event");
-    if (eventType && typeof values[index] === "function") {
-      if (!eventRegistry.has(el)) {
-        el.addEventListener(eventType, values[index]);
-        eventRegistry.set(el, eventType);
-      }
-    }
-  });
-}
-
-export function directive(fn) {
-  return { __directive: true, fn };
-}
-
-directives.set("on", (event, handler) => {
-  return directive((el) => {
-    el.setAttribute("data-event", event);
-    return handler;
-  });
-});
-
-export function unsafeHTML(html) {
-  return directive((el) => {
-    el.innerHTML = html;
-  });
-}
 export const html = exportedHtml;
+export const unsafeHTML = exportedUnsafeHTML;
 
 export function sanitizeHtml(html) {
   // Use a DOM parser to parse the HTML and remove any unsafe tags or attributes

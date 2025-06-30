@@ -8,4 +8,5 @@ members = [
     "crates/test-util",
     "crates/app_core",
     "crates/app_config",
+    "crates/dev-server",
 ]
