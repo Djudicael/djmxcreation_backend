@@ -13,6 +13,17 @@ pub trait IStorageRepository {
         file_name: &str,
         file: &[u8],
     ) -> Result<(), Error>;
+    async fn upload_file_in_public_bucket(
+        &self,
+        bucket_name: &str,
+        file_name: &str,
+        file: &[u8],
+    ) -> Result<(), Error>;
     async fn get_object_url(&self, bucket_name: &str, file_name: &str) -> Result<String, Error>;
+    async fn get_object_url_presigned(
+        &self,
+        bucket_name: &str,
+        file_name: &str,
+    ) -> Result<String, Error>;
     async fn remove_object(&self, bucket_name: &str, file_name: &str) -> Result<(), Error>;
 }
