@@ -35,10 +35,14 @@ impl IStorageRepository for StorageRepository {
         file_name: &str,
         file: &[u8],
     ) -> Result<(), Error> {
-        self.client
-            .put_object(file_name, file)
-            .await
-            .map_err(|_| Error::StorageUpload)?;
+        self.client.put_object(file_name, file).await.map_err(|e| {
+            eprintln!("upload_file error: {:?}", e);
+            eprintln!(
+                "stack trace: {:?}",
+                std::backtrace::Backtrace::force_capture()
+            );
+            Error::StorageUpload
+        })?;
         Ok(())
     }
     async fn upload_file_in_public_bucket(
@@ -47,10 +51,14 @@ impl IStorageRepository for StorageRepository {
         file_name: &str,
         file: &[u8],
     ) -> Result<(), Error> {
-        self.client
-            .put_object(file_name, file)
-            .await
-            .map_err(|_| Error::StorageUpload)?;
+        self.client.put_object(file_name, file).await.map_err(|e| {
+            eprintln!("upload_file_in_public_bucket error: {:?}", e);
+            eprintln!(
+                "stack trace: {:?}",
+                std::backtrace::Backtrace::force_capture()
+            );
+            Error::StorageUpload
+        })?;
         Ok(())
     }
 
@@ -63,7 +71,14 @@ impl IStorageRepository for StorageRepository {
             .client
             .presign_get(file_name, 8640, None)
             .await
-            .map_err(|_| Error::StorageGetObjectUrl)?;
+            .map_err(|e| {
+                eprintln!("get_object_url_presigned error: {:?}", e);
+                eprintln!(
+                    "stack trace: {:?}",
+                    std::backtrace::Backtrace::force_capture()
+                );
+                Error::StorageGetObjectUrl
+            })?;
 
         Ok(presigned_url)
     }
@@ -74,10 +89,14 @@ impl IStorageRepository for StorageRepository {
     }
 
     async fn remove_object(&self, _bucket_name: &str, file_name: &str) -> Result<(), Error> {
-        self.client
-            .delete_object(file_name)
-            .await
-            .map_err(|_| Error::StorageDeleteObject)?;
+        self.client.delete_object(file_name).await.map_err(|e| {
+            eprintln!("remove_object error: {:?}", e);
+            eprintln!(
+                "stack trace: {:?}",
+                std::backtrace::Backtrace::force_capture()
+            );
+            Error::StorageDeleteObject
+        })?;
         Ok(())
     }
 }
