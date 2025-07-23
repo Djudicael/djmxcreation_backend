@@ -1,13 +1,11 @@
 use app_config::storage_configuration::StorageConfiguration;
 use app_error::Error;
-use s3::Bucket;
-use s3::Region;
 use s3::creds::Credentials;
-use tracing::info;
+use s3::{Bucket, BucketConfiguration, Region};
 
 pub type StorageClient = Box<Bucket>;
 
-pub fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Error> {
+pub async fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Error> {
     let region = Region::Custom {
         region: config.region,
         endpoint: config.endpoint,
@@ -21,34 +19,18 @@ pub fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Err
         None,
     )
     .expect("Should create credentials");
+    let bucket_name = "portfolio";
+    let config = BucketConfiguration::public();
 
-    let bucket = Bucket::new("portfolio", region, credentials).expect("Should create bucket");
+    let mut bucket = Bucket::new(bucket_name, region.clone(), credentials.clone())
+        .expect("Should create bucket")
+        .with_path_style();
+    let exists = bucket.exists().await.unwrap_or(false);
+    if !exists {
+        bucket = Bucket::create_with_path_style(bucket_name, region, credentials, config)
+            .await
+            .expect("Should create bucket")
+            .bucket;
+    }
     Ok(bucket)
 }
-
-// pub async fn create_bucket(bucket_name: &str, client: StorageClient) -> Result<(), Error> {
-//     let credentials = client.credentials().await.expect("Should get credentials");
-//     let new_bucket = Bucket::new(
-//         bucket_name, // Use the provided bucket name
-//         client.region().clone(),
-//         credentials,
-//     )
-//     .expect("impossible to get the bucket");
-//     // First check if bucket exists
-//     // Check if bucket exists by trying to get its location
-//     match new_bucket.get_location().await {
-//         Ok(_) => {
-//             info!("Bucket {bucket_name} already exists");
-//             Ok(())
-//         }
-//         Err(_) => {
-//             // Create the bucket by putting an empty object
-//             new_bucket
-//                 .put_object("/", &[])
-//                 .await
-//                 .map_err(|_| Error::BucketCreation)?;
-//             info!("Bucket {bucket_name} created successfully");
-//             Ok(())
-//         }
-//     }
-// }
