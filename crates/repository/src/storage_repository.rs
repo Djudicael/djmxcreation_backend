@@ -12,19 +12,6 @@ impl StorageRepository {
     pub fn new(client: StorageClient) -> Self {
         Self { client }
     }
-
-    // Helper method to get a bucket with a different name
-    async fn get_bucket(&self, bucket_name: &str) -> Result<StorageClient, Error> {
-        let credentials = self
-            .client
-            .credentials()
-            .await
-            .map_err(|_| Error::BucketCreation)?;
-        Ok(
-            s3::Bucket::new(bucket_name, self.client.region().clone(), credentials)
-                .map_err(|_| Error::BucketCreation)?,
-        )
-    }
 }
 
 #[async_trait]
@@ -83,6 +70,11 @@ impl IStorageRepository for StorageRepository {
         Ok(presigned_url)
     }
     async fn get_object_url(&self, _bucket_name: &str, file_name: &str) -> Result<String, Error> {
+        // Check if object exists
+        let exists = self.client.head_object(file_name).await.is_ok();
+        if !exists {
+            return Err(Error::StorageGetObjectUrl);
+        }
         let bucket_url = self.client.url();
 
         Ok(format!("{}/{}", bucket_url, file_name))
