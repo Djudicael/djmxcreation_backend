@@ -30,7 +30,7 @@ use hyper::{Method, Request, StatusCode, header::HeaderValue};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 // use migration::init_db_migration;
 use once_cell::sync::Lazy;
-use repository::config::{db::DatabasePool, minio::get_aws_client};
+use repository::config::{db::DatabasePool, minio::get_storage_client};
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -103,7 +103,9 @@ pub async fn start() -> anyhow::Result<()> {
 
     let storage = config.clone().get_storage();
 
-    let storage_client = get_aws_client(storage).expect("Failed to create object Storage client");
+    let storage_client = get_storage_client(storage)
+        .await
+        .expect("Failed to create object Storage client");
 
     // create_bucket("portfolio", storage_client.clone()).await?;
 

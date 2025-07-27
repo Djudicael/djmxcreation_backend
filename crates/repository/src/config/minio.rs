@@ -5,7 +5,7 @@ use s3::{Bucket, BucketConfiguration, Region};
 
 pub type StorageClient = Box<Bucket>;
 
-pub async fn get_aws_client(config: StorageConfiguration) -> Result<StorageClient, Error> {
+pub async fn get_storage_client(config: StorageConfiguration) -> Result<StorageClient, Error> {
     let region = Region::Custom {
         region: config.region,
         endpoint: config.endpoint,

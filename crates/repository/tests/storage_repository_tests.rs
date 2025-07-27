@@ -1,6 +1,5 @@
 use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
-use repository::config::minio::StorageClient;
 use repository::storage_repository::StorageRepository;
 
 use s3::creds::Credentials;
