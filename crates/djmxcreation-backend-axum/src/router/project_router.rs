@@ -62,6 +62,7 @@ impl ProjectRouter {
             .route("/v2/projects", get(Self::get_projects_with_filter))
             .route("/v1/projects/{id}/contents", patch(Self::add_project))
             .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10 MB
+            .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB
             .route("/v1/projects/{id}", put(Self::update_project))
             .route(
                 "/v1/projects/{id}/thumbnails/{content_id}",
