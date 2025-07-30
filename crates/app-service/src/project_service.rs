@@ -104,10 +104,18 @@ impl IProjectService for ProjectService {
         file_name: String,
         file: &[u8],
     ) -> Result<ContentView, Error> {
+        println!(
+            "Adding project content with id: {}, file_name: {}",
+            id, file_name
+        );
         let _ = self.project_repository.get_project_by_id(id).await?;
         let key = format!("{}/{}", "portfolio", file_name);
         let bucket = "portfolio";
         let content = ContentDto::new(None, bucket.to_owned(), key.clone(), None);
+        println!(
+            "Adding project content with id: {}, file_name: {}, bucket: {}, key: {}",
+            id, file_name, bucket, key
+        );
         self.storage_repository
             .upload_file(bucket, key.as_str(), file)
             .await?;

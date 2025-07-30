@@ -13,6 +13,8 @@ use axum::{
     routing::{delete, get, patch, post, put},
 };
 use serde::{Deserialize, Serialize};
+
+use tower_http::limit::{RequestBodyLimit, RequestBodyLimitLayer};
 use uuid::Uuid;
 
 use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
@@ -59,6 +61,7 @@ impl ProjectRouter {
             )
             .route("/v2/projects", get(Self::get_projects_with_filter))
             .route("/v1/projects/{id}/contents", patch(Self::add_project))
+            .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10 MB
             .route("/v1/projects/{id}", put(Self::update_project))
             .route(
                 "/v1/projects/{id}/thumbnails/{content_id}",
@@ -123,17 +126,25 @@ impl ProjectRouter {
 
         while let Some(field) = form.next_field().await? {
             let uudi_v4 = Uuid::new_v4().to_string();
-            // let content_type = field.get_or_insert("");
-            // dbg!(content_type);
+            println!("[multipart] field.name: {:?}", field.name());
+            println!("[multipart] field.file_name: {:?}", field.file_name());
+            println!("[multipart] field.content_type: {:?}", field.content_type());
             let file_name = if let Some(file_name) = field.file_name() {
                 format!("{}-{}", uudi_v4, file_name.to_owned())
             } else {
                 uudi_v4
             };
+            println!("File name: {}", file_name);
+            let bytes = match field.bytes().await {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("Error reading multipart field bytes: {:?}", e);
+                    return Err(e.into());
+                }
+            };
+            println!("[multipart] bytes.len: {}", bytes.len());
+            let content_view = project_service.add_project(id, file_name, &bytes).await?;
 
-            let content_view = project_service
-                .add_project(id, file_name, &field.bytes().await?)
-                .await?;
             contents.push(content_view);
         }
 

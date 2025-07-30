@@ -1,9 +1,3 @@
-use std::{
-    future::ready,
-    sync::Arc,
-    time::{Duration, Instant},
-};
-
 use crate::{
     router::{
         about_me_router::AboutMeRouter, contact_router::ContactRouter,
@@ -11,6 +5,12 @@ use crate::{
     },
     service::service_register::ServiceRegister,
 };
+use std::{
+    future::ready,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tower_http::limit::RequestBodyLimitLayer;
 // use aide::openapi::OpenApi;
 use anyhow::Context;
 use app_config::{config::Config, security_config::SecurityConfig};

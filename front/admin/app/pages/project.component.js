@@ -122,6 +122,7 @@ export class ProjectComponent extends TemplateRenderer {
   }
 
   async getProject() {
+    console.log("Fetching project details...");
     const { metadata, visible, description, contents, thumbnail, adult } =
       await this.instance.getProject(this.projectId);
     this.title = metadata.title;
