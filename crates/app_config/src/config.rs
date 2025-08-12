@@ -34,9 +34,19 @@ impl Config {
         let minio_secret_key = env::var("MINIO_SECRET_KEY").expect("Cannot find MINIO_SECRET_KEY");
         let region = env::var("MINIO_REGION").expect("Cannot find MINIO_REGION");
         let port = env::var("PORT").unwrap_or("8081".to_string());
+        let minio_admin_endpoint =
+            env::var("MINIO_ADMIN_ENDPOINT").expect("Cannot find MINIO_ADMIN_ENDPOINT");
+        let minio_admin_token =
+            env::var("MINIO_ADMIN_TOKEN").expect("Cannot find MINIO_ADMIN_TOKEN");
 
-        let storage =
-            StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key, region);
+        let storage = StorageConfiguration::new(
+            minio_endpoint,
+            minio_access_key,
+            minio_secret_key,
+            region,
+            minio_admin_endpoint,
+            minio_admin_token,
+        );
 
         let username = env::var("USERNAME_APP").expect("Cannot find USERNAME");
         let password = env::var("PASSWORD_APP").expect("Cannot find PASSWORD");

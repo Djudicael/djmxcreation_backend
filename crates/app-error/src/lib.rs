@@ -14,8 +14,10 @@ pub enum Error {
     StorageUpload,
     #[error("Error when get object url from storage")]
     StorageGetObjectUrl,
-    #[error("Error bucket creation")]
+    #[error("Error when creating bucket")]
     BucketCreation,
+    #[error("Error when setting public ACL for bucket")]
+    PublicBucketAcl,
     #[error("Error when delete object from storage")]
     StorageDeleteObject,
     #[error("Entity Not Found - {0}] ")]

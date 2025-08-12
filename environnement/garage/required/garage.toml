@@ -1,0 +1,30 @@
+# Node identity
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "garage:3901"
+rpc_secret = "4e7f9a91c9a14bd4b7d8d4d0a92c2e97e0c45c9940d8b7f3d6d4f6c2b0f99aef"  # Required, any random string works for single node
+replication_factor = 1
+
+[s3_api]
+bind_addr = "0.0.0.0:3900"
+s3_region = "us-west-1"    # You can put any name here, e.g., "us-east-1"
+
+[admin]
+bind_addr = "0.0.0.0:3903"
+admin_api_auth_token = "supersecretadmintoken"
+
+# Predefined S3 key/secret
+[[s3_keys]]
+key_id = "myaccesskey"
+secret_key = "mysecretkey"
+allow = ["s3:*"]
+
+# [consul_discovery]
+# # optional — only if using Consul; remove if standalone
+# enabled = false
+
+[replication]
+replication_factor = 1
+default = 1

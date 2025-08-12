@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  garage:
+    container_name: garage
+    image: docker.io/dxflrs/garage:v2.0.0
+    restart: unless-stopped
+    ports:
+      - 3900:3900 ## s3 api
+      - 3901:3901 ## rpc
+      #- 3902:3902   ## s3 web
+      - 3903:3903 ## admin api and '/metrics' for prometheus
+    environment:
+      - TZ=Europe/Berlin
+    volumes:
+      - ./required/garage.toml:/etc/garage.toml
+      - garage-metadata:/var/lib/garage/meta
+      - garage-storage:/var/lib/garage/data
+volumes:
+  garage-metadata:
+    name: garage-metadata
+  garage-storage:
+    name: garage-storage
