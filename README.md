@@ -61,3 +61,5 @@ This project is still in progress .
 - [] add documentation
 
 cargo test -p repository test_storage_repository_crud -- --nocapture
+
+docker compose -f docker-compose.spa.yml up
