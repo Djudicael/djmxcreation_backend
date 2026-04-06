@@ -1,17 +1,19 @@
-use djmxcreation_backend_axum::*;
-use server::starter::start;
+use djmxcreation_backend_axum::server::starter::start;
+use tracing::error;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
 async fn main() {
-    // Add backtrace for debug purposes
-    // std::env::set_var("RUST_BACKTRACE", "1");
-    // println!(
-    //     "printing backtrace: {}",
-    //     std::backtrace::Backtrace::capture()
-    // );
+    // Initialise structured logging.
+    // Log level is controlled by the RUST_LOG env variable
+    // (e.g. `RUST_LOG=info,repository=debug`).
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with(fmt::layer())
+        .init();
 
-    match start().await {
-        Ok(_) => println!("Server ended"),
-        Err(ex) => println!("ERROR - web server failed to start. Cause {ex:?}"),
+    if let Err(e) = start().await {
+        error!(error = ?e, "server failed to start");
+        std::process::exit(1);
     }
 }

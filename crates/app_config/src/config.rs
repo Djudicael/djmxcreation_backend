@@ -17,31 +17,51 @@ pub struct Config {
 impl Config {
     pub fn new() -> Self {
         dotenv().ok();
-        // Configuration for database
-        let pg_host = env::var("PG_HOST").expect("Cannot find PG_HOST");
-        let pg_db = env::var("PG_DB").expect("Cannot find PG_DB");
-        let pg_user = env::var("PG_USER").expect("Cannot find");
-        let pg_password = env::var("PG_PASSWORD").expect("Cannot find");
+
+        // ── Database ────────────────────────────────────────────────────────
+        let pg_host = env::var("PG_HOST").expect("PG_HOST must be set");
+        let pg_db = env::var("PG_DB").expect("PG_DB must be set");
+        let pg_user = env::var("PG_USER").expect("PG_USER must be set");
+        let pg_password = env::var("PG_PASSWORD").expect("PG_PASSWORD must be set");
         let pg_port = env::var("PG_PORT")
-            .expect("Cannot find PG_PORT")
+            .expect("PG_PORT must be set")
             .parse::<u16>()
-            .expect("PG_PORT must be a valid number");
-        let database = DatabaseConfiguration::new(pg_host, pg_db, pg_user, pg_password, 5, pg_port);
+            .expect("PG_PORT must be a valid port number (0–65535)");
+        let pg_max_con = env::var("PG_APP_MAX_CON")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(5);
 
-        // Configuration for storage
-        let minio_endpoint = env::var("MINIO_ENDPOINT").expect("Cannot find MINIO_ENDPOINT");
-        let minio_access_key = env::var("MINIO_ACCESS_KEY").expect("Cannot find MINIO_ACCESS_KEY");
-        let minio_secret_key = env::var("MINIO_SECRET_KEY").expect("Cannot find MINIO_SECRET_KEY");
-        let region = env::var("MINIO_REGION").expect("Cannot find MINIO_REGION");
-        let port = env::var("PORT").unwrap_or("8081".to_string());
+        let database =
+            DatabaseConfiguration::new(pg_host, pg_db, pg_user, pg_password, pg_max_con, pg_port);
 
-        let storage =
-            StorageConfiguration::new(minio_endpoint, minio_access_key, minio_secret_key, region);
+        // ── Object storage (RustFS / S3-compatible) ─────────────────────────
+        let storage_endpoint =
+            env::var("STORAGE_ENDPOINT").expect("STORAGE_ENDPOINT must be set");
+        let storage_access_key =
+            env::var("STORAGE_ACCESS_KEY").expect("STORAGE_ACCESS_KEY must be set");
+        let storage_secret_key =
+            env::var("STORAGE_SECRET_KEY").expect("STORAGE_SECRET_KEY must be set");
+        let storage_region =
+            env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string());
+        let storage_bucket =
+            env::var("STORAGE_BUCKET").unwrap_or_else(|_| "portfolio".to_string());
 
-        let username = env::var("USERNAME_APP").expect("Cannot find USERNAME");
-        let password = env::var("PASSWORD_APP").expect("Cannot find PASSWORD");
+        let storage = StorageConfiguration::new(
+            storage_endpoint,
+            storage_access_key,
+            storage_secret_key,
+            storage_region,
+            storage_bucket,
+        );
 
+        // ── API security (basic auth) ────────────────────────────────────────
+        let username = env::var("USERNAME_APP").expect("USERNAME_APP must be set");
+        let password = env::var("PASSWORD_APP").expect("PASSWORD_APP must be set");
         let security = SecurityConfig::new(username, password);
+
+        // ── Server ──────────────────────────────────────────────────────────
+        let port = env::var("PORT").unwrap_or_else(|_| "8081".to_string());
 
         Self {
             database,

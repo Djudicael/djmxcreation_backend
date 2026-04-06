@@ -3,35 +3,30 @@ name = "djmxcreation-backend-axum"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[patch.crates-io]
-tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.40.x" }
-socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
-hyper = { git = "https://github.com/second-state/wasi_hyper.git", branch = "v0.14.x" }
-
 [dependencies]
-app-error = { path = "../app-error" }
-app-service = { path = "../app-service" }
-app_core = { path = "../app_core" }
-app_config = { path = "../app_config" }
-repository = { path = "../repository" }
-# migration = { path = "../migration" }
-anyhow = "1.0.95"
-axum = { version = "0.8.1", features = ["multipart", "macros"] }
-tokio = { version = "1.42.0", features = ["full"] }
-hyper = "1.5.2"
-thiserror = "2.0.9"
-serde = "1.0.217"
-uuid = { version = "1.11.0", features = ["v4"] }
-async-stream = "0.3.3"
-futures = "0.3.31"
-tokio-util = "0.7.13"
+app-error    = { path = "../app-error" }
+app-service  = { path = "../app-service" }
+app_core     = { path = "../app_core" }
+app_config   = { path = "../app_config" }
+repository   = { path = "../repository" }
+
+anyhow       = "1.0.95"
+axum         = { version = "0.8.1", features = ["multipart", "macros"] }
+tokio        = { version = "1.42.0", features = ["full"] }
+hyper        = "1.5.2"
+thiserror    = "2.0.9"
+serde        = "1.0.217"
+uuid         = { version = "1.11.0", features = ["v4"] }
+futures      = "0.3.31"
+tokio-util   = "0.7.13"
+tracing      = "0.1.41"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 metrics-exporter-prometheus = "0.16.0"
-metrics = "0.24.1"
-tower = { version = "0.5.2", features = ["timeout"] }
-tower-http = { version = "0.6.2", features = ["trace", "cors"] }
-serde_json = "1.0.134"
-once_cell = "1.20.2"
-aide = "0.13.5"
-log = "0.4.22"
+metrics      = "0.24.1"
+tower        = { version = "0.5.2", features = ["timeout"] }
+tower-http   = { version = "0.6.2", features = ["trace", "cors"] }
+serde_json   = "1.0.134"
+
+[[bin]]
+name = "djmxcreation-backend-axum"
+path = "src/main.rs"

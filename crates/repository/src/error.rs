@@ -1,25 +1,22 @@
 use app_error::Error;
-
 use deadpool_postgres::PoolError;
 use serde_json::Error as SerdeJsonError;
-
 use tokio_postgres::{error::SqlState, Error as PgError};
+use tracing::{error, warn};
 
-pub fn to_error(error: PoolError, message: Option<String>) -> Error {
-    println!("Error: {:?}", error);
-
-    match error {
+pub fn to_error(pool_error: PoolError, message: Option<String>) -> Error {
+    match pool_error {
         PoolError::Backend(pg_error) => handle_pg_error(&pg_error, message),
         PoolError::Timeout(_) => {
-            println!("Pool timeout error");
+            error!("database pool timeout");
             Error::Database
         }
         PoolError::NoRuntimeSpecified => {
-            println!("Pool configuration error: No runtime specified");
+            error!("database pool misconfigured: no async runtime specified");
             Error::Database
         }
         _ => {
-            println!("Unexpected pool error: {:?}", error);
+            error!(error = ?pool_error, "unexpected pool error");
             Error::Database
         }
     }
@@ -27,51 +24,42 @@ pub fn to_error(error: PoolError, message: Option<String>) -> Error {
 
 fn handle_pg_error(error: &PgError, message: Option<String>) -> Error {
     if let Some(db_error) = error.as_db_error() {
-        println!("Database error code: {:?}", db_error.code());
-
         match db_error.code() {
-            // Table/view not found
             code if code == &SqlState::UNDEFINED_TABLE => {
-                Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
+                Error::EntityNotFound(message.unwrap_or_else(|| "entity not found".to_string()))
             }
-            // Invalid parameter value
-            code if code == &SqlState::INVALID_PARAMETER_VALUE => Error::InvalidInput(
-                message.unwrap_or_else(|| "Invalid parameter value".to_string()),
-            ),
-            // No data found
+            code if code == &SqlState::INVALID_PARAMETER_VALUE => {
+                Error::InvalidInput(message.unwrap_or_else(|| "invalid parameter value".to_string()))
+            }
             code if code == &SqlState::NO_DATA_FOUND => {
-                Error::EntityNotFound(message.unwrap_or_else(|| "Entity not found".to_string()))
+                Error::EntityNotFound(message.unwrap_or_else(|| "entity not found".to_string()))
             }
-            // Foreign key violation
-            code if code == &SqlState::FOREIGN_KEY_VIOLATION => Error::InvalidInput(
-                message.unwrap_or_else(|| "Referenced entity not found".to_string()),
-            ),
-            // Unique violation
+            code if code == &SqlState::FOREIGN_KEY_VIOLATION => {
+                Error::InvalidInput(message.unwrap_or_else(|| "referenced entity not found".to_string()))
+            }
             code if code == &SqlState::UNIQUE_VIOLATION => {
-                Error::InvalidInput(message.unwrap_or_else(|| "Entity already exists".to_string()))
+                Error::InvalidInput(message.unwrap_or_else(|| "entity already exists".to_string()))
             }
-            // Not null violation
-            code if code == &SqlState::NOT_NULL_VIOLATION => Error::InvalidInput(
-                message.unwrap_or_else(|| "Required field is missing".to_string()),
-            ),
-            // Other database errors
+            code if code == &SqlState::NOT_NULL_VIOLATION => {
+                Error::InvalidInput(message.unwrap_or_else(|| "required field is missing".to_string()))
+            }
             _ => {
-                println!("Unhandled database error: {:?}", error);
+                error!(error = ?error, "unhandled postgres error");
                 Error::Database
             }
         }
     } else {
-        println!("Non-database error: {:?}", error);
+        warn!(error = ?error, "non-database postgres error");
         Error::Database
     }
 }
 
 pub fn handle_serde_json_error(error: SerdeJsonError) -> Error {
-    println!("Serde JSON error: {error}");
-    Error::Database // Return a general database error, but can be customized further
+    error!(error = ?error, "serde_json deserialisation error");
+    Error::Database
 }
 
 pub fn handle_uuid_error(error: uuid::Error) -> Error {
-    println!(" uuid error: {error}");
-    Error::Database // Return a general database error, but can be customized further
+    error!(error = ?error, "uuid parse error");
+    Error::Database
 }

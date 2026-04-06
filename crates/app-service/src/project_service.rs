@@ -16,6 +16,7 @@ use app_core::{
 use app_error::Error;
 use async_trait::async_trait;
 use futures::{stream, FutureExt, StreamExt};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 pub struct ProjectService {
@@ -51,23 +52,21 @@ impl ProjectService {
             None => None,
         };
 
-        let spot_view = SpotlightView::new(
+        Ok(SpotlightView::new(
             spotlight.id,
             spotlight.project_id,
             spotlight.adult,
             spotlight.metadata.clone(),
             spotlight.created_on,
             thumbnail,
-        );
-
-        Ok(spot_view)
+        ))
     }
 
     async fn to_contents(
         &self,
         project_contents: &Vec<ProjectContentDto>,
     ) -> Result<Vec<ContentView>, Error> {
-        let mut contents: Vec<ContentView> = vec![];
+        let mut contents: Vec<ContentView> = Vec::with_capacity(project_contents.len());
         for content_dto in project_contents {
             let content = content_dto.clone().content;
             let (url, mime_type) = match content {
@@ -76,13 +75,11 @@ impl ProjectService {
                         .storage_repository
                         .get_object_url(&photo.bucket_name, &photo.file_name)
                         .await?;
-
-                    (Some(url), None)
+                    (Some(url), photo.mime_type)
                 }
                 None => (None, None),
             };
-            let content_view = ContentView::new(content_dto.id, mime_type, url);
-            contents.push(content_view);
+            contents.push(ContentView::new(content_dto.id, mime_type, url));
         }
         Ok(contents)
     }
@@ -91,11 +88,10 @@ impl ProjectService {
 #[async_trait]
 impl IProjectService for ProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error> {
-        println!("Creating project {metadata:?}");
+        debug!(title = ?metadata.title, "creating project");
         let project = self.project_repository.create(metadata).await?;
         let contents: Vec<ContentView> = vec![];
-        let project_view = to_view(&contents, &project);
-        Ok(project_view)
+        Ok(to_view(&contents, &project))
     }
 
     async fn add_project(
@@ -105,7 +101,7 @@ impl IProjectService for ProjectService {
         file: &[u8],
     ) -> Result<ContentView, Error> {
         let _ = self.project_repository.get_project_by_id(id).await?;
-        let key = format!("{}/{}", "portfolio", file_name);
+        let key = format!("portfolio/{file_name}");
         let bucket = "portfolio";
         let content = ContentDto::new(None, bucket.to_owned(), key.clone(), None);
         self.storage_repository
@@ -115,22 +111,18 @@ impl IProjectService for ProjectService {
             .project_repository
             .add_project_content(id, &content)
             .await?;
-        let content = content_dto.content;
-        let (url, mime_type) = match content {
+        let (url, mime_type) = match content_dto.content {
             Some(photo) => {
                 let url = self
                     .storage_repository
                     .get_object_url(&photo.bucket_name, &photo.file_name)
                     .await?;
-
-                (Some(url), None)
+                (Some(url), photo.mime_type)
             }
             None => (None, None),
         };
 
-        let content_view = ContentView::new(content_dto.id, mime_type, url);
-
-        Ok(content_view)
+        Ok(ContentView::new(content_dto.id, mime_type, url))
     }
 
     async fn add_thumbnail_to_project(
@@ -139,18 +131,18 @@ impl IProjectService for ProjectService {
         content_id: Uuid,
     ) -> Result<ContentView, Error> {
         let _ = self.project_repository.get_project_by_id(id).await?;
-        let project_contents = self
+        let project_content = self
             .project_repository
             .get_projects_content_by_id(id, content_id)
             .await?
-            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
+            .ok_or_else(|| {
+                Error::EntityNotFound(format!("content {content_id} not found in project {id}"))
+            })?;
 
-        let thumbnail = project_contents.content;
-
-        match thumbnail {
+        match project_content.content {
             Some(photo) => {
                 let mut content = photo.clone();
-                content.id = project_contents.id;
+                content.id = project_content.id;
                 let thumbnail_saved = self
                     .project_repository
                     .add_project_thumbnail(id, &content)
@@ -159,28 +151,23 @@ impl IProjectService for ProjectService {
                     .storage_repository
                     .get_object_url(&photo.bucket_name, &photo.file_name)
                     .await?;
-
-                let content_view = ContentView::new(thumbnail_saved.id, photo.mime_type, Some(url));
-                Ok(content_view)
+                Ok(ContentView::new(thumbnail_saved.id, photo.mime_type, Some(url)))
             }
             None => Err(Error::ContentNotFoundButWasSave(
-                "Content was found but no images was associated".to_string(),
+                "content record exists but has no associated file".to_string(),
             )),
         }
     }
 
     async fn update_project(&self, id: Uuid, project: &ProjectDto) -> Result<(), Error> {
-        let _ = self
-            .project_repository
+        self.project_repository
             .get_project_by_id(id)
             .await?
-            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
+            .ok_or_else(|| Error::EntityNotFound(format!("project {id} not found")))?;
 
         self.project_repository
             .update_project_entity(id, project)
-            .await?;
-
-        Ok(())
+            .await
     }
 
     async fn find_project(&self, id: Uuid) -> Result<ProjectView, Error> {
@@ -188,25 +175,24 @@ impl IProjectService for ProjectService {
             .project_repository
             .get_project_by_id(id)
             .await?
-            .ok_or_else(|| Error::EntityNotFound(format!("Project not found with id: {}", id)))?;
+            .ok_or_else(|| Error::EntityNotFound(format!("project {id} not found")))?;
 
-        // println!("Project entity: {:#?}", project_entity);
+        let mut project_view = ProjectView::from(project_entity.clone());
 
-        let mut project_view: ProjectView = ProjectView::from(project_entity.clone());
-        let mut contents: Vec<ContentView> = vec![];
-
-        for content_dto in project_entity.contents {
-            let content = content_dto.content;
-            if let Some(photo) = content {
+        let mut contents: Vec<ContentView> = Vec::with_capacity(project_entity.contents.len());
+        for content_dto in &project_entity.contents {
+            if let Some(ref photo) = content_dto.content {
                 let url = self
                     .storage_repository
                     .get_object_url(&photo.bucket_name, &photo.file_name)
                     .await
                     .ok();
-
-                let content_view = ContentView::new(content_dto.id, photo.mime_type, url);
-                contents.push(content_view);
-            };
+                contents.push(ContentView::new(
+                    content_dto.id,
+                    photo.mime_type.clone(),
+                    url,
+                ));
+            }
         }
 
         let thumbnail = match project_entity.thumbnail {
@@ -222,7 +208,7 @@ impl IProjectService for ProjectService {
             None => None,
         };
 
-        project_view.contents = contents.to_vec();
+        project_view.contents = contents;
         project_view.thumbnail = thumbnail;
 
         Ok(project_view)
@@ -232,13 +218,17 @@ impl IProjectService for ProjectService {
         let _ = self.project_repository.get_project_by_id(id).await?;
         let project_contents = self.project_repository.get_projects_contents(id).await?;
         self.project_repository.delete_project_by_id(id).await?;
-        for content_dto in project_contents {
-            let content = content_dto.content;
 
-            if let Some(content) = content {
-                self.storage_repository
+        for content_dto in project_contents {
+            if let Some(content) = content_dto.content {
+                if let Err(e) = self
+                    .storage_repository
                     .remove_object(&content.bucket_name, &content.file_name)
-                    .await?
+                    .await
+                {
+                    // Log but don't fail: DB row is already gone.
+                    warn!(file = %content.file_name, error = ?e, "failed to delete orphaned storage object");
+                }
             }
         }
 
@@ -250,46 +240,45 @@ impl IProjectService for ProjectService {
         project_id: Uuid,
         content_id: Uuid,
     ) -> Result<(), Error> {
-        let _ = self
-            .project_repository
+        self.project_repository
             .get_project_by_id(project_id)
             .await?
-            .ok_or_else(|| {
-                Error::EntityNotFound(format!("Project not found with id: {}", project_id))
-            })?;
+            .ok_or_else(|| Error::EntityNotFound(format!("project {project_id} not found")))?;
+
         let content_dto = self
             .project_repository
             .get_projects_content_by_id(project_id, content_id)
             .await?
             .ok_or_else(|| {
-                Error::EntityNotFound(format!("Content not found with id: {}", content_id))
+                Error::EntityNotFound(format!("content {content_id} not found"))
             })?;
-        let content = content_dto.content;
 
         self.project_repository
             .delete_project_content_by_id(project_id, content_id)
             .await?;
 
-        if let Some(content) = content {
+        if let Some(content) = content_dto.content {
             self.storage_repository
                 .remove_object(&content.bucket_name, &content.file_name)
-                .await?
+                .await?;
         }
 
-        let thumbnail = match __self
+        // Also remove the thumbnail entry if this content was used as thumbnail.
+        match self
             .project_repository
             .get_thumbnail_by_id(project_id, content_id)
             .await
         {
-            Ok(thumb) => thumb,
-            Err(_) => None,
-        };
-
-        if let Some(thumbnail) = thumbnail {
-            if let Some(id) = thumbnail.id {
-                self.project_repository
-                    .delete_thumbnail_by_id(project_id, id)
-                    .await?;
+            Ok(Some(thumbnail)) => {
+                if let Some(thumb_id) = thumbnail.id {
+                    self.project_repository
+                        .delete_thumbnail_by_id(project_id, thumb_id)
+                        .await?;
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                warn!(content_id = %content_id, error = ?e, "error checking thumbnail during content deletion");
             }
         }
 
@@ -304,7 +293,7 @@ impl IProjectService for ProjectService {
                 let contents = self
                     .to_contents(&data.contents)
                     .await
-                    .expect("List of contents");
+                    .unwrap_or_default();
 
                 let thumbnail_view = match data.clone().thumbnail {
                     Some(photo) => {
@@ -314,12 +303,12 @@ impl IProjectService for ProjectService {
                             .get_object_url(&photo.bucket_name, &photo.file_name)
                             .await
                             .ok();
-
                         Some(ContentView::new(id, photo.mime_type, url))
                     }
                     None => None,
                 };
-                let project_view: ProjectView = ProjectView::new()
+
+                let project_view = ProjectView::new()
                     .id(data.id)
                     .description(data.description)
                     .metadata(data.metadata)
@@ -330,10 +319,11 @@ impl IProjectService for ProjectService {
                     .thumbnail(thumbnail_view)
                     .contents(contents)
                     .build();
+
                 vec.push(project_view);
                 vec
             })
-            .map(move |vec| vec)
+            .map(|vec| vec)
             .await;
 
         Ok(result)
@@ -354,10 +344,10 @@ impl IProjectService for ProjectService {
             .project_repository
             .get_projects_with_filter(page, size, is_adult, is_visible)
             .await?;
+
         let result = stream::iter(projects)
             .fold(Vec::new(), |mut vec, data| async move {
-                let content = data.thumbnail;
-                let thumbnail_view = match content {
+                let thumbnail_view = match data.thumbnail {
                     Some(photo) => {
                         let id = photo.id;
                         let url = self
@@ -365,13 +355,12 @@ impl IProjectService for ProjectService {
                             .get_object_url(&photo.bucket_name, &photo.file_name)
                             .await
                             .ok();
-
                         Some(ContentView::new(id, photo.mime_type, url))
                     }
                     None => None,
                 };
 
-                let project_view = ProjectWithThumbnailView::new(
+                vec.push(ProjectWithThumbnailView::new(
                     data.id,
                     data.metadata,
                     data.visible,
@@ -379,12 +368,12 @@ impl IProjectService for ProjectService {
                     data.created_on,
                     data.updated_on,
                     thumbnail_view,
-                );
-                vec.push(project_view);
+                ));
                 vec
             })
-            .map(move |vec| vec)
+            .map(|vec| vec)
             .await;
+
         Ok(ProjectsView::new(page, size, total_pages, result))
     }
 
@@ -403,28 +392,31 @@ impl IProjectService for ProjectService {
             .get_spotlight(spotlight_id)
             .await?
             .ok_or_else(|| {
-                Error::EntityNotFound(format!("Spotlight not found with id: {}", spotlight_id))
+                Error::EntityNotFound(format!("spotlight {spotlight_id} not found"))
             })?;
         self.to_spotlight_view(&spotlight).await
     }
 
     async fn get_spotlights(&self) -> Result<Vec<SpotlightView>, Error> {
         let spotlights = self.spotlight_repository.get_spotlights().await?;
+
         let result = stream::iter(spotlights)
             .fold(Vec::new(), |mut vec, data| async move {
-                let spotlight_view = self.to_spotlight_view(&data).await.expect("msg");
-                vec.push(spotlight_view);
+                match self.to_spotlight_view(&data).await {
+                    Ok(view) => vec.push(view),
+                    Err(e) => warn!(error = ?e, "failed to build spotlight view"),
+                }
                 vec
             })
-            .map(move |vec| vec)
+            .map(|vec| vec)
             .await;
+
         Ok(result)
     }
 
     async fn delete_spotlight(&self, spotlight_id: Uuid) -> Result<(), Error> {
         self.spotlight_repository
             .delete_spotlight(spotlight_id)
-            .await?;
-        Ok(())
+            .await
     }
 }

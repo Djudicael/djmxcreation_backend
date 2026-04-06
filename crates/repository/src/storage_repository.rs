@@ -5,7 +5,7 @@ use app_error::Error;
 use async_trait::async_trait;
 use aws_sdk_s3::{presigning::PresigningConfig, primitives::ByteStream};
 
-use crate::config::minio::StorageClient;
+use crate::config::storage::StorageClient;
 
 pub struct StorageRepository {
     client: StorageClient,
