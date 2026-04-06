@@ -70,7 +70,8 @@
 .cta {
     position: relative;
     margin: auto;
-    padding: 19px 22px;
+    padding: 17px 22px;
+    border-radius: 999px;
     transition: all 0.2s ease;
     cursor: pointer;
 }
@@ -82,7 +83,7 @@
     left: 0;
     display: block;
     border-radius: 28px;
-    background: rgba(255, 171, 157, 0.5);
+    background: rgba(37, 99, 235, 0.22);
     width: 56px;
     height: 56px;
     transition: all 0.3s ease;
@@ -90,12 +91,13 @@
 
 .cta span {
     position: relative;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 18px;
     font-weight: 900;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     vertical-align: middle;
+    color: var(--ink-1);
 }
 
 .cta svg {
@@ -113,7 +115,7 @@
 
 .cta:hover:before {
     width: 100%;
-    background: #ffab9d;
+    background: rgba(20, 184, 166, 0.3);
 }
 
 .cta:hover svg {
@@ -143,8 +145,8 @@ input[type=checkbox]:focus {
     display: inline-block;
     position: relative;
     margin: 0;
-    border: 2px solid #474755;
-    background: linear-gradient(180deg, #2D2F39 0%, #1F2027 100%);
+    border: 2px solid #64748b;
+    background: linear-gradient(180deg, #334155 0%, #0f172a 100%);
     transition: all 0.2s ease;
 }
 
@@ -162,7 +164,8 @@ input[type=checkbox]:focus {
 }
 
 .toggle:checked, .adult:checked {
-    border-color: #654FEC;
+    border-color: #14b8a6;
+    background: linear-gradient(180deg, #0f766e 0%, #0f172a 100%);
 }
 
 .toggle:checked:after, .adult:checked:after {

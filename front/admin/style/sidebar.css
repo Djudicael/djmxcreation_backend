@@ -1,18 +1,22 @@
 .sidebar {
     position: fixed;
-    width: 25%;
+    width: var(--sidebar-width);
     height: 100vh;
-    background: #312450;
-    font-size: 0.65em;
+    background:
+        linear-gradient(160deg, #0b1225 0%, #132347 58%, #1d3b73 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.22);
+    font-size: 0.7em;
+    box-shadow: 12px 0 40px rgba(2, 6, 23, 0.25);
+    z-index: 120;
 }
 
 .nav {
     position: relative;
-    margin: 0 15%;
+    margin: 0 12%;
     text-align: right;
     top: 50%;
     transform: translateY(-50%);
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .nav ul {
@@ -25,10 +29,10 @@
 }
 
 .nav ul li a {
-    line-height: 5em;
+    line-height: 4.6em;
     text-transform: uppercase;
     text-decoration: none;
-    letter-spacing: 0.4em;
+    letter-spacing: 0.24em;
     color: rgba(255, 255, 255, 0.35);
     display: block;
     transition: all ease-out 300ms;
@@ -51,8 +55,7 @@
     position: absolute;
     width: 100%;
     height: 0.2em;
-    background: black;
     left: 0;
     bottom: 0;
-    background-image: linear-gradient(to right, #5e42a6, #b74e91);
+    background-image: linear-gradient(to right, #22d3ee, #f97316);
 }

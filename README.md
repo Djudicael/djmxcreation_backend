@@ -9,6 +9,34 @@ and a playground for experimenting with Rust, WASM/WASI, and self-hosted infrast
 
 ---
 
+## Quick start
+
+Run backend and frontend from the repository root.
+
+### 1) Backend
+
+```bash
+# Configure environment (first time)
+cp .env.template .env
+
+# Start API
+cargo run --bin djmxcreation-backend-axum
+```
+
+### 2) Frontend
+
+```bash
+# Start admin + portfolio dev servers
+npm run dev
+
+# Or build both
+npm run build
+```
+
+Frontend command details and API base URL overrides are documented in [front/README.md](front/README.md).
+
+---
+
 ## What this application does
 
 The backend exposes a JSON REST API used by two frontends:
@@ -205,6 +233,16 @@ npm run test
 
 These scripts proxy to the frontend workspace in [front/](front/).
 
+### Frontend API URL behavior
+
+The frontend no longer hardcodes a backend host. By default, requests stay relative (for example `/api/...`).
+
+If needed, override API base URL via:
+
+1. `globalThis.__DJMX_API_BASE_URL__`
+2. `<meta name="djmx-api-base-url" content="...">`
+3. `BACKEND_API_URL` at build/runtime
+
 ---
 
 ## WASM / WASI target (in progress)
@@ -273,7 +311,9 @@ djmxcreation_backend/
 │   ├── migration/                   # (legacy) sqlx migrations
 │   └── test-util/                   # Test helpers
 ├── sql/migrations/                  # SQL migration files (V1..Vn)
-├── front/admin/                     # CMS admin frontend (Vue/TS)
+├── front/admin/                     # CMS admin frontend (native web components)
+├── front/portfolio/                 # Public portfolio frontend (native web components)
+├── front/shared/                    # Shared frontend runtime/build modules
 ├── docs/                            # Architecture diagrams
 ├── .env.template                    # Environment variable template
 └── Dockerfile                       # Multi-stage production build

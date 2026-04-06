@@ -13,28 +13,79 @@
 /*===== VARIABLES CSS =====*/
 
 :root {
-    --main-color: #DD2F6E;
-    --dark-color: #1D2231;
-    --text-grey: #8390A2;
+    --main-color: #e65b4a;
+    --dark-color: #0f172a;
+    --text-grey: #6b7280;
     --white-color: #ffffff;
-    --milk-color: #f0f0f0;
-    --light-cream-color: #f1f5f9;
-    --cream-color: #ccc;
-    --brown-color: #c315ea;
-    --light-brown-color: #333;
-    --green-mid-color: #11998e;
-    --green-light-color: #38ef7d;
+    --milk-color: #f8fafc;
+    --light-cream-color: #e2e8f0;
+    --cream-color: #cbd5e1;
+    --brown-color: #1d4ed8;
+    --light-brown-color: #1f2937;
+    --green-mid-color: #0d9488;
+    --green-light-color: #14b8a6;
+
+    --surface-0: #f6f8fb;
+    --surface-1: #ffffff;
+    --surface-2: #eef2f7;
+    --ink-1: #0f172a;
+    --ink-2: #334155;
+
+    --sidebar-width: 320px;
+    --sidebar-collapsed-width: 84px;
+    --header-height: 72px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 16px 40px rgba(2, 6, 23, 0.12);
+
+    --gray-color: var(--surface-2);
+    --black-color: var(--ink-1);
+    --service-title-color: var(--brown-color);
 }
 
-* {
+*, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
     list-style-type: none;
     text-decoration: none;
-    font-family: 'Poppins', sans-serif;
+    font-family: "Segoe UI Variable", "Aptos", "Trebuchet MS", sans-serif;
 }
 
+html, body {
+    min-height: 100%;
+}
+
+body {
+    color: var(--ink-1);
+    background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(37, 99, 235, 0.18), transparent 60%),
+        radial-gradient(900px 400px at -5% 10%, rgba(20, 184, 166, 0.2), transparent 55%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    line-height: 1.45;
+}
+
+a {
+    color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+:focus-visible {
+    outline: 3px solid rgba(29, 78, 216, 0.35);
+    outline-offset: 2px;
+}
+
+.main {
+    min-height: 100vh;
+}
 
 
 .cards {
@@ -47,9 +98,10 @@
 .card-single {
     display: flex;
     justify-content: space-between;
-    background: var(--white-color);
+    background: var(--surface-1);
     padding: 2rem;
-    border-radius: 2px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
 }
 
 .card-single h1+span {
@@ -70,4 +122,13 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

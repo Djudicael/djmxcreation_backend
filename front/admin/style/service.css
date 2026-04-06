@@ -1,18 +1,24 @@
 .services {
-    margin-top: 30;
+    margin-top: 30px;
     display: grid;
     /* grid-template-columns: 1fr 1fr 1fr; */
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
     text-align: center;
 }
 
 .services .service {
-    padding: 30px;
+    padding: 26px 20px;
+    background: var(--surface-1);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .services .service:hover {
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-card);
+    transform: translateY(-2px);
 }
 
 .services .service h2 {
@@ -24,4 +30,17 @@
 
 .services .service .icon img {
     max-width: 100px;
+}
+
+@media only screen and (max-width: 980px) {
+    .services {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media only screen and (max-width: 640px) {
+    .services {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
 }

@@ -1,19 +1,25 @@
 @media only screen and (max-width: 1200px) {
     .sidebar {
-        width: 70px;
+        width: var(--sidebar-collapsed-width);
     }
+
     .sidebar.side-brand h2, .sidebar li {
         padding-left: 1rem;
     }
+
     .sidebar>.side-brand h2, .sidebar>.sidebar-menu ul a span {
         display: none;
     }
+
     .header {
-        width: calc(100% - 70px);
-        left: 70px;
+        width: calc(100% - var(--sidebar-collapsed-width));
+        left: var(--sidebar-collapsed-width);
     }
-    .main-content {
-        margin-left: 70px;
+
+    .content-page {
+        margin-left: var(--sidebar-collapsed-width);
+        width: calc(100% - var(--sidebar-collapsed-width));
+        padding-inline: 20px;
     }
 }
 
@@ -21,18 +27,36 @@
     .cards {
         grid-template-columns: repeat(3, 1fr);
     }
+
     .recent-grid {
         grid-template-columns: 60% 40%;
     }
 }
 
 @media only screen and (max-width: 768px) {
+    .sidebar {
+        display: none;
+    }
+
+    .header {
+        left: 0;
+        width: 100%;
+    }
+
+    .content-page {
+        margin-left: 0;
+        width: 100%;
+        padding-top: calc(var(--header-height) + 14px);
+    }
+
     .cards {
         grid-template-columns: repeat(1, 1fr);
     }
+
     .recent-grid {
         grid-template-columns: 100%;
     }
+
     .search-wrapper {
         display: none;
     }

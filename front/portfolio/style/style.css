@@ -7,9 +7,17 @@
 @import "editor.css";
 
 :root {
-    --main-bg-color: #e8e8e1;
+    --main-bg-color: #f3efe7;
     --app-height: 100%;
-    --main-dark-color: #191919;
+    --main-dark-color: #111827;
+    --surface-color: #fffdf7;
+    --muted-ink: #475569;
+    --line-color: rgba(17, 24, 39, 0.18);
+    --accent-color: #0f766e;
+    --accent-strong: #0b5f59;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --shadow-soft: 0 14px 36px rgba(17, 24, 39, 0.12);
 }
 
 /* @font-face {
@@ -21,7 +29,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: "ivar", serif;
+    font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
     text-decoration: none;
     list-style: none;
 }
@@ -34,9 +42,28 @@ a {
     color: var(--main-dark-color);
 }
 
+:focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.4);
+    outline-offset: 3px;
+}
+
 html,
 body {
     width: 100%;
-    background-color: var(--main-bg-color);
+    min-height: 100%;
+    background:
+        radial-gradient(1100px 520px at 105% -10%, rgba(20, 184, 166, 0.18), transparent 55%),
+        radial-gradient(900px 420px at -10% 10%, rgba(245, 158, 11, 0.16), transparent 52%),
+        var(--main-bg-color);
+    color: var(--main-dark-color);
     overscroll-behavior: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

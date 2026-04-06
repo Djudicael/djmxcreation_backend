@@ -1,8 +1,9 @@
 .content-page {
     position: relative;
-    width: 75%;
-    float: right;
-    height: 100vh;
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    min-height: 100vh;
+    padding: calc(var(--header-height) + 20px) 28px 28px;
 
 }
 
@@ -17,6 +18,11 @@
     flex: 0 0 calc(33.33% - 20px);
     margin: 10px;
     box-sizing: border-box;
+}
+
+.content-page .presentation,
+.content-page .profile {
+    width: min(100%, 1024px);
 }
 
 .content-page a {
