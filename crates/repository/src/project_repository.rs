@@ -420,39 +420,26 @@ impl IProjectRepository for ProjectRepository {
                 "Page number must be greater than 0".to_string(),
             ));
         }
-        let adult_filter = match is_adult {
-            Some(adult) => format!("AND p.adult = {}", adult),
-            None => "".to_owned(),
-        };
-
-        // Rest of the SQL query remains the same
-        let sql = format!(
-            "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult,
+        // Using ($4::boolean IS NULL OR p.adult = $4) allows a single parameterised query
+        // to handle both the "filter by adult" and "no adult filter" cases safely.
+        let sql = "SELECT p.id, p.metadata, p.created_on, p.updated_on, p.description, p.visible, p.adult,
             COALESCE(c.content, ct.content) AS thumbnail_content,
             COALESCE(c.created_on, ct.created_on) AS thumbnail_created_on
         FROM project p
         LEFT JOIN project_content_thumbnail c ON c.project_id = p.id
         LEFT JOIN project_content ct ON ct.project_id = p.id AND ct.id = (
-            SELECT id
-            FROM project_content
-            WHERE project_id = p.id
-            ORDER BY created_on ASC
-            LIMIT 1
+            SELECT id FROM project_content
+            WHERE project_id = p.id ORDER BY created_on ASC LIMIT 1
         )
         WHERE p.visible = $1
-        {adult_filter}
-        AND (SELECT COUNT(*) FROM project_content WHERE project_id = p.id) > 0
+          AND ($4::boolean IS NULL OR p.adult = $4)
+          AND (SELECT COUNT(*) FROM project_content WHERE project_id = p.id) > 0
         ORDER BY p.created_on DESC
-        LIMIT $2 OFFSET $3"
-        );
+        LIMIT $2 OFFSET $3";
 
-        // Rest of the implementation remains the same
-        let total_sql = format!(
-            "SELECT COUNT(*)
-        FROM project p
+        let total_sql = "SELECT COUNT(*) FROM project p
         WHERE p.visible = $1
-        {adult_filter}"
-        );
+          AND ($2::boolean IS NULL OR p.adult = $2)";
 
         let client = self
             .client
@@ -461,13 +448,13 @@ impl IProjectRepository for ProjectRepository {
             .map_err(|e| to_error(e, None))?;
 
         let total_count: i64 = client
-            .query_one(&total_sql, &[&is_visible])
+            .query_one(total_sql, &[&is_visible, &is_adult])
             .await
             .map_err(|e| to_error(PoolError::Backend(e), None))?
             .get(0);
 
         let rows = client
-            .query(&sql, &[&is_visible, &size, &((page - 1) * size)])
+            .query(sql, &[&is_visible, &size, &((page - 1) * size), &is_adult])
             .await
             .map_err(|e| to_error(PoolError::Backend(e), None))?;
 

@@ -158,32 +158,3 @@ fn to_metadata(value: Value) -> Option<MetadataDto> {
     serde_json::from_value(value).ok()
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn test_project_build() {
-//         let project = Project::new()
-//             .id(Some(1))
-//             .metadata(Some(Json(Value::String(String::from("metadata")))))
-//             .description(Some(Json(Value::String(String::from("description")))))
-//             .visible(true)
-//             .adult(false)
-//             .created_on(Some(chrono::Utc::now()))
-//             .updated_on(Some(chrono::Utc::now()))
-//             .contents(vec![Json(Value::String(String::from("content")))])
-//             .thumbnail_content(Some(Json(Value::String(String::from("thumbnail"))))))
-//             .build();
-
-//         assert_eq!(project.id, Some(1));
-//         assert_eq!(project.metadata.unwrap().0, String::from("metadata"));
-//         assert_eq!(project.description.unwrap().0, String::from("description"));
-//         assert_eq!(project.visible, true);
-//         assert_eq!(project.adult, false);
-//         assert!(project.created_on.is_some());
-//         assert!(project.updated_on.is_some());
-//         assert_eq!(project.contents.len(), 1);
-//         assert_eq!(project.thumbnail_content.unwrap().0, String::from("thumbnail"));
-//     }
-// }

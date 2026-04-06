@@ -4,12 +4,10 @@ use app_core::{
     about_me::about_me_service::DynIAboutMeService, contact::contact_service::DynIContactService,
     project::project_service::DynIProjectService,
 };
-
 use app_service::{
     about_me_service::AboutMeService, contact_service::ContactService,
     project_service::ProjectService,
 };
-
 use repository::{
     about_me_repository::AboutMeRepository,
     config::{db::DatabasePool, storage::StorageClient},
@@ -20,7 +18,6 @@ use repository::{
 };
 
 #[derive(Clone)]
-
 pub struct ServiceRegister {
     pub project_service: DynIProjectService,
     pub about_me_service: DynIAboutMeService,
@@ -28,22 +25,24 @@ pub struct ServiceRegister {
 }
 
 impl ServiceRegister {
-    pub fn new(client_db: Arc<DatabasePool>, client: StorageClient) -> Self {
+    pub fn new(client_db: Arc<DatabasePool>, client: StorageClient, bucket: String) -> Self {
         let project_repository = Arc::new(ProjectRepository::new(client_db.clone()));
         let about_me_repository = Arc::new(AboutMeRepository::new(client_db.clone()));
         let contact_repository = Arc::new(ContactRepository::new(client_db.clone()));
         let spotlight_repository = Arc::new(SpotlightRepository::new(client_db.clone()));
-        let storage_repository = Arc::new(StorageRepository::new(client.clone()));
+        let storage_repository = Arc::new(StorageRepository::new(client));
 
         Self {
             project_service: Arc::new(ProjectService::new(
                 project_repository.clone(),
                 storage_repository.clone(),
                 spotlight_repository.clone(),
+                bucket.clone(),
             )),
             about_me_service: Arc::new(AboutMeService::new(
                 about_me_repository.clone(),
                 storage_repository.clone(),
+                bucket,
             )),
             contact_service: Arc::new(ContactService::new(contact_repository.clone())),
         }

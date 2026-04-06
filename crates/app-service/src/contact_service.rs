@@ -19,13 +19,10 @@ impl ContactService {
 #[async_trait]
 impl IContactService for ContactService {
     async fn get_contact(&self) -> Result<ContactDto, Error> {
-        let contact = self.contact_repository.get_contact().await?;
-        Ok(contact)
+        self.contact_repository.get_contact().await
     }
 
     async fn update_contact(&self, id: Uuid, contact: &ContactDto) -> Result<ContactDto, Error> {
-        let _ = self.contact_repository.get_contact().await?;
-        let contact = self.contact_repository.update_contact(id, contact).await?;
-        Ok(contact)
+        self.contact_repository.update_contact(id, contact).await
     }
 }

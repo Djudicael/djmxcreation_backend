@@ -1,4 +1,4 @@
-use std::{future::ready, sync::{Arc, OnceLock}, time::Duration};
+use std::{future::ready, sync::Arc, time::Duration};
 
 use crate::{
     router::{
@@ -28,11 +28,9 @@ use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
 
-static GLOBAL_CONFIG: OnceLock<Arc<Config>> = OnceLock::new();
-
 const HTTP_TIMEOUT_SECS: u64 = 30;
 
-/// Exponential histogram buckets for HTTP request duration metrics.
+/// Exponential histogram buckets for HTTP request duration metrics (seconds).
 const EXPONENTIAL_SECONDS: &[f64] = &[
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
 ];
@@ -53,7 +51,7 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, Json<serde_json::Va
     }
 }
 
-/// Track HTTP request duration for Prometheus.
+/// Record HTTP request duration for Prometheus metrics.
 async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
     let path = request
         .extensions()
@@ -67,7 +65,7 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
     metrics::histogram!(
         "http_requests_duration_seconds",
         "method" => method.to_string(),
-        "path" => path,
+        "path"   => path,
         "status" => response.status().as_u16().to_string(),
     );
 
@@ -75,31 +73,27 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
 }
 
 pub async fn start() -> anyhow::Result<()> {
-    let config = GLOBAL_CONFIG
-        .get_or_init(|| Arc::new(Config::new()))
-        .clone();
+    // ── Configuration ────────────────────────────────────────────────────────
+    let config = Config::from_env().context("failed to load configuration")?;
 
-    // ── Database ────────────────────────────────────────────────────────────
+    // ── Database ─────────────────────────────────────────────────────────────
     let client_db = DatabasePool::new(&config.database, None)
         .await
         .context("failed to initialise database pool")?;
-
     info!("database pool ready");
 
-    // ── Object storage ──────────────────────────────────────────────────────
-    let storage_cfg = config.clone().get_storage();
+    // ── Object storage ────────────────────────────────────────────────────────
+    let storage_cfg = config.get_storage();
     let bucket_name = storage_cfg.bucket.clone();
 
     let storage_client =
         get_storage_client(storage_cfg).context("failed to create storage client")?;
-
     ensure_bucket(&bucket_name, &storage_client)
         .await
         .context("failed to ensure storage bucket exists")?;
-
     info!(bucket = %bucket_name, "storage ready");
 
-    // ── Prometheus metrics ──────────────────────────────────────────────────
+    // ── Prometheus metrics ────────────────────────────────────────────────────
     let recorder_handle = PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),
@@ -109,11 +103,11 @@ pub async fn start() -> anyhow::Result<()> {
         .install_recorder()
         .context("failed to install prometheus recorder")?;
 
-    // ── Services ────────────────────────────────────────────────────────────
+    // ── Services ──────────────────────────────────────────────────────────────
     let service_register =
-        ServiceRegister::new(Arc::new(client_db), storage_client);
+        ServiceRegister::new(Arc::new(client_db), storage_client, bucket_name);
 
-    // ── Router ──────────────────────────────────────────────────────────────
+    // ── Router ────────────────────────────────────────────────────────────────
     let router = Router::new()
         .nest("/", ObservabilityRouter::new_router())
         .nest("/api/about", AboutMeRouter::new_router(service_register.clone()))
@@ -129,12 +123,11 @@ pub async fn start() -> anyhow::Result<()> {
         .layer(CorsLayer::permissive())
         .route_layer(middleware::from_fn(track_metrics));
 
-    // ── Server ───────────────────────────────────────────────────────────────
+    // ── Server ────────────────────────────────────────────────────────────────
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .with_context(|| format!("failed to bind to {addr}"))?;
-
     info!(address = %addr, "server listening");
 
     axum::serve(listener, router.into_make_service()).await?;

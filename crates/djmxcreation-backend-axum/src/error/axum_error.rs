@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
 use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -13,10 +12,10 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    pub fn new(error: String) -> Self {
-        let mut error_map: HashMap<String, Vec<String>> = HashMap::new();
-        error_map.insert("message".to_owned(), vec![error]);
-        Self { errors: error_map }
+    pub fn new(message: String) -> Self {
+        let mut errors = HashMap::new();
+        errors.insert("message".to_owned(), vec![message]);
+        Self { errors }
     }
 }
 
@@ -36,38 +35,33 @@ pub enum Error {
     BadRequest(String),
     #[error("unexpected error has occurred")]
     InternalServerError,
-    #[error("Error from service layer")]
+    #[error("service error: {0}")]
     ServiceError(#[from] app_error::Error),
-    #[error("Error from upload file")]
+    #[error("multipart upload error: {0}")]
     UploadMultipartError(#[from] MultipartError),
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            Self::NotFound(err) => (StatusCode::NOT_FOUND, err),
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, Self::Unauthorized.to_string()),
-            Self::ServiceError(err) => match err {
-                app_error::Error::EntityNotFound(msg) => (StatusCode::NOT_FOUND, msg),
-                app_error::Error::ContentNotFoundButWasSave(msg) => (StatusCode::NOT_FOUND, msg),
+        let (status, message) = match self {
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
+            Self::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
+            Self::ServiceError(ref err) => match err {
+                app_error::Error::EntityNotFound(msg)
+                | app_error::Error::ContentNotFoundButWasSave(msg) => {
+                    (StatusCode::NOT_FOUND, msg.clone())
+                }
+                app_error::Error::InvalidInput(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
                 app_error::Error::FailAuthMissingXAuth => {
                     (StatusCode::UNAUTHORIZED, err.to_string())
                 }
-                app_error::Error::Database => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),
             },
-            // Self::ServiceError(app_error::Error::EntityNotFound(err)) => {
-            //     (StatusCode::NOT_FOUND, err)
-            // }
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("unexpected error occurred"),
-            ),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),
         };
 
-        //TODO check for better approach
-        let body = Json(ApiError::new(error_message));
-
-        (status, body).into_response()
+        (status, Json(ApiError::new(message))).into_response()
     }
 }
