@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, sync::Arc, time::SystemTime};
+use std::{sync::Arc, time::SystemTime};
 
 use app_core::{
     dto::{
@@ -15,7 +15,7 @@ use chrono::{DateTime, Utc};
 use deadpool_postgres::PoolError;
 use serde_json::{json, Value};
 
-use tokio_postgres::{types::Json, Row, Transaction};
+use tokio_postgres::{types::Json, Row};
 use uuid::Uuid;
 
 use crate::{
@@ -25,10 +25,36 @@ use crate::{
         project_with_thumbnail::ProjectWithThumbnail,
     },
     error::to_error,
+    transaction::with_transaction,
 };
 
 pub struct ProjectRepository {
     client: Arc<DatabasePool>,
+}
+
+/// Extract an optional JSON column from a row.
+fn json_opt(row: &Row, col: &str) -> Result<Option<Value>, Error> {
+    row.try_get::<_, Option<Json<Value>>>(col)
+        .map(|opt| opt.map(|j| j.0))
+        .map_err(|e| to_error(PoolError::Backend(e), None))
+}
+
+/// Extract a column value from a row.
+fn col<'a, T: tokio_postgres::types::FromSql<'a>>(row: &'a Row, col: &str) -> Result<T, Error> {
+    row.try_get(col)
+        .map_err(|e| to_error(PoolError::Backend(e), None))
+}
+
+/// Extract an optional `SystemTime` column as `Option<DateTime<Utc>>`.
+fn timestamp_opt(row: &Row, col_name: &str) -> Result<Option<DateTime<Utc>>, Error> {
+    let time: Option<SystemTime> = col(row, col_name)?;
+    Ok(time.map(Into::into))
+}
+
+/// Extract a required `SystemTime` column as `DateTime<Utc>`.
+fn timestamp(row: &Row, col_name: &str) -> Result<DateTime<Utc>, Error> {
+    let time: SystemTime = col(row, col_name)?;
+    Ok(time.into())
 }
 
 impl ProjectRepository {
@@ -36,210 +62,47 @@ impl ProjectRepository {
         Self { client }
     }
 
-    fn map_create_row_to_project_without_thumbnail_content(row: &Row) -> Result<Project, Error> {
-        let metadata: Option<serde_json::Value> = row
-            .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
+    fn map_row_to_project(row: &Row, with_thumbnail: bool) -> Result<Project, Error> {
+        let thumbnail_content = if with_thumbnail {
+            json_opt(row, "thumbnail_content")?
+        } else {
+            None
+        };
 
-        let description: Option<serde_json::Value> = row
-            .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let updated_on: Option<SystemTime> = row
-            .try_get("updated_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
-
-        let created_on: Option<SystemTime> = row
-            .try_get("created_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-
-        let id: Uuid = row
-            .try_get("id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let visible: bool = row
-            .try_get("visible")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let adult: bool = row
-            .try_get("adult")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
         Ok(Project {
-            id: Some(id),
-            metadata,
-            created_on,
-            updated_on,
-            description,
-            visible,
-            adult,
-            contents: vec![],
-            thumbnail_content: None,
-        })
-    }
-    fn map_create_row_to_project(row: &Row) -> Result<Project, Error> {
-        let metadata: Option<serde_json::Value> = row
-            .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let description: Option<serde_json::Value> = row
-            .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let thumbnail_content: Option<serde_json::Value> = row
-            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let updated_on: Option<SystemTime> = row
-            .try_get("updated_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
-
-        let created_on: Option<SystemTime> = row
-            .try_get("created_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-
-        let id: Uuid = row
-            .try_get("id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let visible: bool = row
-            .try_get("visible")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let adult: bool = row
-            .try_get("adult")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        Ok(Project {
-            id: Some(id),
-            metadata,
-            created_on,
-            updated_on,
-            description,
-            visible,
-            adult,
+            id: Some(col(row, "id")?),
+            metadata: json_opt(row, "metadata")?,
+            created_on: timestamp_opt(row, "created_on")?,
+            updated_on: timestamp_opt(row, "updated_on")?,
+            description: json_opt(row, "description")?,
+            visible: col(row, "visible")?,
+            adult: col(row, "adult")?,
             contents: vec![],
             thumbnail_content,
         })
     }
 
     fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
-        let metadata: Option<Value> = row
-            .try_get::<_, Option<Json<Value>>>("metadata")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let description: Option<Value> = row
-            .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let thumbnail_content: Option<Value> = row
-            .try_get::<_, Option<Json<Value>>>("thumbnail_content")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let updated_on: Option<SystemTime> = row
-            .try_get("updated_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let updated_on: Option<DateTime<Utc>> = updated_on.map(|time| time.into());
-
-        let created_on: SystemTime = row
-            .try_get("created_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let created_on: DateTime<Utc> = created_on.into();
-
-        let thumbnail_created_on: Option<SystemTime> = row
-            .try_get("thumbnail_created_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let thumbnail_created_on: Option<DateTime<Utc>> =
-            thumbnail_created_on.map(|time| time.into());
-
-        let id: Uuid = row
-            .try_get("id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let visible: bool = row
-            .try_get("visible")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let adult: bool = row
-            .try_get("adult")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
         Ok(ProjectWithThumbnail {
-            id: Some(id),
-            metadata,
-            created_on,
-            updated_on,
-            description,
-            visible,
-            adult,
-            thumbnail_content,
-            thumbnail_created_on,
+            id: Some(col(row, "id")?),
+            metadata: json_opt(row, "metadata")?,
+            created_on: timestamp(row, "created_on")?,
+            updated_on: timestamp_opt(row, "updated_on")?,
+            description: json_opt(row, "description")?,
+            visible: col(row, "visible")?,
+            adult: col(row, "adult")?,
+            thumbnail_content: json_opt(row, "thumbnail_content")?,
+            thumbnail_created_on: timestamp_opt(row, "thumbnail_created_on")?,
         })
     }
 
     fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
-        let content: Option<Value> = row
-            .try_get::<_, Option<Json<Value>>>("content")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
-
-        let created_on: Option<SystemTime> = row
-            .try_get("created_on")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-        let created_on: Option<DateTime<Utc>> = created_on.map(|time| time.into());
-
-        let id: Uuid = row
-            .try_get("id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let project_id: Uuid = row
-            .try_get("project_id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
         Ok(ProjectContent::new(
-            Some(id),
-            project_id,
-            content,
-            created_on,
+            Some(col(row, "id")?),
+            col(row, "project_id")?,
+            json_opt(row, "content")?,
+            timestamp_opt(row, "created_on")?,
         ))
-    }
-
-    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
-    where
-        F: for<'a> FnOnce(
-            &'a Transaction<'a>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
-    {
-        let mut client = self
-            .client
-            .get_client()
-            .await
-            .map_err(|e| to_error(e, None))?;
-
-        let transaction = client
-            .build_transaction()
-            .start()
-            .await
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let result = f(&transaction).await?;
-
-        transaction
-            .commit()
-            .await
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        Ok(result)
     }
 }
 
@@ -250,14 +113,13 @@ impl IProjectRepository for ProjectRepository {
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project (metadata, created_on, visible, adult) VALUES ($1, $2, $3, $4) RETURNING *";
 
-        let project = self
-            .with_transaction(|tx| {
+        let project = with_transaction(&self.client, |tx| {
                 Box::pin(async move {
                     let row = tx
                         .query_one(sql, &[&Json(metadata_json), &now_utc, &true, &false])
                         .await
                         .map_err(|e| to_error(PoolError::Backend(e), None))?;
-                    ProjectRepository::map_create_row_to_project_without_thumbnail_content(&row)
+                    ProjectRepository::map_row_to_project(&row, false)
                         .map(ProjectDto::from)
                 })
             })
@@ -274,8 +136,7 @@ impl IProjectRepository for ProjectRepository {
         let content_json = json!(content);
         let now_utc: DateTime<Utc> = Utc::now();
         let sql = "INSERT INTO project_content(project_id, content, created_on) VALUES($1, $2, $3) RETURNING *";
-        let content_entity = self
-            .with_transaction(|tx| {
+        let content_entity = with_transaction(&self.client, |tx| {
                 Box::pin(async move {
                     let row = tx
                         .query_one(sql, &[&project_id, &Json(content_json), &now_utc])
@@ -303,8 +164,7 @@ impl IProjectRepository for ProjectRepository {
         SET content = EXCLUDED.content, created_on = EXCLUDED.created_on
         RETURNING *;
         ";
-        let content_entity = self
-            .with_transaction(|tx| {
+        let content_entity = with_transaction(&self.client, |tx| {
                 Box::pin(async move {
                     let row = tx
                         .query_one(sql, &[&Json(thumbnail_json), &project_id, &now_utc])
@@ -354,7 +214,7 @@ impl IProjectRepository for ProjectRepository {
             )
         })? {
             Some(row) => {
-                let project = ProjectRepository::map_create_row_to_project(&row)?;
+                let project = ProjectRepository::map_row_to_project(&row, true)?;
                 Ok(Some(ProjectDto::from(project)))
             }
             None => Ok(None),
@@ -392,14 +252,9 @@ impl IProjectRepository for ProjectRepository {
             .await
             .map_err(|e| to_error(PoolError::Backend(e), None))?;
 
-        let projects = rows
-            .iter()
-            .map(|row| ProjectRepository::map_create_row_to_project(row))
-            .collect::<Result<Vec<Project>, Error>>()?;
-        Ok(projects
-            .iter()
-            .map(|p| ProjectDto::from(p.clone()))
-            .collect())
+        rows.iter()
+            .map(|row| ProjectRepository::map_row_to_project(row, true).map(ProjectDto::from))
+            .collect()
     }
 
     async fn get_projects_with_filter(
@@ -484,13 +339,6 @@ impl IProjectRepository for ProjectRepository {
         project: &ProjectDto,
     ) -> Result<(), Error> {
         let now_utc: DateTime<Utc> = Utc::now();
-        let ProjectDto {
-            metadata,
-            description,
-            visible,
-            adult,
-            ..
-        } = project.clone();
 
         let sql="UPDATE project SET description = $1, metadata = $2, visible = $3, adult= $4, updated_on = $5 WHERE id = $6";
         let client = self
@@ -502,10 +350,10 @@ impl IProjectRepository for ProjectRepository {
             .execute(
                 sql,
                 &[
-                    &Json(description),
-                    &Json(metadata),
-                    &visible,
-                    &adult,
+                    &Json(&project.description),
+                    &Json(&project.metadata),
+                    &project.visible,
+                    &project.adult,
                     &now_utc,
                     &project_id,
                 ],
@@ -595,7 +443,6 @@ impl IProjectRepository for ProjectRepository {
         Ok(())
     }
 
-    //TODO modify for thumbnail
     async fn get_projects_content_thumbnail(
         &self,
         project_id: Uuid,
@@ -607,19 +454,14 @@ impl IProjectRepository for ProjectRepository {
             .get_client()
             .await
             .map_err(|e| to_error(e, None))?;
-        let row = client
+        let rows = client
             .query(sql, &[&project_id])
             .await
             .map_err(|e| to_error(PoolError::Backend(e), Some(project_id.to_string())))?;
-        let contents = row
-            .iter()
-            .map(|r| ProjectRepository::map_row_to_project_content(r))
-            .collect::<Result<Vec<ProjectContent>, Error>>()?;
 
-        Ok(contents
-            .iter()
-            .map(|c| ProjectContentDto::from(c.clone()))
-            .collect())
+        rows.iter()
+            .map(|r| ProjectRepository::map_row_to_project_content(r).map(ProjectContentDto::from))
+            .collect()
     }
 
     async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {

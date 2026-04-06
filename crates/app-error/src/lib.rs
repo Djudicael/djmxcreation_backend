@@ -2,28 +2,24 @@ use thiserror::*;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Web server failed to start because web-folder '{0}' not found.")]
-    FailStartWebFolderNotFound(String),
-    #[error("Fail authentication missing X-Auth-Token header.")]
-    FailAuthMissingXAuth,
     #[error("Database error")]
     Database,
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("Error when upload file to storage")]
+    #[error("Failed to upload file to storage")]
     StorageUpload,
-    #[error("Error when get object url from storage")]
+    #[error("Failed to get object URL from storage")]
     StorageGetObjectUrl,
-    #[error("Error when creating bucket")]
+    #[error("Failed to create bucket")]
     BucketCreation,
-    #[error("Error when setting public ACL for bucket")]
+    #[error("Failed to set public ACL for bucket")]
     PublicBucketAcl,
-    #[error("Error when delete object from storage")]
+    #[error("Failed to delete object from storage")]
     StorageDeleteObject,
-    #[error("Entity Not Found - {0}] ")]
+    #[error("Entity not found: {0}")]
     EntityNotFound(String),
-    #[error("Invalid input - {0}] ")]
+    #[error("Invalid input: {0}")]
     InvalidInput(String),
-    #[error("Content Not Found - {0}] ")]
+    #[error("Content not found: {0}")]
     ContentNotFoundButWasSave(String),
 }

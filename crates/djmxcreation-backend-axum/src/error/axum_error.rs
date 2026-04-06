@@ -23,14 +23,8 @@ pub type ApiResult<T> = Result<T, Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("authentication is required to access this resource")]
-    Unauthorized,
-    #[error("username or password is incorrect")]
-    Forbidden,
     #[error("{0}")]
     NotFound(String),
-    #[error("{0}")]
-    ApplicationStartup(String),
     #[error("{0}")]
     BadRequest(String),
     #[error("unexpected error has occurred")]
@@ -46,17 +40,12 @@ impl IntoResponse for Error {
         let (status, message) = match self {
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
-            Self::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
             Self::ServiceError(ref err) => match err {
                 app_error::Error::EntityNotFound(msg)
                 | app_error::Error::ContentNotFoundButWasSave(msg) => {
                     (StatusCode::NOT_FOUND, msg.clone())
                 }
                 app_error::Error::InvalidInput(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-                app_error::Error::FailAuthMissingXAuth => {
-                    (StatusCode::UNAUTHORIZED, err.to_string())
-                }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),
             },
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),

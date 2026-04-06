@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, sync::Arc, time::SystemTime};
+use std::{sync::Arc, time::SystemTime};
 
 use app_core::{
     dto::spotlight_dto::SpotlightDto, spotlight::spotlight_repository::ISpotlightRepository,
@@ -10,10 +10,10 @@ use chrono::{DateTime, Utc};
 use deadpool_postgres::PoolError;
 use serde_json::Value;
 
-use tokio_postgres::{types::Json, Row, Transaction};
+use tokio_postgres::{types::Json, Row};
 use uuid::Uuid;
 
-use crate::{config::db::DatabasePool, entity::spotlight::Spotlight, error::to_error};
+use crate::{config::db::DatabasePool, entity::spotlight::Spotlight, error::to_error, transaction::with_transaction};
 
 pub struct SpotlightRepository {
     client: Arc<DatabasePool>,
@@ -22,34 +22,6 @@ pub struct SpotlightRepository {
 impl SpotlightRepository {
     pub fn new(client: Arc<DatabasePool>) -> Self {
         Self { client }
-    }
-
-    async fn with_transaction<F, T>(&self, f: F) -> Result<T, Error>
-    where
-        F: for<'a> FnOnce(
-            &'a Transaction<'a>,
-        ) -> Pin<Box<dyn Future<Output = Result<T, Error>> + Send + 'a>>,
-    {
-        let mut client = self
-            .client
-            .get_client()
-            .await
-            .map_err(|e| to_error(e, None))?;
-
-        let transaction = client
-            .build_transaction()
-            .start()
-            .await
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        let result = f(&transaction).await?;
-
-        transaction
-            .commit()
-            .await
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
-
-        Ok(result)
     }
 
     fn map_row_to_spotlight(row: &Row) -> Result<Spotlight, Error> {
@@ -104,8 +76,7 @@ impl ISpotlightRepository for SpotlightRepository {
     LEFT JOIN project p ON p.id = inserted.project_id
     LEFT JOIN project_content_thumbnail c ON c.project_id = inserted.project_id";
 
-        let spotlight_dto = self
-            .with_transaction(|tx| {
+        let spotlight_dto = with_transaction(&self.client, |tx| {
                 Box::pin(async move {
                     let row = tx
                         .query_one(sql, &[&project_id, &now_utc])

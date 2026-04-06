@@ -1,4 +1,4 @@
-use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
+use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister, validation::validate_file_name};
 use app_core::{
     about_me::about_me_service::DynIAboutMeService,
     dto::about_me_dto::AboutMeDto,
@@ -60,11 +60,13 @@ impl AboutMeRouter {
         mut form: Multipart,
     ) -> ApiResult<()> {
         while let Some(field) = form.next_field().await? {
-            let uudi_v4 = Uuid::new_v4().to_string();
-            let file_name = if let Some(file_name) = field.file_name() {
-                format!("{}-{}", uudi_v4, file_name.to_owned())
-            } else {
-                uudi_v4
+            let uuid_v4 = Uuid::new_v4().to_string();
+            let file_name = match field.file_name() {
+                Some(name) => {
+                    validate_file_name(name)?;
+                    format!("{uuid_v4}-{name}")
+                }
+                None => uuid_v4,
             };
 
             about_me_service

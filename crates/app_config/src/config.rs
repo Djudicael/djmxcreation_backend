@@ -1,9 +1,7 @@
 use std::env;
 
 use crate::{
-    config_error::ConfigError,
-    database_configuration::DatabaseConfiguration,
-    security_config::SecurityConfig,
+    config_error::ConfigError, database_configuration::DatabaseConfiguration,
     storage_configuration::StorageConfiguration,
 };
 use dotenv::dotenv;
@@ -13,7 +11,6 @@ pub struct Config {
     pub database: DatabaseConfiguration,
     pub storage: StorageConfiguration,
     pub port: String,
-    pub security: SecurityConfig,
 }
 
 impl Config {
@@ -47,10 +44,8 @@ impl Config {
         let storage_endpoint = required("STORAGE_ENDPOINT")?;
         let storage_access_key = required("STORAGE_ACCESS_KEY")?;
         let storage_secret_key = required("STORAGE_SECRET_KEY")?;
-        let storage_region =
-            env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string());
-        let storage_bucket =
-            env::var("STORAGE_BUCKET").unwrap_or_else(|_| "portfolio".to_string());
+        let storage_region = env::var("STORAGE_REGION").unwrap_or_else(|_| "us-east-1".to_string());
+        let storage_bucket = env::var("STORAGE_BUCKET").unwrap_or_else(|_| "portfolio".to_string());
 
         let storage = StorageConfiguration::new(
             storage_endpoint,
@@ -60,11 +55,6 @@ impl Config {
             storage_bucket,
         );
 
-        // ── API security (basic auth) ────────────────────────────────────────
-        let username = required("USERNAME_APP")?;
-        let password = required("PASSWORD_APP")?;
-        let security = SecurityConfig::new(username, password);
-
         // ── Server ──────────────────────────────────────────────────────────
         let port = env::var("PORT").unwrap_or_else(|_| "8081".to_string());
 
@@ -72,16 +62,11 @@ impl Config {
             database,
             storage,
             port,
-            security,
         })
     }
 
     pub fn get_storage(&self) -> StorageConfiguration {
         self.storage.clone()
-    }
-
-    pub fn get_security(&self) -> SecurityConfig {
-        self.security.clone()
     }
 }
 

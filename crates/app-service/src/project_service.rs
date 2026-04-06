@@ -15,7 +15,7 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
-use futures::{StreamExt, stream};
+use futures::future::join_all;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
@@ -76,18 +76,22 @@ impl ProjectService {
     }
 
     async fn to_contents(&self, project_contents: &[ProjectContentDto]) -> Vec<ContentView> {
-        let mut contents = Vec::with_capacity(project_contents.len());
-        for content_dto in project_contents {
-            if let Some(ref photo) = content_dto.content {
-                let url = self.resolve_url(&photo.file_name).await;
-                contents.push(ContentView::new(
-                    content_dto.id,
-                    photo.mime_type.clone(),
-                    url,
-                ));
-            }
-        }
-        contents
+        let futures: Vec<_> = project_contents
+            .iter()
+            .filter_map(|dto| {
+                dto.content.as_ref().map(|photo| {
+                    let id = dto.id;
+                    let mime_type = photo.mime_type.clone();
+                    let file_name = photo.file_name.clone();
+                    async move {
+                        let url = self.resolve_url(&file_name).await;
+                        ContentView::new(id, mime_type, url)
+                    }
+                })
+            })
+            .collect();
+
+        join_all(futures).await
     }
 }
 
@@ -268,8 +272,9 @@ impl IProjectService for ProjectService {
     async fn get_portfolio_projects(&self) -> Result<Vec<ProjectView>, Error> {
         let projects = self.project_repository.get_projects().await?;
 
-        let result = stream::iter(projects)
-            .fold(Vec::new(), |mut vec, data| async move {
+        let futures: Vec<_> = projects
+            .into_iter()
+            .map(|data| async move {
                 let contents = self.to_contents(&data.contents).await;
 
                 let thumbnail_view = match &data.thumbnail {
@@ -280,7 +285,7 @@ impl IProjectService for ProjectService {
                     None => None,
                 };
 
-                let project_view = ProjectView::new()
+                ProjectView::new()
                     .id(data.id)
                     .description(data.description)
                     .metadata(data.metadata)
@@ -290,14 +295,11 @@ impl IProjectService for ProjectService {
                     .updated_on(data.updated_on)
                     .thumbnail(thumbnail_view)
                     .contents(contents)
-                    .build();
-
-                vec.push(project_view);
-                vec
+                    .build()
             })
-            .await;
+            .collect();
 
-        Ok(result)
+        Ok(join_all(futures).await)
     }
 
     async fn get_projects_with_filter(
@@ -316,8 +318,9 @@ impl IProjectService for ProjectService {
             .get_projects_with_filter(page, size, is_adult, is_visible)
             .await?;
 
-        let result = stream::iter(projects)
-            .fold(Vec::new(), |mut vec, data| async move {
+        let futures: Vec<_> = projects
+            .into_iter()
+            .map(|data| async move {
                 let thumbnail_view = match &data.thumbnail {
                     Some(photo) => {
                         let url = self.resolve_url(&photo.file_name).await;
@@ -326,7 +329,7 @@ impl IProjectService for ProjectService {
                     None => None,
                 };
 
-                vec.push(ProjectWithThumbnailView::new(
+                ProjectWithThumbnailView::new(
                     data.id,
                     data.metadata,
                     data.visible,
@@ -334,12 +337,11 @@ impl IProjectService for ProjectService {
                     data.created_on,
                     data.updated_on,
                     thumbnail_view,
-                ));
-                vec
+                )
             })
-            .await;
+            .collect();
 
-        Ok(ProjectsView::new(page, size, total_pages, result))
+        Ok(ProjectsView::new(page, size, total_pages, join_all(futures).await))
     }
 
     async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightView, Error> {
@@ -363,17 +365,16 @@ impl IProjectService for ProjectService {
     async fn get_spotlights(&self) -> Result<Vec<SpotlightView>, Error> {
         let spotlights = self.spotlight_repository.get_spotlights().await?;
 
-        let result = stream::iter(spotlights)
-            .fold(Vec::new(), |mut vec, data| async move {
-                match self.to_spotlight_view(&data).await {
-                    Ok(view) => vec.push(view),
-                    Err(e) => warn!(error = ?e, "failed to build spotlight view"),
-                }
-                vec
-            })
-            .await;
+        let futures: Vec<_> = spotlights
+            .iter()
+            .map(|data| self.to_spotlight_view(data))
+            .collect();
 
-        Ok(result)
+        let results = join_all(futures).await;
+        Ok(results
+            .into_iter()
+            .filter_map(|r| r.inspect_err(|e| warn!(error = ?e, "failed to build spotlight view")).ok())
+            .collect())
     }
 
     async fn delete_spotlight(&self, spotlight_id: Uuid) -> Result<(), Error> {

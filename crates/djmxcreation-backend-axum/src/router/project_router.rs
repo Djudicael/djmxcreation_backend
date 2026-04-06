@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use uuid::Uuid;
 
-use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
+use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister, validation::{validate_file_name, validate_pagination}};
 
 /// Maximum allowed size for multipart file uploads (50 MB).
 const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024;
@@ -101,6 +101,7 @@ impl ProjectRouter {
         Extension(project_service): Extension<DynIProjectService>,
         Query(pagination): Query<PaginationQueryParams>,
     ) -> ApiResult<Json<ProjectsView>> {
+        validate_pagination(pagination.page, pagination.size)?;
         let projects = project_service
             .get_projects_with_filter(
                 pagination.page,
@@ -131,7 +132,10 @@ impl ProjectRouter {
             let file_name = {
                 let uuid = Uuid::new_v4();
                 match field.file_name() {
-                    Some(name) => format!("{uuid}-{name}"),
+                    Some(name) => {
+                        validate_file_name(name)?;
+                        format!("{uuid}-{name}")
+                    }
                     None => uuid.to_string(),
                 }
             };
