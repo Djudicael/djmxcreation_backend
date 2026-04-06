@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  backend_rustfs:
+    container_name: backend_rustfs
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # API port
+      - "9001:9001" # Console port
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/logs
+    networks:
+      - rustfs_network
+
+volumes:
+  rustfs_data:
+    name: rustfs_data
+  rustfs_logs:
+    name: rustfs_logs
+
+networks:
+  rustfs_network:
+    name: rustfs_network
+    driver: bridge

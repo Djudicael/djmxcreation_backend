@@ -200,7 +200,7 @@ Copy `.env.template` to `.env` and fill in the values.
 
 - Rust (stable, 1.80+)
 - PostgreSQL 12+
-- A running [RustFS](https://github.com/rustfs/rustfs) or MinIO instance
+- A running [RustFS](https://github.com/rustfs/rustfs) instance
 
 ### Steps
 

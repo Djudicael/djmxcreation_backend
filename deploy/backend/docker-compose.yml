@@ -1,18 +1,18 @@
 version: '3.9'
 
 services:
-  backend_minio:
-      image: minio/minio:latest
+  backend_rustfs:
+      image: rustfs/rustfs:latest
       restart: always
       networks:
       - my-network
-      environment:
-        MINIO_ROOT_USER: minio
-        MINIO_ROOT_PASSWORD: minio123
-        MINIO_SITE_REGION: "us-west-0"
-      command: server data1
+      container_name: backend_rustfs
       ports:
         - "9000:9000"
+        - "9001:9001"
+      volumes:
+        - rustfs_data:/data
+        - rustfs_logs:/logs
   backend_postgres:
       image: postgres:latest
       hostname: postgres
@@ -38,15 +38,21 @@ services:
       PG_USER: "postgres"
       PG_PASSWORD: "postgres"
       PG_APP_MAX_CON: 5
-      MINIO_ENDPOINT: "http://backend_minio:9000"
+      STORAGE_ENDPOINT: "http://backend_rustfs:9000"
       PORT: "8080"
-      MINIO_ACCESS_KEY: "minio"
-      MINIO_SECRET_KEY: "minio123"
-      MINIO_REGION: "us-west-0"
+      STORAGE_ACCESS_KEY: "rustfsadmin"
+      STORAGE_SECRET_KEY: "rustfsadmin"
+      STORAGE_REGION: "us-east-1"
+      STORAGE_BUCKET: "portfolio"
       USERNAME_APP: "tata"
       PASSWORD_APP: "yoyo"
     depends_on:
       - backend_postgres
-      - backend_minio
+      - backend_rustfs
+
+volumes:
+  rustfs_data:
+  rustfs_logs:
+
 networks:
   my-network:
