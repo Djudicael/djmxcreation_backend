@@ -6,7 +6,7 @@ export default class WorksComponent extends TemplateRenderer {
     constructor() {
         super();
         const menu = document.querySelector('c-header');
-        menu.hideMenu()
+        menu?.hideMenu?.();
         this.routerOutlet = document.querySelector('router-outlet');
         this.noShadow = true;
         this.api = new PortfolioApi();
@@ -28,7 +28,13 @@ export default class WorksComponent extends TemplateRenderer {
         this.percent = 0;
         this.target = 0;
         this.imgArr = [];
+        this._imgMap = new Map();
         this.imgIndex = 0;
+        this._mouseMoveHandler = null;
+        this._linkHandlers = [];
+        this._onLoadMoreClick = null;
+        this._frameId = null;
+        this._loadMoreButton = null;
         this.init = this.init.bind(this);
         this.getThumbnailImage = this.getThumbnailImage.bind(this);
         this.animate = this.animate.bind(this);
@@ -64,16 +70,27 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     async getProjects() {
-        const { totalPages, page, size, projects } = await this.api.getProjects({ page: this.page, pageSize: this.pageSize });
-        this.totalPages = totalPages;
-        this.page = page;
-        this.pageSize = size;
-        this.projects.push(...projects);
-        super.render();
+        try {
+            const { totalPages, page, size, projects } = await this.api.getProjects({ page: this.page, pageSize: this.pageSize });
+            this.totalPages = totalPages;
+            this.page = page;
+            this.pageSize = size;
+            this.projects.push(...projects);
+            if (this.isConnected) {
+                super.render();
+            }
+        } catch (error) {
+            console.error('Failed to load works', error);
+        }
     }
 
     drawImage(idx) {
-        let { width, height } = this.imgArr.filter(img => img.projectId == idx)[0].elImage.getBoundingClientRect();
+        const imageEntry = this._imgMap.get(String(idx));
+        if (!imageEntry || !this.canvas || !this.ctx) {
+            return;
+        }
+
+        let { width, height } = imageEntry.elImage.getBoundingClientRect();
 
         this.canvas.width = width * window.devicePixelRatio;
         this.canvas.height = height * window.devicePixelRatio;
@@ -106,9 +123,9 @@ export default class WorksComponent extends TemplateRenderer {
 
         if (this.percent >= 1) {
             this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            this.ctx.drawImage(this.imgArr.filter(img => img.projectId == idx)[0].elImage, 0, 0, width, height);
+            this.ctx.drawImage(imageEntry.elImage, 0, 0, width, height);
         } else {
-            this.ctx.drawImage(this.imgArr.filter(img => img.projectId == idx)[0].elImage, 0, 0, scaledWidth, scaledHeight);
+            this.ctx.drawImage(imageEntry.elImage, 0, 0, scaledWidth, scaledHeight);
             this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             if (this.canvas.width !== 0 && this.canvas.height !== 0) {
                 this.ctx.drawImage(this.canvas, 0, 0, scaledWidth, scaledHeight, 0, 0, width, height)
@@ -116,15 +133,53 @@ export default class WorksComponent extends TemplateRenderer {
         }
     }
 
-    init() {
+    cleanupDynamicResources() {
+        if (this._mouseMoveHandler) {
+            window.removeEventListener('mousemove', this._mouseMoveHandler);
+            this._mouseMoveHandler = null;
+        }
 
+        this._linkHandlers.forEach(({ link, handlers }) => {
+            link.removeEventListener('mouseover', handlers.onMouseOver);
+            link.removeEventListener('mouseleave', handlers.onMouseLeaveOpacity);
+            link.removeEventListener('mouseenter', handlers.onMouseEnter);
+            link.removeEventListener('mouseleave', handlers.onMouseLeaveTarget);
+            link.removeEventListener('click', handlers.onClick);
+        });
+        this._linkHandlers = [];
+
+        if (this._loadMoreButton && this._onLoadMoreClick) {
+            this._loadMoreButton.removeEventListener('click', this._onLoadMoreClick);
+        }
+        this._loadMoreButton = null;
+        this._onLoadMoreClick = null;
+
+        if (this._frameId) {
+            window.cancelAnimationFrame(this._frameId);
+            this._frameId = null;
+        }
+
+        this.imgArr.forEach(({ elImage }) => elImage.remove());
+        this.imgArr = [];
+        this._imgMap.clear();
+    }
+
+    init() {
+        if (!this.projects.length) {
+            return;
+        }
+
+        this.cleanupDynamicResources();
 
         this.imgIndex = this.projects[0].id;
 
-        this.canvas = document.querySelector('canvas');
+        this.canvas = this.querySelector('canvas');
+        if (!this.canvas) {
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
 
-        this.links = [...document.querySelectorAll('.project')];
+        this.links = [...this.querySelectorAll('.project')];
 
 
         for (const link of this.links) {
@@ -135,21 +190,22 @@ export default class WorksComponent extends TemplateRenderer {
             elImage.src = image;
             elImage.classList.add('project-image');
             document.body.append(elImage);
-            this.imgArr.push({ projectId, elImage })
+            const entry = { projectId: String(projectId), elImage };
+            this.imgArr.push(entry)
+            this._imgMap.set(String(projectId), entry);
         }
 
-
-        window.addEventListener('mousemove', (e) => {
+        this._mouseMoveHandler = (e) => {
             this.targetX = e.clientX;
             this.targetY = e.clientY;
-
-        });
+        };
+        window.addEventListener('mousemove', this._mouseMoveHandler);
 
 
         for (const link of this.links) {
-            const projectId = link.getAttribute('project-id');
+            const projectId = String(link.getAttribute('project-id'));
 
-            link.addEventListener('mouseover', () => {
+            const onMouseOver = () => {
 
                 for (const linkInternal of this.links) {
                     const projectInternalId = linkInternal.getAttribute('project-id');
@@ -161,25 +217,42 @@ export default class WorksComponent extends TemplateRenderer {
                         linkInternal.style.zIndex = 3;
                     }
                 }
-            })
+            };
 
-            link.addEventListener('mouseleave', () => {
+            const onMouseLeaveOpacity = () => {
                 for (const linkMouseLeave of this.links) {
                     linkMouseLeave.style.opacity = 1;
                 }
-            })
+            };
 
-            link.addEventListener('mouseenter', () => {
+            const onMouseEnter = () => {
                 this.imgIndex = projectId;
                 this.target = 1
-            });
+            };
 
-            link.addEventListener('mouseleave', () => {
+            const onMouseLeaveTarget = () => {
                 this.target = 0;
-            });
+            };
 
-            link.addEventListener('click', () => {
-                this.routerOutlet.navigateTo(`/works/${projectId}`);
+            const onClick = () => {
+                this.routerOutlet?.navigateTo?.(`/works/${projectId}`);
+            };
+
+            link.addEventListener('mouseover', onMouseOver);
+            link.addEventListener('mouseleave', onMouseLeaveOpacity);
+            link.addEventListener('mouseenter', onMouseEnter);
+            link.addEventListener('mouseleave', onMouseLeaveTarget);
+            link.addEventListener('click', onClick);
+
+            this._linkHandlers.push({
+                link,
+                handlers: {
+                    onMouseOver,
+                    onMouseLeaveOpacity,
+                    onMouseEnter,
+                    onMouseLeaveTarget,
+                    onClick,
+                },
             });
 
         }
@@ -187,40 +260,68 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     getThumbnailImage(imgIndex) {
-        const projectImage = this.projects.filter(project => project.id == imgIndex).map(project => project.thumbnail.url)[0];
-        return projectImage;
+        const project = this.projects.find((item) => item.id == imgIndex);
+        return project?.thumbnail?.url || '/ressource/icon/boy.svg';
     }
 
     animate() {
+        if (!this.isConnected || !this.imgArr.length || !this.canvas) {
+            return;
+        }
+
         this.currentX = lerp(this.currentX, this.targetX, 0.075);
         this.currentY = lerp(this.currentY, this.targetY, 0.075);
-        const image = this.imgArr.filter(img => img.projectId == this.imgIndex)[0].elImage;
+        const imageEntry = this._imgMap.get(String(this.imgIndex));
+        if (!imageEntry) {
+            return;
+        }
+        const image = imageEntry.elImage;
         let { width, height } = image.getBoundingClientRect();
         this.canvas.style.transform = `translate3d(${this.currentX - (width / 2)}px, ${this.currentY - (height / 2)}px, 0)`;
         this.drawImage(this.imgIndex);
-        window.requestAnimationFrame(this.animate);
+        this._frameId = window.requestAnimationFrame(this.animate);
     }
 
     nextPage() {
-        const loadMore = document.querySelector('.load-more');
-        loadMore.addEventListener('click', async () => {
+        if (this._loadMoreButton && this._onLoadMoreClick) {
+            this._loadMoreButton.removeEventListener('click', this._onLoadMoreClick);
+        }
+
+        this._loadMoreButton = this.querySelector('.load-more');
+        if (!this._loadMoreButton) {
+            return;
+        }
+
+        this._onLoadMoreClick = async () => {
             if (this.page < this.totalPages) {
                 this.page++;
                 await this.getProjects();
+                if (!this.isConnected) {
+                    return;
+                }
                 this.init();
                 this.animate();
             }
-        });
+        };
+
+        this._loadMoreButton.addEventListener('click', this._onLoadMoreClick);
     }
 
     async connectedCallback() {
         super.connectedCallback();
         await this.getProjects();
+        if (!this.isConnected) {
+            return;
+        }
         this.nextPage();
 
         if (this.projects.length) {
             this.init();
             this.animate();
         }
+    }
+
+    disconnectedCallback() {
+        this.cleanupDynamicResources();
     }
 }

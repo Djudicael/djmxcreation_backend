@@ -2,11 +2,9 @@ import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 export const secureImageSrc = src => src ? src.replace(/".*/g, '') : src
 
 export const htmlDescription = description => {
-    if (description) {
+    if (description?.ops && Array.isArray(description.ops)) {
         const converter = new QuillDeltaToHtmlConverter(description.ops, {});
-        const html = converter.convert();
-        console.log(html);
-        return html;
+        return converter.convert();
     }
     return '';
 }

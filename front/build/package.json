@@ -1,0 +1,5 @@
+{
+    "name": "@djmx/front-build",
+    "private": true,
+    "type": "module"
+}

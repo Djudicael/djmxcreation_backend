@@ -1,4 +1,4 @@
-import { Router } from "https://cdn.jsdelivr.net/npm/@vaadin/router@1.7.4/+esm";
+import { Router } from "../../../shared/src/router.js";
 import { TemplateRenderer } from "../utils/template-renderer.js";
 export class RouterOutlet extends TemplateRenderer {
   constructor() {
@@ -19,13 +19,16 @@ export class RouterOutlet extends TemplateRenderer {
   }
 
   async getLocation(pathname) {
+    if (!this.router) {
+      return null;
+    }
     const location = await this.router.resolve(pathname);
     return location;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    const router = new Router(document.querySelector("router-outlet"));
+    const router = new Router(this);
 
     router.setRoutes([
       { path: "/", component: "p-home" },
@@ -35,7 +38,12 @@ export class RouterOutlet extends TemplateRenderer {
       { path: "/services", component: "p-services" },
       { path: "/projects", component: "p-project-management" },
       { path: "/projects/:id", component: "p-project" },
+      { path: "*", component: "p-not-found" },
     ]);
     this.router = router;
+  }
+
+  disconnectedCallback() {
+    this.router?.dispose?.();
   }
 }

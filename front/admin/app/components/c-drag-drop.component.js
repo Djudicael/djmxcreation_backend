@@ -12,6 +12,9 @@ export class DragDropComponent extends TemplateRenderer {
         this.renderFileList, this.sendFile = null;
 
         this.uploadImages = this.uploadImages.bind(this);
+        this._onUploadClick = this.uploadImages;
+        this._onInputChange = null;
+        this._onSubmit = null;
     }
 
     get template() {
@@ -27,23 +30,27 @@ export class DragDropComponent extends TemplateRenderer {
         `;
     }
     init() {
-        this.$fileCatcher = document.getElementById('file-catcher');
-        this.$fileInput = document.getElementById('file-input');
-        this.$fileListDisplay = document.getElementById('file-list-display');
-        this.$fileCatcher.addEventListener('submit', function (evnt) {
-            evnt.preventDefault();
-            this.fileList.forEach(function (file) {
-                sendFile(file);
-            });
-        });
+        this.$fileCatcher = this.querySelector('#file-catcher');
+        this.$fileInput = this.querySelector('#file-input');
+        this.$fileListDisplay = this.querySelector('#file-list-display');
 
-        this.$fileInput.addEventListener('change', (event) => {
+        if (!this.$fileCatcher || !this.$fileInput || !this.$fileListDisplay) {
+            return;
+        }
+
+        this._onSubmit = (event) => {
+            event.preventDefault();
+        };
+        this.$fileCatcher.addEventListener('submit', this._onSubmit);
+
+        this._onInputChange = () => {
 
             for (const file of this.$fileInput.files) {
                 this.fileList.push(file);
             }
             this.renderFileList();
-        });
+        };
+        this.$fileInput.addEventListener('change', this._onInputChange);
 
     }
     renderFileList = () => {
@@ -62,13 +69,15 @@ export class DragDropComponent extends TemplateRenderer {
     }
 
     disconnectedCallback() {
-        this.$uploadButton.removeEventListener('click', e => this.uploadImages(e));
+        this.$uploadButton?.removeEventListener('click', this._onUploadClick);
+        this.$fileInput?.removeEventListener('change', this._onInputChange);
+        this.$fileCatcher?.removeEventListener('submit', this._onSubmit);
     }
 
     connectedCallback() {
         super.connectedCallback();
         this.$uploadButton = this.querySelector('.upload');
-        this.$uploadButton.addEventListener('click', e => this.uploadImages(e));
+        this.$uploadButton?.addEventListener('click', this._onUploadClick);
         this.init();
     }
 

@@ -6,6 +6,7 @@ import WorkComponent from '../pages/work.component.js';
 import WorksComponent from '../pages/works.component.js';
 import AboutComponent from '../pages/about.component.js';
 import ContactComponent from '../pages/contact.component.js';
+import NotFoundComponent from '../pages/not-found.component.js';
 import RouterOutlet from '../controller/router-outlet.js';
 
 
@@ -52,5 +53,9 @@ const components = [
     {
         tagName: 'router-outlet',
         component: RouterOutlet
+    },
+    {
+        tagName: 'p-not-found',
+        component: NotFoundComponent
     },
 ];

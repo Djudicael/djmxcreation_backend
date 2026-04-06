@@ -1,0 +1,17 @@
+{
+    "name": "djmx-front",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "node dev.js",
+        "build": "node build-all.js",
+        "build:admin": "npm --prefix admin run build",
+        "build:portfolio": "npm --prefix portfolio run build",
+        "test": "npm run test:router && npm run test:http",
+        "test:router": "node --test shared/src/router.test.js",
+        "test:http": "node --test shared/src/http-base.test.js"
+    },
+    "dependencies": {
+        "lit-html": "^2.7.0"
+    }
+}

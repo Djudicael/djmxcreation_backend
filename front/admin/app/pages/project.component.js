@@ -1,4 +1,4 @@
-import Quill from "https://cdn.jsdelivr.net/npm/quill@2.0.3/+esm";
+import Quill from "quill";
 import PortfolioApi from "../api/portfolio.api.js";
 import Metadata from "../models/metadata.js";
 import ProjectPayload from "../models/projectPayload.js";
@@ -20,6 +20,11 @@ export class ProjectComponent extends TemplateRenderer {
     this.thumbnail;
     this.deleteImage = this.deleteImage.bind(this);
     this.thumbImage = this.thumbImage.bind(this);
+    this._onUploadFile = (event) => this.sendFile(event);
+    this._onSaveClick = null;
+    this._removeImageHandlers = [];
+    this._thumbImageHandlers = [];
+    this._editor = null;
   }
 
   getFragmentWithVisibility(visible) {
@@ -41,14 +46,14 @@ export class ProjectComponent extends TemplateRenderer {
 
     const contents = this.contents
       ? html`${this.contents.map(
-          ({ id, url }) => html`
+        ({ id, url }) => html`
             <div id="area-${id}" class="image-area">
               <img src=${url} alt="Preview" />
               <button class="thumb-image" data-image-id=${id}>thumb</button>
               <button class="remove-image" data-image-id=${id}>delete</button>
             </div>
           `
-        )}`
+      )}`
       : html``;
 
     const thumbnail = this.thumbnail
@@ -122,40 +127,47 @@ export class ProjectComponent extends TemplateRenderer {
   }
 
   async getProject() {
-    console.log("Fetching project details...");
-    const { metadata, visible, description, contents, thumbnail, adult } =
-      await this.instance.getProject(this.projectId);
-    this.title = metadata.title;
-    this.subTitle = metadata.subTitle;
-    this.client = metadata.client;
-    this.visible = visible;
-    this.adult = adult;
-    this.description = description;
-    this.contents = contents;
+    try {
+      const { metadata, visible, description, contents, thumbnail, adult } =
+        await this.instance.getProject(this.projectId);
+      this.title = metadata.title;
+      this.subTitle = metadata.subTitle;
+      this.client = metadata.client;
+      this.visible = visible;
+      this.adult = adult;
+      this.description = description;
+      this.contents = contents;
 
-    if (thumbnail) {
-      this.thumbnail = thumbnail.url;
+      if (thumbnail) {
+        this.thumbnail = thumbnail.url;
+      }
+
+      if (this.isConnected) {
+        super.render();
+      }
+    } catch (error) {
+      console.error("Failed to load project", error);
     }
-    super.render();
   }
 
   init() {
-    const editor = new Quill("#editorjs", editorConfig);
-
-    if (this.description) {
-      editor.setContents(this.description);
+    const saveButton = this.querySelector("#saveButton");
+    if (!saveButton) {
+      return;
     }
 
-    /**
-     * Saving button
-     */
-    const saveButton = document.getElementById("saveButton");
+    this._editor = new Quill("#editorjs", editorConfig);
 
-    /**
-     * Saving contents
-     */
-    saveButton.addEventListener("click", async () => {
-      const blocks = editor.getContents();
+    if (this.description) {
+      this._editor.setContents(this.description);
+    }
+
+    if (this._onSaveClick) {
+      saveButton.removeEventListener("click", this._onSaveClick);
+    }
+
+    this._onSaveClick = async () => {
+      const blocks = this._editor.getContents();
 
       const isVisible = this.querySelector(".toggle").checked;
       const isAdult = this.querySelector(".adult").checked;
@@ -172,26 +184,35 @@ export class ProjectComponent extends TemplateRenderer {
         description: blocks,
       });
       await this.instance.updateProject(this.projectId, project);
-    });
+    };
+    saveButton.addEventListener("click", this._onSaveClick);
   }
 
   sendFile = async (e) => {
     for (const file of e.detail.files) {
       await this.instance.addContentToProject(this.projectId, { file });
     }
+    if (!this.isConnected) {
+      return;
+    }
     await this.getProject();
     this.initRemoveImageEvent();
-    super.render();
+    this.initThumbImageEvent();
   };
 
   deleteImage = async (e) => {
     const element = e.currentTarget;
     const contentID = element.dataset.imageId;
-    this.instance.deleteContent(this.projectId, contentID);
+    await this.instance.deleteContent(this.projectId, contentID);
+    if (!this.isConnected) {
+      return;
+    }
     const card = this.querySelector(`#area-${contentID}`);
-    card.parentNode.removeChild(card);
+    card?.parentNode?.removeChild(card);
     this.thumbnail = null;
     super.render();
+    this.initRemoveImageEvent();
+    this.initThumbImageEvent();
   };
 
   thumbImage = async (e) => {
@@ -201,20 +222,45 @@ export class ProjectComponent extends TemplateRenderer {
       this.projectId,
       contentID
     );
+    if (!this.isConnected) {
+      return;
+    }
     const url = thumbnail.url;
     this.thumbnail = url;
     super.render();
+    this.initRemoveImageEvent();
+    this.initThumbImageEvent();
   };
 
   initRemoveImageEvent = () => {
+    this.querySelectorAll(".remove-image").forEach((item, index) => {
+      const oldHandler = this._removeImageHandlers[index];
+      if (oldHandler) {
+        item.removeEventListener("click", oldHandler);
+      }
+    });
+
+    this._removeImageHandlers = [];
     this.querySelectorAll(".remove-image").forEach((item) => {
-      item.addEventListener("click", (e) => this.deleteImage(e));
+      const handler = (event) => this.deleteImage(event);
+      this._removeImageHandlers.push(handler);
+      item.addEventListener("click", handler);
     });
   };
 
   initThumbImageEvent = () => {
+    this.querySelectorAll(".thumb-image").forEach((item, index) => {
+      const oldHandler = this._thumbImageHandlers[index];
+      if (oldHandler) {
+        item.removeEventListener("click", oldHandler);
+      }
+    });
+
+    this._thumbImageHandlers = [];
     this.querySelectorAll(".thumb-image").forEach((item) => {
-      item.addEventListener("click", (e) => this.thumbImage(e));
+      const handler = (event) => this.thumbImage(event);
+      this._thumbImageHandlers.push(handler);
+      item.addEventListener("click", handler);
     });
   };
 
@@ -226,11 +272,34 @@ export class ProjectComponent extends TemplateRenderer {
 
   async connectedCallback() {
     super.connectedCallback();
-    this.addEventListener("upload-file", (e) => this.sendFile(e));
+    this.addEventListener("upload-file", this._onUploadFile);
     await this.getId();
     await this.getProject();
     this.init();
     this.initRemoveImageEvent();
     this.initThumbImageEvent();
+  }
+
+  disconnectedCallback() {
+    this.removeEventListener("upload-file", this._onUploadFile);
+    this.querySelectorAll(".remove-image").forEach((item, index) => {
+      const handler = this._removeImageHandlers[index];
+      if (handler) {
+        item.removeEventListener("click", handler);
+      }
+    });
+    this.querySelectorAll(".thumb-image").forEach((item, index) => {
+      const handler = this._thumbImageHandlers[index];
+      if (handler) {
+        item.removeEventListener("click", handler);
+      }
+    });
+    this._removeImageHandlers = [];
+    this._thumbImageHandlers = [];
+
+    const saveButton = this.querySelector("#saveButton");
+    if (saveButton && this._onSaveClick) {
+      saveButton.removeEventListener("click", this._onSaveClick);
+    }
   }
 }

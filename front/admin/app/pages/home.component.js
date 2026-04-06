@@ -13,12 +13,7 @@ export class HomeComponent extends TemplateRenderer {
     return html`
       <section class="content-page">
         <div class="container">
-          <a target="_blank" href="https://twitter.com/DjmXcreation">
-            <img
-              class="social"
-              src="https://cdn1.iconfinder.com/data/icons/logotypes/32/twitter-128.png"
-            />
-          </a>
+          <a target="_blank" href="https://twitter.com/DjmXcreation">X / Twitter</a>
           <p>Follow me 3</p>
           <p>on Twitter!</p>
         </div>

@@ -7,6 +7,7 @@ export class CardWorkComponent extends TemplateRenderer {
         this.noShadow = true;
         this.deleteProject = this.deleteProject.bind(this);
         this.initDeleteProjectButton = this.initDeleteProjectButton.bind(this);
+        this._deleteProjectButton = null;
 
     }
 
@@ -129,19 +130,16 @@ export class CardWorkComponent extends TemplateRenderer {
 
 
     initDeleteProjectButton() {
+        if (this._deleteProjectButton) {
+            this._deleteProjectButton.removeEventListener('click', this.deleteProject);
+        }
 
-        const deleteProjectButton = this.querySelector('.delete-project');
-        console.log(deleteProjectButton);
-        deleteProjectButton.addEventListener('click', this.deleteProject)
-
-        // this.querySelectorAll('.delete-project').forEach(item => {
-        //     console.log(item);
-        // });
+        this._deleteProjectButton = this.querySelector('.delete-project');
+        this._deleteProjectButton?.addEventListener('click', this.deleteProject);
     }
 
     deleteProject = async (e) => {
         e.preventDefault();
-        console.log('delete project');
         const element = e.currentTarget;
         const projectId = element.dataset.projectId
         this.dispatchEvent(new CustomEvent('delete-project', { detail: { projectId }, bubbles: true, composed: true }));
@@ -161,6 +159,10 @@ export class CardWorkComponent extends TemplateRenderer {
         super.connectedCallback();
         this.render();
         this.initDeleteProjectButton();
+    }
+
+    disconnectedCallback() {
+        this._deleteProjectButton?.removeEventListener('click', this.deleteProject);
     }
 
 }

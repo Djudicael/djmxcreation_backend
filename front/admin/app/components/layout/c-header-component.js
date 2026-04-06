@@ -5,6 +5,8 @@ export class HeaderComponent extends TemplateRenderer {
     constructor() {
         super();
         this.noShadow = true;
+        this._toggleElement = null;
+        this._clickHandler = null;
     }
 
     get template() {
@@ -33,22 +35,27 @@ export class HeaderComponent extends TemplateRenderer {
     }
 
     init() {
-
-        // const menu = document.querySelectorAll('.menu');
-        const toggle = document.querySelector('#toggle');
+        this._toggleElement = this.querySelector('#toggle');
 
         const sidebar = document.querySelector('.sidebar');
         const mainContent = document.querySelector('.main-content');
         const header = document.querySelector('.header');
 
-        console.log(sidebar)
-        const clickEvent = () => {
+        if (!this._toggleElement || !sidebar || !mainContent || !header) {
+            return;
+        }
+
+        this._clickHandler = () => {
             sidebar.classList.toggle('toggled');
             mainContent.classList.toggle('toggled');
             header.classList.toggle('toggled');
-        }
-        toggle.addEventListener('click', clickEvent);
+        };
+        this._toggleElement.addEventListener('click', this._clickHandler);
 
+    }
+
+    disconnectedCallback() {
+        this._toggleElement?.removeEventListener('click', this._clickHandler);
     }
 
     connectedCallback() {

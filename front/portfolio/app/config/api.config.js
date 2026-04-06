@@ -1,3 +1,1 @@
-export const config = {
-    rest_url: 'http://localhost:8081'
-};
+export { config } from "../../../shared/src/api-config.js";

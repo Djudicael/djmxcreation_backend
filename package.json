@@ -1,0 +1,11 @@
+{
+    "name": "djmxcreation-backend-workspace",
+    "private": true,
+    "scripts": {
+        "dev": "npm --prefix front run dev",
+        "build": "npm --prefix front run build",
+        "test": "npm --prefix front run test",
+        "build:admin": "npm --prefix front run build:admin",
+        "build:portfolio": "npm --prefix front run build:portfolio"
+    }
+}

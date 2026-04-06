@@ -5,6 +5,8 @@ export class HeaderProjectsManagementComponent extends TemplateRenderer {
     constructor() {
         super();
         this.noShadow = true;
+        this._toggleElement = null;
+        this._clickHandler = null;
     }
 
     get template() {
@@ -30,18 +32,22 @@ export class HeaderProjectsManagementComponent extends TemplateRenderer {
     }
 
     init() {
-        const toggle = document.querySelector('#toggle');
+        this._toggleElement = this.querySelector('#toggle');
 
         const sidebar = document.querySelector('.sidebar');
         const mainContent = document.querySelector('.main-content');
         const header = document.querySelector('.header');
 
-        const clickEvent = () => {
+        if (!this._toggleElement || !sidebar || !mainContent || !header) {
+            return;
+        }
+
+        this._clickHandler = () => {
             sidebar.classList.toggle('toggled');
             mainContent.classList.toggle('toggled');
             header.classList.toggle('toggled');
-        }
-        toggle.addEventListener('click', clickEvent);
+        };
+        this._toggleElement.addEventListener('click', this._clickHandler);
 
     }
 
@@ -50,6 +56,10 @@ export class HeaderProjectsManagementComponent extends TemplateRenderer {
     connectedCallback() {
         super.connectedCallback();
         this.init();
+    }
+
+    disconnectedCallback() {
+        this._toggleElement?.removeEventListener('click', this._clickHandler);
     }
 
 }

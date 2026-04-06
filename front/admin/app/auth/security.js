@@ -1,4 +1,4 @@
-import Keycloak from "https://cdn.jsdelivr.net/npm/keycloak-js@26.2.0/+esm";
+import Keycloak from "keycloak-js";
 const keycloak = new Keycloak({
   url: "http://localhost:8080",
   realm: "portfolio",

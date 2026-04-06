@@ -1,5 +1,5 @@
 import { TemplateRenderer } from '../utils/template-renderer.js';
-import { Router } from '@vaadin/router';
+import { Router } from '../../../shared/src/router.js';
 export default class RouterOutlet extends TemplateRenderer {
 
     constructor() {
@@ -21,6 +21,9 @@ export default class RouterOutlet extends TemplateRenderer {
     }
 
     async getLocation(pathname) {
+        if (!this.router) {
+            return null;
+        }
         const location = await this.router.resolve(pathname);
         return location;
     }
@@ -28,7 +31,7 @@ export default class RouterOutlet extends TemplateRenderer {
 
     connectedCallback() {
         super.connectedCallback();
-        const router = new Router(document.querySelector('router-outlet'));
+        const router = new Router(this);
 
         router.setRoutes([
             { path: '/', component: 'p-home' },
@@ -36,8 +39,13 @@ export default class RouterOutlet extends TemplateRenderer {
             { path: '/works/:id', component: 'p-work' },
             { path: '/about', component: 'p-about' },
             { path: '/contact', component: 'p-contact' },
+            { path: '*', component: 'p-not-found' },
         ]);
         this.router = router;
 
+    }
+
+    disconnectedCallback() {
+        this.router?.dispose?.();
     }
 }

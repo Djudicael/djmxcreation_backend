@@ -1,11 +1,1 @@
-export class ComponentRegistry {
-    static register(components) {
-        components.forEach(comp => {
-            const {
-                tagName,
-                component
-            } = comp;
-            window.customElements.define(tagName, component);
-        });
-    }
-}
+export { ComponentRegistry } from "../../../shared/src/component-registry.js";

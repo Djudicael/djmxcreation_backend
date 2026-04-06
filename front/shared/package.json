@@ -1,0 +1,5 @@
+{
+    "name": "@djmx/front-shared",
+    "private": true,
+    "type": "module"
+}

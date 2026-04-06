@@ -9,6 +9,8 @@ export class MetadataFormComponent extends TemplateRenderer {
         this.$subTitle = null;
         this.$client = null;
         this.createProject = this.createProject.bind(this);
+        this._onCreateProjectClick = (event) => this.createProject(event);
+        this._onCancelCreationClick = (event) => this.cancelCreation(event);
     }
 
     get template() {
@@ -28,8 +30,8 @@ export class MetadataFormComponent extends TemplateRenderer {
 
 
     createProject = (e) => {
+        e.preventDefault();
         if (this.$form.checkValidity()) {
-            e.preventDefault();
             const title = this.$title.value;
             const subTitle = this.$subTitle.value;
             const client = this.$client.value;
@@ -43,7 +45,8 @@ export class MetadataFormComponent extends TemplateRenderer {
     }
 
     disconnectedCallback() {
-        this.$createProjectButton.removeEventListener('click', e => this.createProject(e));
+        this.$createProjectButton?.removeEventListener('click', this._onCreateProjectClick);
+        this.$cancelCreationButton?.removeEventListener('click', this._onCancelCreationClick);
     }
 
     connectedCallback() {
@@ -54,8 +57,8 @@ export class MetadataFormComponent extends TemplateRenderer {
         this.$client = this.querySelector('#client');
         this.$form = this.querySelector('.create-project');
         this.$cancelCreationButton = this.querySelector('#cancelCreation');
-        this.$createProjectButton.addEventListener('click', e => this.createProject(e));
-        this.$cancelCreationButton.addEventListener('click', e => this.cancelCreation(e));
+        this.$createProjectButton?.addEventListener('click', this._onCreateProjectClick);
+        this.$cancelCreationButton?.addEventListener('click', this._onCancelCreationClick);
     }
 
 }

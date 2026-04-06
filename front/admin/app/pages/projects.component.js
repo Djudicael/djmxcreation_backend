@@ -15,10 +15,13 @@ export class ProjectManagementComponent extends TemplateRenderer {
         this.deleteProject = this.deleteProject.bind(this);
         this.create = this.create.bind(this);
         this.cancelCreation = this.cancelCreation.bind(this);
+        this._onCreateProject = (event) => this.createProject(event);
+        this._onDeleteProject = (event) => this.deleteProject(event);
+        this._onCancelCreation = (event) => this.cancelCreation(event);
+        this.$createButton = null;
     }
 
     templateEngine({ step }) {
-        console.log(this.projects);
         switch (step) {
             case 'CREATE_PROJECT':
                 return html`<c-metadata-form></c-metadata-form>`
@@ -65,29 +68,42 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
 
     async getProjects() {
-        const projects = await this.instance.getProjects();
-        this.projects.push(...projects);
-        super.render();
-    }
-
-    createProject = async (e) => {
-        const metadata = new Metadata({ ...e.detail });
-        const { id } = await this.instance.createProject({ ...metadata });
-        if (id) {
-            const routerOutlet = document.querySelector('router-outlet');
-            routerOutlet.navigateTo(`/projects/${id}`);
+        try {
+            const projects = await this.instance.getProjects();
+            this.projects = [...projects];
+            if (this.isConnected) {
+                super.render();
+            }
+        } catch (error) {
+            console.error('Failed to load projects', error);
         }
     }
 
-    cancelCreation = async (e) => {
+    createProject = async (e) => {
+        try {
+            const metadata = new Metadata({ ...e.detail });
+            const { id } = await this.instance.createProject({ ...metadata });
+            if (id) {
+                const routerOutlet = document.querySelector('router-outlet');
+                routerOutlet?.navigateTo?.(`/projects/${id}`);
+            }
+        } catch (error) {
+            console.error('Failed to create project', error);
+        }
+    }
+
+    cancelCreation = async () => {
         this.step = 'PROJECT_HOME';
         super.render();
         this.initCreationProjectButton();
     }
 
     initCreationProjectButton() {
-        this.$createButton = document.querySelector('.create-project');
-        this.$createButton.addEventListener('click', this.create);
+        if (this.$createButton) {
+            this.$createButton.removeEventListener('click', this.create);
+        }
+        this.$createButton = this.querySelector('.create-project');
+        this.$createButton?.addEventListener('click', this.create);
     }
 
 
@@ -101,24 +117,29 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
     deleteProject = async (e) => {
         const { projectId } = e.detail;
-        await this.instance.deleteProject(projectId);
-        const element = this.querySelector(`[project-id='${projectId}']`);
-        element.parentNode.removeChild(element);
-        e.preventDefault();
+        try {
+            await this.instance.deleteProject(projectId);
+            const element = this.querySelector(`[project-id='${projectId}']`);
+            element?.parentNode?.removeChild(element);
+            e.preventDefault();
+        } catch (error) {
+            console.error('Failed to delete project', error);
+        }
     };
 
     disconnectedCallback() {
-        this.removeEventListener('create-project', e => this.createProject(e));
-        this.removeEventListener('delete-project', e => this.deleteProject(e));
-        this.removeEventListener('cancel-creation', e => this.cancelCreation(e));
+        this.removeEventListener('create-project', this._onCreateProject);
+        this.removeEventListener('delete-project', this._onDeleteProject);
+        this.removeEventListener('cancel-creation', this._onCancelCreation);
+        this.$createButton?.removeEventListener('click', this.create);
     }
 
 
     connectedCallback() {
         super.connectedCallback();
-        this.addEventListener('create-project', e => this.createProject(e));
-        this.addEventListener('delete-project', e => this.deleteProject(e));
-        this.addEventListener('cancel-creation', e => this.cancelCreation(e));
+        this.addEventListener('create-project', this._onCreateProject);
+        this.addEventListener('delete-project', this._onDeleteProject);
+        this.addEventListener('cancel-creation', this._onCancelCreation);
         // this.remove
         this.initCreationProjectButton();
         this.getProjects();

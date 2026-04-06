@@ -1,4 +1,4 @@
-import { TemplateRenderer, html, unsafeHTML } from "../utils/template-renderer";
+import { TemplateRenderer, html, sanitizeHtml, unsafeHTML } from "../utils/template-renderer";
 import PortfolioApi from "../api/portfolio.api.js";
 import { htmlDescription } from "../utils/helper.js";
 
@@ -7,7 +7,7 @@ export default class WorkComponent extends TemplateRenderer {
         super();
         this.noShadow = true;
         const menu = document.querySelector('c-header');
-        menu.hideMenu();
+        menu?.hideMenu?.();
         this.routerOutlet = document.querySelector('router-outlet');
         this.doc = document.documentElement;
         this.api = new PortfolioApi();
@@ -17,6 +17,8 @@ export default class WorkComponent extends TemplateRenderer {
         this.contents;
         this.$image;
         this.initImageOverlayEvent = this.initImageOverlayEvent.bind(this);
+        this._overlayClickHandler = () => this.hideImageOverlay();
+        this._imageClickHandlers = [];
 
     }
 
@@ -49,7 +51,8 @@ export default class WorkComponent extends TemplateRenderer {
     }
 
     get template() {
-        const description = html`${unsafeHTML(htmlDescription(this.description))}`;
+        const safeDescription = sanitizeHtml(htmlDescription(this.description));
+        const description = html`${unsafeHTML(safeDescription)}`;
         const projectHeader = html`
         <div class="project_header">	
             ${this.getTitleFragment(this.title)}
@@ -87,27 +90,39 @@ export default class WorkComponent extends TemplateRenderer {
     }
 
     async getProject(id) {
-        const { metadata, description, contents } = await this.api.getProject(id);
-        this.title = metadata.title;
-        this.subTitle = metadata.subTitle;
-        this.client = metadata.client;
-        this.description = description;
-        this.contents = contents;
-        super.render();
+        try {
+            const { metadata, description, contents } = await this.api.getProject(id);
+            this.title = metadata.title;
+            this.subTitle = metadata.subTitle;
+            this.client = metadata.client;
+            this.description = description;
+            this.contents = contents;
+            if (this.isConnected) {
+                super.render();
+            }
+        } catch (error) {
+            console.error('Failed to load work', error);
+        }
     }
 
     async init() {
         this.$image = this.querySelector('.image-overlay');
-        this.$image.addEventListener('click', _ => this.hideImageOverlay());
+        this.$image?.addEventListener('click', this._overlayClickHandler);
         this.initImageOverlayEvent();
 
     }
 
     async connectedCallback() {
         super.connectedCallback();
-        const location = await this.routerOutlet.getLocation(window.location.pathname);
+        const location = await this.routerOutlet?.getLocation?.(window.location.pathname);
+        if (!location?.params?.id) {
+            return;
+        }
         const id = location.params.id;
         await this.getProject(id);
+        if (!this.isConnected) {
+            return;
+        }
         this.content = this.querySelector('.content');
         await this.init();
 
@@ -117,19 +132,49 @@ export default class WorkComponent extends TemplateRenderer {
         const element = e.currentTarget;
         const url = element.dataset.hiRes;
         const overlay = this.querySelector(".image-overlay");
+        if (!overlay) {
+            return;
+        }
         let image = overlay.querySelector(".overlay-image");
+        if (!image) {
+            return;
+        }
         image.src = url;
         overlay.style.display = "flex";
     }
 
     hideImageOverlay() {
         const overlay = this.querySelector(".image-overlay");
+        if (!overlay) {
+            return;
+        }
         overlay.style.display = "none";
     }
 
     initImageOverlayEvent = () => {
-        this.querySelectorAll('.pro-image').forEach(item => {
-            item.addEventListener('click', e => this.showImageOverlay(e))
+        this.querySelectorAll('.pro-image').forEach((item, index) => {
+            const oldHandler = this._imageClickHandlers[index];
+            if (oldHandler) {
+                item.removeEventListener('click', oldHandler);
+            }
         });
+
+        this._imageClickHandlers = [];
+        this.querySelectorAll('.pro-image').forEach(item => {
+            const handler = (event) => this.showImageOverlay(event);
+            this._imageClickHandlers.push(handler);
+            item.addEventListener('click', handler)
+        });
+    }
+
+    disconnectedCallback() {
+        this.$image?.removeEventListener('click', this._overlayClickHandler);
+        this.querySelectorAll('.pro-image').forEach((item, index) => {
+            const handler = this._imageClickHandlers[index];
+            if (handler) {
+                item.removeEventListener('click', handler);
+            }
+        });
+        this._imageClickHandlers = [];
     }
 }
