@@ -8,16 +8,18 @@ use app_core::{
 };
 
 use axum::{
-    Extension, Json, Router,
-    extract::{Multipart, Path, Query},
+    extract::{DefaultBodyLimit, Multipart, Path, Query},
     routing::{delete, get, patch, post, put},
+    Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
-
-use tower_http::limit::{RequestBodyLimit, RequestBodyLimitLayer};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::{error::axum_error::ApiResult, service::service_register::ServiceRegister};
+
+/// Maximum allowed size for multipart file uploads (50 MB).
+const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024;
 
 pub struct ProjectRouter;
 
@@ -38,7 +40,7 @@ pub struct PaginationQueryParams {
 impl Default for PaginationQueryParams {
     fn default() -> Self {
         Self {
-            page: 0,
+            page: 1,
             size: 10,
             adult: None,
             visible: true,
@@ -60,9 +62,10 @@ impl ProjectRouter {
                 post(Self::create_project).get(Self::get_projects),
             )
             .route("/v2/projects", get(Self::get_projects_with_filter))
-            .route("/v1/projects/{id}/contents", patch(Self::add_project))
-            .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10 MB
-            .layer(axum::extract::DefaultBodyLimit::max(50 * 1024 * 1024)) // 50 MB
+            .route(
+                "/v1/projects/{id}/contents",
+                patch(Self::add_project).layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES)),
+            )
             .route("/v1/projects/{id}", put(Self::update_project))
             .route(
                 "/v1/projects/{id}/thumbnails/{content_id}",
@@ -106,7 +109,6 @@ impl ProjectRouter {
                 pagination.visible,
             )
             .await?;
-
         Ok(Json(projects))
     }
 
@@ -126,26 +128,23 @@ impl ProjectRouter {
         let mut contents: Vec<ContentView> = vec![];
 
         while let Some(field) = form.next_field().await? {
-            let uudi_v4 = Uuid::new_v4().to_string();
-            println!("[multipart] field.name: {:?}", field.name());
-            println!("[multipart] field.file_name: {:?}", field.file_name());
-            println!("[multipart] field.content_type: {:?}", field.content_type());
-            let file_name = if let Some(file_name) = field.file_name() {
-                format!("{}-{}", uudi_v4, file_name.to_owned())
-            } else {
-                uudi_v4
-            };
-            println!("File name: {}", file_name);
-            let bytes = match field.bytes().await {
-                Ok(b) => b,
-                Err(e) => {
-                    eprintln!("Error reading multipart field bytes: {:?}", e);
-                    return Err(e.into());
+            let file_name = {
+                let uuid = Uuid::new_v4();
+                match field.file_name() {
+                    Some(name) => format!("{uuid}-{name}"),
+                    None => uuid.to_string(),
                 }
             };
-            println!("[multipart] bytes.len: {}", bytes.len());
-            let content_view = project_service.add_project(id, file_name, &bytes).await?;
+            debug!(project_id = %id, file_name = %file_name, "uploading file");
 
+            let bytes = field.bytes().await.map_err(|e| {
+                warn!(error = ?e, "failed to read multipart field bytes");
+                e
+            })?;
+
+            let content_view = project_service
+                .add_project(id, file_name, &bytes)
+                .await?;
             contents.push(content_view);
         }
 
@@ -179,8 +178,6 @@ impl ProjectRouter {
         Ok(())
     }
 
-    // alternative to the struct:
-    //  Path((id, content_id)): Path<(i32, i32)
     pub async fn delete_content_project(
         Path(Params { id, content_id }): Path<Params>,
         Extension(project_service): Extension<DynIProjectService>,
@@ -190,6 +187,7 @@ impl ProjectRouter {
             .await?;
         Ok(())
     }
+
     pub async fn add_thumbnail_to_project(
         Path(Params { id, content_id }): Path<Params>,
         Extension(project_service): Extension<DynIProjectService>,
