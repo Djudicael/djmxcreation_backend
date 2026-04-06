@@ -4,14 +4,20 @@ use axum::{Router, extract::OriginalUri, response::IntoResponse};
 use std::env;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
+use tracing::{error, info};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with(fmt::layer())
+        .init();
+
     let target = env::args().nth(1).unwrap_or_else(|| "admin".to_string());
     let public_dir = format!("front/{target}");
 
     async fn spa_handler(path: String, dir: String) -> impl IntoResponse {
-        println!("[spa_handler] path: {} dir: {}", path, dir);
         // If the path looks like a static asset, return 404 (do not serve index.html)
         let is_asset = path.ends_with(".js")
             || path.ends_with(".css")
@@ -25,30 +31,25 @@ async fn main() {
             || path.ends_with(".ico")
             || path.ends_with(".webp");
         if is_asset {
-            println!("[spa_handler] Detected asset, returning 404");
             return Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Body::from("Not found"))
-                .unwrap();
+                .unwrap_or_else(|_| Response::new(Body::from("Not found")));
         }
         // Always serve index.html for fallback
         let index_path = format!("{}/index.html", dir);
-        println!("[spa_handler] Serving index.html from: {}", index_path);
         match tokio::fs::read(&index_path).await {
-            Ok(content) => {
-                println!("[spa_handler] index.html found and served");
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "text/html")
-                    .body(Body::from(content))
-                    .unwrap()
-            }
+            Ok(content) => Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "text/html")
+                .body(Body::from(content))
+                .unwrap_or_else(|_| Response::new(Body::from("index.html"))),
             Err(e) => {
-                println!("[spa_handler] ERROR reading index.html: {}", e);
+                tracing::warn!(path = %index_path, error = %e, "failed to read index.html");
                 Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Body::from("index.html non trouvé"))
-                    .unwrap()
+                    .unwrap_or_else(|_| Response::new(Body::from("index.html non trouvé")))
             }
         }
     }
@@ -67,9 +68,17 @@ async fn main() {
         });
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    println!("🚀 SPA server running at http://{}", addr);
+    info!(%addr, "SPA server running");
 
-    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
-        .await
-        .unwrap();
+    match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => {
+            if let Err(error) = axum::serve(listener, app).await {
+                error!(error = %error, "server exited with error");
+            }
+        }
+        Err(error) => {
+            error!(error = %error, "failed to bind server address");
+            std::process::exit(1);
+        }
+    }
 }

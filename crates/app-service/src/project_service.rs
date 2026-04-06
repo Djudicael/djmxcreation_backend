@@ -15,7 +15,7 @@ use app_core::{
 };
 use app_error::Error;
 use async_trait::async_trait;
-use futures::{stream, StreamExt};
+use futures::{StreamExt, stream};
 use tracing::{debug, warn};
 use uuid::Uuid;
 
@@ -75,15 +75,16 @@ impl ProjectService {
         ))
     }
 
-    async fn to_contents(
-        &self,
-        project_contents: &[ProjectContentDto],
-    ) -> Vec<ContentView> {
+    async fn to_contents(&self, project_contents: &[ProjectContentDto]) -> Vec<ContentView> {
         let mut contents = Vec::with_capacity(project_contents.len());
         for content_dto in project_contents {
             if let Some(ref photo) = content_dto.content {
                 let url = self.resolve_url(&photo.file_name).await;
-                contents.push(ContentView::new(content_dto.id, photo.mime_type.clone(), url));
+                contents.push(ContentView::new(
+                    content_dto.id,
+                    photo.mime_type.clone(),
+                    url,
+                ));
             }
         }
         contents
@@ -115,7 +116,10 @@ impl IProjectService for ProjectService {
             .add_project_content(id, &content)
             .await?;
         let (url, mime_type) = match content_dto.content {
-            Some(ref photo) => (self.resolve_url(&photo.file_name).await, photo.mime_type.clone()),
+            Some(ref photo) => (
+                self.resolve_url(&photo.file_name).await,
+                photo.mime_type.clone(),
+            ),
             None => (None, None),
         };
         Ok(ContentView::new(content_dto.id, mime_type, url))
@@ -132,9 +136,7 @@ impl IProjectService for ProjectService {
             .get_projects_content_by_id(id, content_id)
             .await?
             .ok_or_else(|| {
-                Error::EntityNotFound(format!(
-                    "content {content_id} not found in project {id}"
-                ))
+                Error::EntityNotFound(format!("content {content_id} not found in project {id}"))
             })?;
 
         match project_content.content {
@@ -149,7 +151,11 @@ impl IProjectService for ProjectService {
                     .storage_repository
                     .get_object_url(&self.bucket, &photo.file_name)
                     .await?;
-                Ok(ContentView::new(thumbnail_saved.id, photo.mime_type, Some(url)))
+                Ok(ContentView::new(
+                    thumbnail_saved.id,
+                    photo.mime_type,
+                    Some(url),
+                ))
             }
             None => Err(Error::ContentNotFoundButWasSave(
                 "content record exists but has no associated file".to_string(),
@@ -350,9 +356,7 @@ impl IProjectService for ProjectService {
             .spotlight_repository
             .get_spotlight(spotlight_id)
             .await?
-            .ok_or_else(|| {
-                Error::EntityNotFound(format!("spotlight {spotlight_id} not found"))
-            })?;
+            .ok_or_else(|| Error::EntityNotFound(format!("spotlight {spotlight_id} not found")))?;
         self.to_spotlight_view(&spotlight).await
     }
 
