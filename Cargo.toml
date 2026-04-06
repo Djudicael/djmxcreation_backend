@@ -10,3 +10,11 @@ members = [
     "crates/app_config",
     "crates/dev-server",
 ]
+
+# WASM/WASI compatibility patches using second-state's WASI-ready forks.
+# These replace the standard crates when targeting wasm32-wasi / wasmer.
+# Note: [patch.crates-io] must be defined at the workspace root to take effect.
+[patch.crates-io]
+tokio   = { git = "https://github.com/second-state/wasi_tokio.git",  branch = "v1.40.x" }
+socket2 = { git = "https://github.com/second-state/socket2.git",     branch = "v0.5.x"  }
+hyper   = { git = "https://github.com/second-state/wasi_hyper.git",  branch = "v0.14.x" }

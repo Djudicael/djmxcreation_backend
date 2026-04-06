@@ -2,11 +2,10 @@ use std::error::Error as StdError;
 use std::fmt;
 
 use app_config::database_configuration::DatabaseConfiguration;
-
 use deadpool_postgres::{Config, CreatePoolError, Pool, PoolError, Runtime};
-
 use refinery::embed_migrations;
-use tokio_postgres::{Error, NoTls};
+use tokio_postgres::NoTls;
+use tracing::info;
 
 pub type ClientV2 = tokio_postgres::Client;
 embed_migrations!("../../sql/migrations");
@@ -15,17 +14,15 @@ embed_migrations!("../../sql/migrations");
 pub enum DatabaseError {
     Pool(CreatePoolError),
     PoolConnection(PoolError),
-    Connection(Error),
-    Migration(Error),
+    Migration(refinery::Error),
 }
 
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DatabaseError::Pool(e) => write!(f, "Pool creation error: {}", e),
-            DatabaseError::PoolConnection(e) => write!(f, "Pool connection error: {}", e),
-            DatabaseError::Connection(e) => write!(f, "Database connection error: {}", e),
-            DatabaseError::Migration(e) => write!(f, "Database migration error: {}", e),
+            DatabaseError::Pool(e) => write!(f, "pool creation error: {e}"),
+            DatabaseError::PoolConnection(e) => write!(f, "pool connection error: {e}"),
+            DatabaseError::Migration(e) => write!(f, "migration error: {e}"),
         }
     }
 }
@@ -35,7 +32,6 @@ impl StdError for DatabaseError {
         match self {
             DatabaseError::Pool(e) => Some(e),
             DatabaseError::PoolConnection(e) => Some(e),
-            DatabaseError::Connection(e) => Some(e),
             DatabaseError::Migration(e) => Some(e),
         }
     }
@@ -66,12 +62,8 @@ impl DatabasePool {
             .create_pool(Some(Runtime::Tokio1), NoTls)
             .map_err(DatabaseError::Pool)?;
 
-        // Apply migrations using raw connection
         let mut conn = pool.get().await.map_err(DatabaseError::PoolConnection)?;
-
-        // Get mutable reference to the underlying client
-        let client = conn.as_mut();
-        apply_migrations(client)
+        apply_migrations(conn.as_mut())
             .await
             .map_err(DatabaseError::Migration)?;
 
@@ -83,12 +75,8 @@ impl DatabasePool {
     }
 }
 
-async fn apply_migrations(client: &mut ClientV2) -> Result<(), Error> {
-    let _ = migrations::runner()
-        .run_async(client)
-        .await
-        .expect("Database Migration error");
-
-    println!("Migrations applied successfully.");
+async fn apply_migrations(client: &mut ClientV2) -> Result<(), refinery::Error> {
+    migrations::runner().run_async(client).await?;
+    info!("database migrations applied successfully");
     Ok(())
 }

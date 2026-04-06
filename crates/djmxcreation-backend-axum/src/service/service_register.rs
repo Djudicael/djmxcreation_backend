@@ -12,7 +12,7 @@ use app_service::{
 
 use repository::{
     about_me_repository::AboutMeRepository,
-    config::{db::DatabasePool, minio::StorageClient},
+    config::{db::DatabasePool, storage::StorageClient},
     contact_repository::ContactRepository,
     project_repository::ProjectRepository,
     spotlight_repository::SpotlightRepository,

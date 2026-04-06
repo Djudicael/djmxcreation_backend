@@ -1,65 +1,266 @@
-# DJMXCREATION portfolio (WIP)
+# djmxcreation — Portfolio & CMS Backend
 
-This project its related to my portfolio for my art activities and IT.This project its the best way to practice. The main language is rust.
-This backend was originally made in nodejs.
-It's a one man project so some choice have to be made for the economic purpose and the time consuming.
+A Rust backend for a personal art-portfolio website with a companion CMS.  
+This is a one-person, in-progress project that serves as both a practical portfolio
+and a playground for experimenting with Rust, WASM/WASI, and self-hosted infrastructure.
+
+> **Status:** Work-in-progress — functional for core portfolio management,
+> incomplete for authentication, observability, and WASM deployment.
+
+---
+
+## What this application does
+
+The backend exposes a JSON REST API used by two frontends:
+
+| Frontend | Purpose |
+|----------|---------|
+| **Portfolio website** | Public-facing site displaying projects, about-me, and contact info |
+| **CMS admin** | Private panel for creating and managing portfolio content |
+
+### Core features
+
+| Domain | Capabilities |
+|--------|-------------|
+| **Projects** | Create / update / delete projects; upload multiple media files per project; set a thumbnail; filter by visibility and adult-content flag; pagination |
+| **Spotlight** | Pin up to one spotlight entry per project (featured on the homepage) |
+| **About me** | Manage first name, last name, bio (rich JSON), and profile photo |
+| **Contact** | Store and expose contact information (rich JSON) |
+| **Storage** | All media files are stored in an S3-compatible object store (RustFS); presigned URLs are returned to clients so files are served directly from storage |
+| **Observability** | `/ping` health check; `/metrics` Prometheus endpoint |
+
+---
 
 ## Architecture
 
-This project is composed by 1 backend and 2 front end . A front dedicated to the CMS part and one for the portfolio website.
+```
+┌─────────────────────────────────────────────────────────┐
+│                   djmxcreation-backend                  │
+│                                                         │
+│  ┌──────────────┐   ┌─────────────────┐                 │
+│  │  Axum Router │──▶│ Service layer   │                 │
+│  │  (HTTP API)  │   │ (business logic)│                 │
+│  └──────────────┘   └────────┬────────┘                 │
+│                              │                          │
+│               ┌──────────────┴─────────────┐            │
+│               ▼                            ▼            │
+│     ┌──────────────────┐      ┌────────────────────┐    │
+│     │  PostgreSQL repo │      │  Storage repo      │    │
+│     │  (deadpool-pg)   │      │  (aws-sdk-s3 →     │    │
+│     └────────┬─────────┘      │   RustFS)          │    │
+│              │                └─────────┬──────────┘    │
+└──────────────┼──────────────────────────┼───────────────┘
+               ▼                          ▼
+        PostgreSQL                     RustFS
+         (media                  (S3-compatible
+         metadata)               object store)
+```
 
-![SOA](./docs/overview.jpg)
+### Workspace crates
 
-All detail is not decided yet but here the technical stack :
+| Crate | Role |
+|-------|------|
+| `djmxcreation-backend-axum` | Binary — HTTP server, routing, middleware |
+| `app-service` | Business logic services |
+| `repository` | PostgreSQL repositories + S3 storage client |
+| `app_core` | Shared DTOs, view models, and repository/service traits |
+| `app_config` | Configuration loading from environment variables |
+| `app-error` | Unified error type |
+| `migration` | (legacy) SQL migration runner via sqlx |
+| `test-util` | Test helpers (testcontainers) |
 
-- IAAS No cloud provider but a private cloud:
-  I intend to use cloudhypervisor, its easy to use light and give a full control on the infrastructure.
-  https://www.cloudhypervisor.org/
-  https://github.com/cloud-hypervisor/cloud-hypervisor
+A **Layered Architecture** is used so that each crate can be reused independently.
+`app_core` is intentionally shared across all layers to avoid duplicating DTOs.
 
-- PASS maybe kubernetes will be use but lately i started to experiment some wasm platform like wasmCloud. \*
-  That why a refactoring of the code was made . It will be easier to try some new tool without the pain.
+---
 
-- Object storage: for the cost of the project i don't intent to use AWS-S3 but a S3 like
-  2 Solutions is studied:
-  Minio: https://min.io/
-  I used minio because the experience i have with .
-  Seaweedfs: https://github.com/seaweedfs/seaweedfs
-  on paper it's the most attractive but i didn't try it yet . But i will probably be the final choice.
+## API surface
 
-## Project architecture
+All routes are prefixed with `/api`.
 
-![SOA](./docs/SOA.drawio.png)
+### Projects — `/api/portfolio`
 
-For my project i decided to go for a Layered Architecture. (https://cs.uwaterloo.ca/~m2nagapp/courses/CS446/1195/Arch_Design_Activity/Layered.pdf)
-Its easy to reuse some part of the component for the different tool without too much effort.
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/projects` | Create a project |
+| `GET` | `/v1/projects` | List all projects (full) |
+| `GET` | `/v2/projects?page=&size=&adult=&visible=` | Paginated project list with filters |
+| `GET` | `/v1/projects/:id` | Get a single project with all its media |
+| `PUT` | `/v1/projects/:id` | Update project metadata |
+| `DELETE` | `/v1/projects/:id` | Delete a project and its media |
+| `PATCH` | `/v1/projects/:id/contents` | Upload media files (multipart) |
+| `DELETE` | `/v1/projects/:id/contents/:content_id` | Remove a media file |
+| `PUT` | `/v1/projects/:id/thumbnails/:content_id` | Set the project thumbnail |
+| `GET` | `/v1/projects/spotlights` | List spotlight entries |
+| `POST` | `/v1/projects/spotlights` | Add a spotlight |
+| `GET` | `/v1/projects/spotlights/:id` | Get a spotlight |
+| `DELETE` | `/v1/projects/spotlights/:id` | Remove a spotlight |
 
-For example in this project there is a package app-core , this package has the view and the dto representing the data. I made the choice to make them together to reuse them in other projects like the frontend portfolio and cms. Fow now the backend framework used is WARP but AXUM and ACTIX ( i will not talk about WASMER and wasmcloud for now) .
-So for now all layers are aware of the app-core lib. In the Layered Architecture it should not be the case but i prefer to stay pragmatic to simplify the system.
+### About me — `/api/about`
 
-## APP Security
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/me` | Get profile info |
+| `PUT` | `/v1/me/:id` | Update profile info |
+| `POST` | `/v1/me/:id/image` | Upload profile photo (multipart) |
+| `DELETE` | `/v1/me/:id` | Delete profile photo |
 
-Because the of the cost and some infrastructure complexity i will use and api-key to secure all endpoint on top of it an api-gateway will be use. only the api gateway will be aware of this api-key
+### Contact — `/api/contact`
 
-The other aspect of the security will be handle by keycloak and the api-gateway. if i decide to change only the api-gateway will be impacted..
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/information` | Get contact information |
+| `PUT` | `/v1/information/:id` | Update contact information |
 
-This project is still in progress .
+### Observability
 
-### TODO LIST
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/ping` | Health check — returns `200 OK` |
+| `GET` | `/metrics` | Prometheus metrics |
 
-- [] add a new endpoint to have a simple selection of project that will only sent project available ( this endpoint will be use for the front only)
-- [] add filter and pagination to retrieve project summary
-- [] The endpoint should send only project with content and visible project
-- [] implement wasi/wasmer ( we should have almost all necessary library for the wasi part)
-- [] add new app to upload images in S3/minio
-- [] in new app uploading in S3/minio a possibility to generate thumbnail
-- [] Add adult only flag for some projects ( database/ front)
-- [] continue with the keycloak security
-- [] add test using test-container
-- [] add observability
-- [] add openAPI
-- [] add documentation
+---
 
-cargo test -p repository test_storage_repository_crud -- --nocapture
+## Technology stack
 
-docker compose -f docker-compose.spa.yml up
+| Layer | Technology |
+|-------|-----------|
+| Language | Rust (edition 2024) |
+| HTTP framework | Axum 0.8 |
+| Database | PostgreSQL via `tokio-postgres` + `deadpool-postgres` |
+| Database migrations | Embedded via `refinery` |
+| Object storage | **RustFS** (S3-compatible) via `aws-sdk-s3` |
+| Metrics | `metrics` + `metrics-exporter-prometheus` |
+| Logging | `tracing` + `tracing-subscriber` |
+| WASM target | WASI/Wasmer (in progress — see below) |
+
+### Infrastructure (self-hosted, no cloud)
+
+- **Hypervisor:** [Cloud Hypervisor](https://www.cloudhypervisor.org/)
+- **Platform:** Bare-metal / WasmCloud (evaluating)
+- **Object storage:** [RustFS](https://github.com/rustfs/rustfs) — an open-source, S3-compatible storage server written in Rust
+
+---
+
+## Configuration
+
+Copy `.env.template` to `.env` and fill in the values.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PG_HOST` | ✅ | — | PostgreSQL host |
+| `PG_PORT` | ✅ | — | PostgreSQL port |
+| `PG_DB` | ✅ | — | Database name |
+| `PG_USER` | ✅ | — | Database user |
+| `PG_PASSWORD` | ✅ | — | Database password |
+| `PG_APP_MAX_CON` | | `5` | Connection pool size |
+| `STORAGE_ENDPOINT` | ✅ | — | RustFS / S3 endpoint URL |
+| `STORAGE_ACCESS_KEY` | ✅ | — | Storage access key |
+| `STORAGE_SECRET_KEY` | ✅ | — | Storage secret key |
+| `STORAGE_REGION` | | `us-east-1` | Storage region |
+| `STORAGE_BUCKET` | | `portfolio` | Bucket name |
+| `USERNAME_APP` | ✅ | — | Basic-auth username (API) |
+| `PASSWORD_APP` | ✅ | — | Basic-auth password (API) |
+| `PORT` | | `8081` | HTTP server port |
+| `RUST_LOG` | | `info` | Log filter (tracing-subscriber) |
+
+---
+
+## Running locally
+
+### Prerequisites
+
+- Rust (stable, 1.80+)
+- PostgreSQL 12+
+- A running [RustFS](https://github.com/rustfs/rustfs) or MinIO instance
+
+### Steps
+
+```bash
+# 1. Clone and enter the project
+git clone <repo>
+cd djmxcreation_backend
+
+# 2. Configure environment
+cp .env.template .env
+# Edit .env with your values
+
+# 3. Build and run
+cargo run --bin djmxcreation-backend-axum
+```
+
+Database migrations are applied automatically on startup.
+
+---
+
+## WASM / WASI target (in progress)
+
+The goal is to compile the backend to `wasm32-wasi` so it can run on
+[Wasmer](https://wasmer.io/) or [WasmCloud](https://wasmcloud.com/).
+
+The workspace root `Cargo.toml` patches `tokio`, `hyper`, and `socket2` with
+WASI-ready forks from [second-state](https://github.com/second-state):
+
+```toml
+[patch.crates-io]
+tokio   = { git = "https://github.com/second-state/wasi_tokio.git",  branch = "v1.40.x" }
+socket2 = { git = "https://github.com/second-state/socket2.git",     branch = "v0.5.x"  }
+hyper   = { git = "https://github.com/second-state/wasi_hyper.git",  branch = "v0.14.x" }
+```
+
+> **Note:** Full WASM compilation is not yet verified. The patches currently cover
+> hyper 0.14.x; axum 0.8 uses hyper 1.x which will need a separate patch once
+> second-state publishes one.  
+> Tracking this as a future milestone.
+
+---
+
+## Security
+
+Currently the API is protected by HTTP Basic Auth (username/password from env).  
+The full security model will use:
+
+1. **API gateway** — only the gateway knows the API key; internal traffic is trusted.
+2. **Keycloak** — for user-facing authentication (planned, not yet implemented).
+
+---
+
+## Roadmap
+
+- [x] Project CRUD with media upload
+- [x] Spotlight management
+- [x] About me and contact endpoints
+- [x] PostgreSQL migrations (embedded, auto-run on startup)
+- [x] Prometheus metrics
+- [x] Structured logging with `tracing`
+- [x] RustFS / S3-compatible storage with path-style addressing
+- [ ] Public endpoint — only visible projects with content (for the portfolio frontend)
+- [ ] Thumbnail auto-generation on upload
+- [ ] Keycloak / JWT authentication
+- [ ] OpenAPI (Swagger) documentation
+- [ ] Full test suite using testcontainers
+- [ ] WASM/WASI compilation (blocked on hyper 1.x WASI patch)
+- [ ] CMS admin frontend improvements
+- [ ] Adult-content flag UI in the admin panel
+
+---
+
+## Project layout
+
+```
+djmxcreation_backend/
+├── crates/
+│   ├── djmxcreation-backend-axum/   # HTTP server binary
+│   ├── app-service/                 # Business logic
+│   ├── repository/                  # DB + storage access
+│   ├── app_core/                    # Shared types & traits
+│   ├── app_config/                  # Configuration
+│   ├── app-error/                   # Error types
+│   ├── migration/                   # (legacy) sqlx migrations
+│   └── test-util/                   # Test helpers
+├── sql/migrations/                  # SQL migration files (V1..Vn)
+├── front/admin/                     # CMS admin frontend (Vue/TS)
+├── docs/                            # Architecture diagrams
+├── .env.template                    # Environment variable template
+└── Dockerfile                       # Multi-stage production build
+```

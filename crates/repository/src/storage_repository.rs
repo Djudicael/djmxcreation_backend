@@ -1,8 +1,15 @@
+use std::time::Duration;
+
 use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
 use async_trait::async_trait;
+use aws_sdk_s3::{presigning::PresigningConfig, primitives::ByteStream};
+use tracing::error;
 
-use crate::config::minio::StorageClient;
+use crate::config::storage::StorageClient;
+
+/// Presigned URL validity window (seconds).
+const PRESIGN_EXPIRY_SECS: u64 = 8_640; // 2.4 hours
 
 pub struct StorageRepository {
     client: StorageClient,
@@ -18,77 +25,59 @@ impl StorageRepository {
 impl IStorageRepository for StorageRepository {
     async fn upload_file(
         &self,
-        _bucket_name: &str,
+        bucket_name: &str,
         file_name: &str,
         file: &[u8],
     ) -> Result<(), Error> {
-        self.client.put_object(file_name, file).await.map_err(|e| {
-            eprintln!("upload_file error: {:?}", e);
-            eprintln!(
-                "stack trace: {:?}",
-                std::backtrace::Backtrace::force_capture()
-            );
-            Error::StorageUpload
-        })?;
-        Ok(())
-    }
-    async fn upload_file_in_public_bucket(
-        &self,
-        _bucket_name: &str,
-        file_name: &str,
-        file: &[u8],
-    ) -> Result<(), Error> {
-        self.client.put_object(file_name, file).await.map_err(|e| {
-            eprintln!("upload_file_in_public_bucket error: {:?}", e);
-            eprintln!(
-                "stack trace: {:?}",
-                std::backtrace::Backtrace::force_capture()
-            );
-            Error::StorageUpload
-        })?;
+        let body = ByteStream::from(file.to_owned());
+        self.client
+            .put_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| {
+                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to upload file");
+                Error::StorageUpload
+            })?;
         Ok(())
     }
 
-    async fn get_object_url_presigned(
-        &self,
-        _bucket_name: &str,
-        file_name: &str,
-    ) -> Result<String, Error> {
-        let presigned_url = self
-            .client
-            .presign_get(file_name, 8640, None)
-            .await
+    async fn get_object_url(&self, bucket_name: &str, file_name: &str) -> Result<String, Error> {
+        let expires_in = Duration::from_secs(PRESIGN_EXPIRY_SECS);
+        let presign_config = PresigningConfig::expires_in(expires_in)
             .map_err(|e| {
-                eprintln!("get_object_url_presigned error: {:?}", e);
-                eprintln!(
-                    "stack trace: {:?}",
-                    std::backtrace::Backtrace::force_capture()
-                );
+                error!(error = ?e, "invalid presign config");
                 Error::StorageGetObjectUrl
             })?;
 
-        Ok(presigned_url)
-    }
-    async fn get_object_url(&self, _bucket_name: &str, file_name: &str) -> Result<String, Error> {
-        // Check if object exists
-        let exists = self.client.head_object(file_name).await.is_ok();
-        if !exists {
-            return Err(Error::StorageGetObjectUrl);
-        }
-        let bucket_url = self.client.url();
+        let presigned = self
+            .client
+            .get_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .presigned(presign_config)
+            .await
+            .map_err(|e| {
+                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to generate presigned URL");
+                Error::StorageGetObjectUrl
+            })?;
 
-        Ok(format!("{}/{}", bucket_url, file_name))
+        Ok(presigned.uri().to_string())
     }
 
-    async fn remove_object(&self, _bucket_name: &str, file_name: &str) -> Result<(), Error> {
-        self.client.delete_object(file_name).await.map_err(|e| {
-            eprintln!("remove_object error: {:?}", e);
-            eprintln!(
-                "stack trace: {:?}",
-                std::backtrace::Backtrace::force_capture()
-            );
-            Error::StorageDeleteObject
-        })?;
+    async fn remove_object(&self, bucket_name: &str, file_name: &str) -> Result<(), Error> {
+        self.client
+            .delete_object()
+            .bucket(bucket_name)
+            .key(file_name)
+            .send()
+            .await
+            .map_err(|e| {
+                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to delete object");
+                Error::StorageDeleteObject
+            })?;
         Ok(())
     }
 }

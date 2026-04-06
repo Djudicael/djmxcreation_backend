@@ -1,3 +1,5 @@
+use std::{future::ready, sync::{Arc, OnceLock}, time::Duration};
+
 use crate::{
     router::{
         about_me_router::AboutMeRouter, contact_router::ContactRouter,
@@ -5,39 +7,32 @@ use crate::{
     },
     service::service_register::ServiceRegister,
 };
-use std::{
-    future::ready,
-    sync::Arc,
-    time::{Duration, Instant},
-};
-use tower_http::limit::RequestBodyLimitLayer;
-// use aide::openapi::OpenApi;
 use anyhow::Context;
-use app_config::{config::Config, security_config::SecurityConfig};
+use app_config::config::Config;
 use axum::{
-    BoxError,
-    Json,
-    Router,
-    // TypedHeader,
     error_handling::HandleErrorLayer,
     extract::MatchedPath,
-    // headers::{authorization::Basic, Authorization},
     middleware::{self, Next},
-    response::{IntoResponse, Response},
+    response::Response,
     routing::get,
+    BoxError, Json, Router,
 };
-use hyper::{Method, Request, StatusCode, header::HeaderValue};
+use hyper::{Request, StatusCode};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
-// use migration::init_db_migration;
-use once_cell::sync::Lazy;
-use repository::config::{db::DatabasePool, minio::get_storage_client};
+use repository::config::{
+    db::DatabasePool,
+    storage::{ensure_bucket, get_storage_client},
+};
 use serde_json::json;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing::info;
 
-static GLOBAL_CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::new()));
+static GLOBAL_CONFIG: OnceLock<Arc<Config>> = OnceLock::new();
 
-const HTTP_TIMEOUT: u64 = 30;
+const HTTP_TIMEOUT_SECS: u64 = 30;
+
+/// Exponential histogram buckets for HTTP request duration metrics.
 const EXPONENTIAL_SECONDS: &[f64] = &[
     0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
 ];
@@ -47,120 +42,100 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, Json<serde_json::Va
         (
             StatusCode::REQUEST_TIMEOUT,
             Json(json!({
-                "error":
-                    format!("request took longer than the configured {HTTP_TIMEOUT} second timeout")
+                "error": format!("request took longer than the {HTTP_TIMEOUT_SECS}s timeout")
             })),
         )
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({
-                "error": format!("unhandled internal error: {err}")
-            })),
+            Json(json!({ "error": format!("unhandled internal error: {err}") })),
         )
     }
 }
 
-// pub async fn auth<B>(
-//     // run the `TypedHeader` extractor
-//     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
-//     // you can also add more extractors here but the last
-//     // extractor must implement `FromRequest` which
-//     // `Request` does
-//     request: Request<B>,
-//     next: Next<B>,
-// ) -> Result<Response, StatusCode> {
-//     if token_is_valid(auth.0) {
-//         let response = next.run(request).await;
-//         Ok(response)
-//     } else {
-//         Err(StatusCode::UNAUTHORIZED)
-//     }
-// }
+/// Track HTTP request duration for Prometheus.
+async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
+    let path = request
+        .extensions()
+        .get::<MatchedPath>()
+        .map(|p| p.as_str().to_owned())
+        .unwrap_or_else(|| request.uri().path().to_owned());
+    let method = request.method().clone();
 
-// fn token_is_valid(token: Basic) -> bool {
-//     let SecurityConfig { username, password } = GLOBAL_CONFIG.clone().get_security();
+    let response = next.run(request).await;
 
-//     username == token.username() && password == token.password()
-// }
+    metrics::histogram!(
+        "http_requests_duration_seconds",
+        "method" => method.to_string(),
+        "path" => path,
+        "status" => response.status().as_u16().to_string(),
+    );
+
+    response
+}
 
 pub async fn start() -> anyhow::Result<()> {
-    // aide::gen::on_error(|error| {
-    //     println!("{error}");
-    // });
+    let config = GLOBAL_CONFIG
+        .get_or_init(|| Arc::new(Config::new()))
+        .clone();
 
-    // aide::gen::extract_schemas(true);
-
-    // let mut api = OpenApi::default();
-
-    let config = GLOBAL_CONFIG.clone();
-
-    // init_db_migration(&config.database)
-    //     .await
-    //     .expect("Failed to migrate database");
-
-    let client_db = DatabasePool::new(&config.database, None).await?;
-
-    let storage = config.clone().get_storage();
-
-    let storage_client = get_storage_client(storage)
+    // ── Database ────────────────────────────────────────────────────────────
+    let client_db = DatabasePool::new(&config.database, None)
         .await
-        .expect("Failed to create object Storage client");
+        .context("failed to initialise database pool")?;
 
-    // create_bucket("portfolio", storage_client.clone()).await?;
+    info!("database pool ready");
 
-    let service_register = ServiceRegister::new(Arc::new(client_db), storage_client);
+    // ── Object storage ──────────────────────────────────────────────────────
+    let storage_cfg = config.clone().get_storage();
+    let bucket_name = storage_cfg.bucket.clone();
 
+    let storage_client =
+        get_storage_client(storage_cfg).context("failed to create storage client")?;
+
+    ensure_bucket(&bucket_name, &storage_client)
+        .await
+        .context("failed to ensure storage bucket exists")?;
+
+    info!(bucket = %bucket_name, "storage ready");
+
+    // ── Prometheus metrics ──────────────────────────────────────────────────
     let recorder_handle = PrometheusBuilder::new()
         .set_buckets_for_metric(
-            Matcher::Full(String::from("http_requests_duration_seconds")),
+            Matcher::Full("http_requests_duration_seconds".to_string()),
             EXPONENTIAL_SECONDS,
         )
-        .context("could not setup buckets for metrics, verify matchers are correct")?
+        .context("invalid prometheus bucket configuration")?
         .install_recorder()
-        .context("could not install metrics recorder")?;
+        .context("failed to install prometheus recorder")?;
 
-    // let my_auth = MyAuth { basic_auth };
+    // ── Services ────────────────────────────────────────────────────────────
+    let service_register =
+        ServiceRegister::new(Arc::new(client_db), storage_client);
 
+    // ── Router ──────────────────────────────────────────────────────────────
     let router = Router::new()
-        .merge(ObservabilityRouter::new_router())
-        .nest(
-            "/api/about",
-            AboutMeRouter::new_router(service_register.clone()),
-        )
-        .nest(
-            "/api/portfolio",
-            ProjectRouter::new_router(service_register.clone()),
-        )
-        .nest(
-            "/api/contact",
-            ContactRouter::new_router(service_register.clone()),
-        )
+        .nest("/", ObservabilityRouter::new_router())
+        .nest("/api/about", AboutMeRouter::new_router(service_register.clone()))
+        .nest("/api/portfolio", ProjectRouter::new_router(service_register.clone()))
+        .nest("/api/contact", ContactRouter::new_router(service_register.clone()))
         .route("/metrics", get(move || ready(recorder_handle.render())))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(HandleErrorLayer::new(handle_timeout_error))
-                .timeout(Duration::from_secs(HTTP_TIMEOUT)),
+                .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS)),
         )
         .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http());
-    // .layer(
-    //     CorsLayer::new()
-    //         .allow_origin(Any) //TODO to modify
-    //         // .allow_origin(["http://localhost:3008".parse::<HeaderValue>().unwrap()]) //TODO to modify
-    //         .allow_methods([
-    //             Method::GET,
-    //             Method::POST,
-    //             Method::PUT,
-    //             Method::DELETE,
-    //             Method::OPTIONS,
-    //         ]),
-    // )
-    // .route_layer(middleware::from_fn(track_metrics));
-    // .layer(middleware::from_fn(auth));
+        .route_layer(middleware::from_fn(track_metrics));
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", &config.port)).await?;
+    // ── Server ───────────────────────────────────────────────────────────────
+    let addr = format!("0.0.0.0:{}", config.port);
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .with_context(|| format!("failed to bind to {addr}"))?;
+
+    info!(address = %addr, "server listening");
 
     axum::serve(listener, router.into_make_service()).await?;
     Ok(())
