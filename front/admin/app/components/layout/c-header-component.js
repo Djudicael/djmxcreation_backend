@@ -14,12 +14,12 @@ export class HeaderComponent extends TemplateRenderer {
         <header class="header">
             <h2>
                 <div id="toggle">
-                    <img class="header-menu-icon" src="/ressource/icon/menu.svg" />
+                    <img class="header-menu-icon" src="/ressource/icon/menu.svg" alt="Toggle menu" />
                 </div>
                 Dashboard
             </h2>
             <div class="search-wrapper">
-                <img src="/ressource/icon/search.svg" />
+                <img src="/ressource/icon/search.svg" alt="Search" />
                 <input type="search" placeholder="Search here">
             </div>
             <div class="user-wrapper">

@@ -1,0 +1,62 @@
+/* ── Loading indicator ─────────────────────────────────────────── */
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: loading-spin 0.6s linear infinite;
+}
+
+@keyframes loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Error indicator ──────────────────────────────────────────── */
+.error-indicator {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.error-message {
+    color: #c0392b;
+    font-weight: 500;
+}
+
+/* ── Image overlay (portfolio) ────────────────────────────────── */
+.image-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.85);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.image-overlay:focus {
+    outline: none;
+}
+
+.image-overlay__content {
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.image-overlay__content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+}

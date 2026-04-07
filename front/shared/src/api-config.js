@@ -1,3 +1,11 @@
+/**
+ * API configuration resolver.
+ * Reads the backend base URL from (in priority order):
+ *   1. Runtime global `window.__DJMX_API_BASE_URL__`
+ *   2. `<meta name="djmx-api-base-url" content="...">` tag
+ *   3. `import.meta.env.BACKEND_API_URL` (set at build time)
+ *   4. Empty string (relative paths)
+ */
 const RUNTIME_API_BASE_KEY = "__DJMX_API_BASE_URL__";
 
 function trimTrailingSlash(value) {
@@ -43,6 +51,7 @@ function resolveApiBaseUrl() {
     return trimTrailingSlash(configured);
 }
 
+/** @type {{ rest_url: string }} */
 export const config = {
     rest_url: resolveApiBaseUrl(),
 };

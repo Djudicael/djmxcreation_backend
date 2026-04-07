@@ -1,22 +1,35 @@
+import http from '../http/http.js'
 
-import Http from '../http/http.js'
+const AUTH_KEY = 'auth';
+
 export default class Authentication {
 
     get auth() {
-        return JSON.parse(localStorage.getItem('auth'));
+        try {
+            const raw = localStorage.getItem(AUTH_KEY);
+            if (!raw) {
+                return null;
+            }
+            return JSON.parse(raw);
+        } catch {
+            localStorage.removeItem(AUTH_KEY);
+            return null;
+        }
     }
 
     set auth(value) {
-        localStorage.setItem('auth', JSON.stringify(value));
+        if (value == null) {
+            localStorage.removeItem(AUTH_KEY);
+            return;
+        }
+        localStorage.setItem(AUTH_KEY, JSON.stringify(value));
     }
 
     async doAuthentication({ username, password }) {
-        const user = {
-            username, password
-        };
-        const instance = new Http();
-        const { access_token, refresh_token } = await instance.doPost({ path: '/v1/authentication/login', body: user });
+        const { access_token } = await http.doPost({
+            path: '/v1/authentication/login',
+            body: { username, password },
+        });
         this.auth = access_token;
     }
-
 }

@@ -1,23 +1,23 @@
-import { TemplateRenderer, html } from "../utils/template-renderer.js";
-
+import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
+import { EventBinder } from "../../../shared/src/event-binder.js";
 import Quill from "quill";
-import PortfolioApi from "../api/portfolio.api.js";
+import portfolioApi from "../api/portfolio.api.js";
 import { editorConfig } from "../utils/helper.js";
 
 export class AboutComponent extends TemplateRenderer {
   constructor() {
     super();
     this.noShadow = true;
-    this.instance = new PortfolioApi();
-    this.description;
-    this.profilePicture;
+    this.instance = portfolioApi;
+    this.description = null;
+    this.profilePicture = null;
     this.$fileInput = null;
     this.$fileCatcher = null;
     this.$fileListDisplay = null;
     this.fileList = [];
     this.sendFile = this.sendFile.bind(this);
     this.deleteImage = this.deleteImage.bind(this);
-    this._removeImageHandlers = [];
+    this._removeImageBinder = new EventBinder();
     this._handleFileInputChange = null;
     this._handleSaveClick = null;
     this._handleUploadClick = null;
@@ -26,6 +26,9 @@ export class AboutComponent extends TemplateRenderer {
   }
 
   get template() {
+    if (this.isLoading) return this.loadingTemplate;
+    if (this.hasError) return this.errorTemplate;
+
     const profilePicture = this.profilePicture
       ? html`<div class="image-area">
           <img src=${this.profilePicture} alt="Preview" loading="lazy" />
@@ -115,19 +118,23 @@ export class AboutComponent extends TemplateRenderer {
   }
 
   async getAboutMe() {
+    this.setLoadState(LoadState.LOADING);
+    this.render();
     try {
       const { id, firstName, lastName, description, photoUrl } =
         await this.instance.getAboutMe();
+      if (!this.isConnected) return;
       this.id = id;
       this.firstName = firstName;
       this.lastName = lastName;
       this.description = description;
       this.profilePicture = photoUrl;
-      if (this.isConnected) {
-        super.render();
-      }
+      this.setLoadState(LoadState.DONE);
+      super.render();
     } catch (error) {
-      console.error("Failed to load about section", error);
+      if (error.name === "AbortError") return;
+      this.setLoadState(LoadState.ERROR, "Failed to load about section.");
+      if (this.isConnected) this.render();
     }
   }
 
@@ -153,19 +160,9 @@ export class AboutComponent extends TemplateRenderer {
   };
 
   initRemoveImageEvent = () => {
-    this.querySelectorAll(".remove-image").forEach((item, index) => {
-      const oldHandler = this._removeImageHandlers[index];
-      if (oldHandler) {
-        item.removeEventListener("click", oldHandler);
-      }
-    });
-
-    this._removeImageHandlers = [];
-    this.querySelectorAll(".remove-image").forEach((item) => {
-      const handler = (event) => this.deleteImage(event);
-      this._removeImageHandlers.push(handler);
-      item.addEventListener("click", handler);
-    });
+    this._removeImageBinder.bindAll(
+      this.querySelectorAll(".remove-image"), "click", (e) => this.deleteImage(e)
+    );
   };
 
   disconnectedCallback() {
@@ -178,13 +175,7 @@ export class AboutComponent extends TemplateRenderer {
     if (this.$saveButton && this._handleSaveClick) {
       this.$saveButton.removeEventListener("click", this._handleSaveClick);
     }
-    this.querySelectorAll(".remove-image").forEach((item, index) => {
-      const handler = this._removeImageHandlers[index];
-      if (handler) {
-        item.removeEventListener("click", handler);
-      }
-    });
-    this._removeImageHandlers = [];
+    this._removeImageBinder.unbindAll();
   }
 
   async connectedCallback() {

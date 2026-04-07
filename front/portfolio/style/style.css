@@ -5,6 +5,7 @@
 @import "about.css";
 @import "common.css";
 @import "editor.css";
+@import "../../shared/style/components.css";
 
 :root {
     --main-bg-color: #f3efe7;

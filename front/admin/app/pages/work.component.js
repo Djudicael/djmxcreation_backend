@@ -1,7 +1,7 @@
 import { TemplateRenderer, html } from '../utils/template-renderer.js';
 
 export class WorkComponent extends TemplateRenderer {
-    constructor(router) {
+    constructor() {
         super();
         this.noShadow = true;
     }

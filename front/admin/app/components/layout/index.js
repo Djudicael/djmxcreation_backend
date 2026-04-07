@@ -36,12 +36,4 @@ export const layoutComponents = [
         tagName: 'c-footer',
         component: FooterComponent
     },
-    // {
-    //     tagName: 'c-footer',
-    //     component: FooterComponent
-    // },
-    // {
-    //     tagName: 'c-card-lang',
-    //     component: LanguageCardComponent
-    // }
-]
+];

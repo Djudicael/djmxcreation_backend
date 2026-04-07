@@ -1,29 +1,30 @@
 import Quill from "quill";
-import PortfolioApi from "../api/portfolio.api.js";
+import portfolioApi from "../api/portfolio.api.js";
 import Metadata from "../models/metadata.js";
 import ProjectPayload from "../models/projectPayload.js";
 import { editorConfig } from "../utils/helper.js";
-import { TemplateRenderer, html } from "../utils/template-renderer.js";
+import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
+import { EventBinder } from "../../../shared/src/event-binder.js";
 
 export class ProjectComponent extends TemplateRenderer {
   constructor() {
     super();
     this.projectId = null;
     this.noShadow = true;
-    this.instance = new PortfolioApi();
-    this.title;
-    this.subTitle;
-    this.client;
-    this.visible;
-    this.adult;
-    this.contents;
-    this.thumbnail;
+    this.instance = portfolioApi;
+    this.title = null;
+    this.subTitle = null;
+    this.client = null;
+    this.visible = false;
+    this.adult = false;
+    this.contents = null;
+    this.thumbnail = null;
     this.deleteImage = this.deleteImage.bind(this);
     this.thumbImage = this.thumbImage.bind(this);
     this._onUploadFile = (event) => this.sendFile(event);
     this._onSaveClick = null;
-    this._removeImageHandlers = [];
-    this._thumbImageHandlers = [];
+    this._removeImageBinder = new EventBinder();
+    this._thumbImageBinder = new EventBinder();
     this._editor = null;
   }
 
@@ -41,6 +42,9 @@ export class ProjectComponent extends TemplateRenderer {
   }
 
   get template() {
+    if (this.isLoading) return this.loadingTemplate;
+    if (this.hasError) return this.errorTemplate;
+
     const checkVisibility = this.getFragmentWithVisibility(this.visible);
     const checkAdult = this.getFragmentWithAdult(this.adult);
 
@@ -48,9 +52,9 @@ export class ProjectComponent extends TemplateRenderer {
       ? html`${this.contents.map(
         ({ id, url }) => html`
             <div id="area-${id}" class="image-area">
-              <img src=${url} alt="Preview" />
-              <button class="thumb-image" data-image-id=${id}>thumb</button>
-              <button class="remove-image" data-image-id=${id}>delete</button>
+              <img src=${url} alt="Project content" loading="lazy" />
+              <button class="thumb-image" data-image-id=${id} aria-label="Set as thumbnail">thumb</button>
+              <button class="remove-image" data-image-id=${id} aria-label="Delete image">delete</button>
             </div>
           `
       )}`
@@ -59,7 +63,7 @@ export class ProjectComponent extends TemplateRenderer {
     const thumbnail = this.thumbnail
       ? html`
           <div id="thumbnail-area" class="image-area">
-            <img src=${this.thumbnail} alt="Preview" />
+            <img src=${this.thumbnail} alt="Project thumbnail" loading="lazy" />
           </div>
         `
       : html``;
@@ -127,9 +131,12 @@ export class ProjectComponent extends TemplateRenderer {
   }
 
   async getProject() {
+    this.setLoadState(LoadState.LOADING);
+    this.render();
     try {
       const { metadata, visible, description, contents, thumbnail, adult } =
         await this.instance.getProject(this.projectId);
+      if (!this.isConnected) return;
       this.title = metadata.title;
       this.subTitle = metadata.subTitle;
       this.client = metadata.client;
@@ -142,11 +149,12 @@ export class ProjectComponent extends TemplateRenderer {
         this.thumbnail = thumbnail.url;
       }
 
-      if (this.isConnected) {
-        super.render();
-      }
+      this.setLoadState(LoadState.DONE);
+      super.render();
     } catch (error) {
-      console.error("Failed to load project", error);
+      if (error.name === "AbortError") return;
+      this.setLoadState(LoadState.ERROR, "Failed to load project.");
+      if (this.isConnected) this.render();
     }
   }
 
@@ -233,35 +241,15 @@ export class ProjectComponent extends TemplateRenderer {
   };
 
   initRemoveImageEvent = () => {
-    this.querySelectorAll(".remove-image").forEach((item, index) => {
-      const oldHandler = this._removeImageHandlers[index];
-      if (oldHandler) {
-        item.removeEventListener("click", oldHandler);
-      }
-    });
-
-    this._removeImageHandlers = [];
-    this.querySelectorAll(".remove-image").forEach((item) => {
-      const handler = (event) => this.deleteImage(event);
-      this._removeImageHandlers.push(handler);
-      item.addEventListener("click", handler);
-    });
+    this._removeImageBinder.bindAll(
+      this.querySelectorAll(".remove-image"), "click", (e) => this.deleteImage(e)
+    );
   };
 
   initThumbImageEvent = () => {
-    this.querySelectorAll(".thumb-image").forEach((item, index) => {
-      const oldHandler = this._thumbImageHandlers[index];
-      if (oldHandler) {
-        item.removeEventListener("click", oldHandler);
-      }
-    });
-
-    this._thumbImageHandlers = [];
-    this.querySelectorAll(".thumb-image").forEach((item) => {
-      const handler = (event) => this.thumbImage(event);
-      this._thumbImageHandlers.push(handler);
-      item.addEventListener("click", handler);
-    });
+    this._thumbImageBinder.bindAll(
+      this.querySelectorAll(".thumb-image"), "click", (e) => this.thumbImage(e)
+    );
   };
 
   getId = async () => {
@@ -282,20 +270,8 @@ export class ProjectComponent extends TemplateRenderer {
 
   disconnectedCallback() {
     this.removeEventListener("upload-file", this._onUploadFile);
-    this.querySelectorAll(".remove-image").forEach((item, index) => {
-      const handler = this._removeImageHandlers[index];
-      if (handler) {
-        item.removeEventListener("click", handler);
-      }
-    });
-    this.querySelectorAll(".thumb-image").forEach((item, index) => {
-      const handler = this._thumbImageHandlers[index];
-      if (handler) {
-        item.removeEventListener("click", handler);
-      }
-    });
-    this._removeImageHandlers = [];
-    this._thumbImageHandlers = [];
+    this._removeImageBinder.unbindAll();
+    this._thumbImageBinder.unbindAll();
 
     const saveButton = this.querySelector("#saveButton");
     if (saveButton && this._onSaveClick) {

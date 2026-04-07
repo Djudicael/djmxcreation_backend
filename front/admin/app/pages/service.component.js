@@ -7,9 +7,6 @@ export class ServiceComponent extends TemplateRenderer {
     }
 
     get template() {
-        console.log('service');
-
-
         return html`
         <section>
             <div class="title">
@@ -22,7 +19,7 @@ export class ServiceComponent extends TemplateRenderer {
             <div class="services">
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>Design</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur
@@ -30,7 +27,7 @@ export class ServiceComponent extends TemplateRenderer {
                 </div>
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>Developpement</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur
@@ -38,7 +35,7 @@ export class ServiceComponent extends TemplateRenderer {
                 </div>
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>SEO</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur
@@ -46,7 +43,7 @@ export class ServiceComponent extends TemplateRenderer {
                 </div>
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>Marketing</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur
@@ -54,7 +51,7 @@ export class ServiceComponent extends TemplateRenderer {
                 </div>
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>App develipment</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur
@@ -62,7 +59,7 @@ export class ServiceComponent extends TemplateRenderer {
                 </div>
                 <div class="service">
                     <div class="icon">
-                        <img src="/ressource/icon/DISPLAY.svg" />
+                        <img src="/ressource/icon/DISPLAY.svg" alt="" loading="lazy" />
                     </div>
                     <h2>Error Fixig</h2>
                     Lorem ipsum dolor sit amet, consectetur adipisicing elit. Voluptates blanditiis pariatur nostrum tenetur

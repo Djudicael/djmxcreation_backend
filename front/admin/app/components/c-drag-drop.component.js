@@ -9,7 +9,7 @@ export class DragDropComponent extends TemplateRenderer {
         this.$fileCatcher = null;
         this.$fileListDisplay = null;
         this.fileList = [];
-        this.renderFileList, this.sendFile = null;
+        this.sendFile = null;
 
         this.uploadImages = this.uploadImages.bind(this);
         this._onUploadClick = this.uploadImages;
@@ -57,7 +57,7 @@ export class DragDropComponent extends TemplateRenderer {
         this.$fileListDisplay.innerHTML = '';
         this.fileList.forEach((file, index) => {
             const fileDisplayEl = document.createElement('p');
-            fileDisplayEl.innerHTML = (index + 1) + ': ' + file.name;
+            fileDisplayEl.textContent = `${index + 1}: ${file.name}`;
             this.$fileListDisplay.appendChild(fileDisplayEl);
         });
     };

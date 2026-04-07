@@ -1,7 +1,7 @@
 import { config } from "../config/api.config.js";
 import { BaseHttp } from "../../../shared/src/http-base.js";
 
-export default class Http extends BaseHttp {
+class Http extends BaseHttp {
     constructor() {
         super(config);
     }
@@ -18,3 +18,7 @@ export default class Http extends BaseHttp {
         return this.doDeleteJson({ path, authToken });
     }
 }
+
+/** Shared singleton — avoids creating a new instance per component. */
+const httpInstance = new Http();
+export default httpInstance;

@@ -16,21 +16,21 @@ export default class HeaderComponent extends TemplateRenderer {
     get template() {
         return html`
 
-        <div class="menu-tog">
+        <button class="menu-tog" aria-label="Toggle navigation menu" aria-expanded="false">
             <span></span>
             <span></span>
-        </div>
+        </button>
 
-        <div class="menu">
+        <nav class="menu" role="navigation" aria-label="Main navigation">
             <div class="links">
-                <ul class="menu-list">
-                    <li class="menu-wrap"><a href="/">Home/<span>01</span></a></li>
-                    <li class="menu-wrap"><a href="/works">Works/<span>02</span></a></li>
-                    <li class="menu-wrap"><a href="/about">About/<span>03</span></a></li>
-                    <li class="menu-wrap"><a href="/contact">Contact/<span>04</span></a></li>
+                <ul class="menu-list" role="menubar">
+                    <li class="menu-wrap" role="none"><a href="/" role="menuitem">Home/<span aria-hidden="true">01</span></a></li>
+                    <li class="menu-wrap" role="none"><a href="/works" role="menuitem">Works/<span aria-hidden="true">02</span></a></li>
+                    <li class="menu-wrap" role="none"><a href="/about" role="menuitem">About/<span aria-hidden="true">03</span></a></li>
+                    <li class="menu-wrap" role="none"><a href="/contact" role="menuitem">Contact/<span aria-hidden="true">04</span></a></li>
                 </ul>
             </div>
-        </div>
+        </nav>
 
         <div class="header">
             <span class="wrap">
@@ -68,6 +68,7 @@ export default class HeaderComponent extends TemplateRenderer {
 
         if (this.menu.classList.contains('active')) {
             this.menuTog.classList.remove('active');
+            this.menuTog.setAttribute('aria-expanded', 'false');
             this.toggleMenuWraps(false);
             const hideMenuTimer = setTimeout(() => {
                 this.menu.classList.remove('active')
@@ -78,6 +79,7 @@ export default class HeaderComponent extends TemplateRenderer {
             this._timeouts.push(hideMenuTimer, showWrapsTimer);
         } else {
             this.menuTog.classList.add('active');
+            this.menuTog.setAttribute('aria-expanded', 'true');
             this.toggleWraps(false);
             const showMenuTimer = setTimeout(() => {
                 this.menu.classList.add('active')

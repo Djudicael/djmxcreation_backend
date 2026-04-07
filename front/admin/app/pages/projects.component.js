@@ -1,14 +1,12 @@
-import { TemplateRenderer, html, sanitizeHtml } from '../utils/template-renderer.js';
-import PortfolioApi from '../api/portfolio.api.js';
+import { TemplateRenderer, html, LoadState } from '../utils/template-renderer.js';
+import portfolioApi from '../api/portfolio.api.js';
 import Metadata from '../models/metadata.js';
 
 export class ProjectManagementComponent extends TemplateRenderer {
-    // TODO https://codepen.io/choogoor/pen/YWBxAg
-    constructor(router) {
+    constructor() {
         super();
         this.noShadow = true;
-        this.router = router;
-        this.instance = new PortfolioApi();
+        this.instance = portfolioApi;
         this.projects = [];
         this.step = 'PROJECT_HOME';
         this.createProject = this.createProject.bind(this);
@@ -57,6 +55,9 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
 
     get template() {
+        if (this.isLoading && !this.projects.length) return this.loadingTemplate;
+        if (this.hasError && !this.projects.length) return this.errorTemplate;
+
         return html`
         <section class="content-page">
         ${this.creationButton({ step: this.step })}
@@ -68,14 +69,18 @@ export class ProjectManagementComponent extends TemplateRenderer {
 
 
     async getProjects() {
+        this.setLoadState(LoadState.LOADING);
+        this.render();
         try {
             const projects = await this.instance.getProjects();
+            if (!this.isConnected) return;
             this.projects = [...projects];
-            if (this.isConnected) {
-                super.render();
-            }
+            this.setLoadState(LoadState.DONE);
+            super.render();
         } catch (error) {
-            console.error('Failed to load projects', error);
+            if (error.name === "AbortError") return;
+            this.setLoadState(LoadState.ERROR, "Failed to load projects.");
+            if (this.isConnected) this.render();
         }
     }
 
@@ -140,7 +145,6 @@ export class ProjectManagementComponent extends TemplateRenderer {
         this.addEventListener('create-project', this._onCreateProject);
         this.addEventListener('delete-project', this._onDeleteProject);
         this.addEventListener('cancel-creation', this._onCancelCreation);
-        // this.remove
         this.initCreationProjectButton();
         this.getProjects();
     }

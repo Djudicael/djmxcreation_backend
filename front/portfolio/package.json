@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "esbuild": "^0.17.14",
+    "esbuild": "^0.25.1",
     "lit-html": "^2.7.0",
     "quill-delta-to-html": "^0.12.1"
   },

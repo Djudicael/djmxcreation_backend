@@ -1,21 +1,24 @@
 import Quill from "quill";
-import PortfolioApi from "../api/portfolio.api.js";
+import portfolioApi from "../api/portfolio.api.js";
 import { editorConfig } from "../utils/helper.js";
-import { TemplateRenderer, html } from "../utils/template-renderer.js";
+import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
 
 export class ContactComponent extends TemplateRenderer {
   constructor() {
     super();
     this.noShadow = true;
-    this.instance = new PortfolioApi();
-    this.id;
-    this.description;
+    this.instance = portfolioApi;
+    this.id = null;
+    this.description = null;
     this._editor = null;
     this.$saveButton = null;
     this._onSaveClick = null;
   }
 
   get template() {
+    if (this.isLoading) return this.loadingTemplate;
+    if (this.hasError) return this.errorTemplate;
+
     return html`
       <section class="content-page">
         <div class="presentation">
@@ -61,15 +64,19 @@ export class ContactComponent extends TemplateRenderer {
   }
 
   async getContact() {
+    this.setLoadState(LoadState.LOADING);
+    this.render();
     try {
       const { id, description } = await this.instance.getContacts();
+      if (!this.isConnected) return;
       this.id = id;
       this.description = description;
-      if (this.isConnected) {
-        super.render();
-      }
+      this.setLoadState(LoadState.DONE);
+      super.render();
     } catch (error) {
-      console.error("Failed to load contact", error);
+      if (error.name === "AbortError") return;
+      this.setLoadState(LoadState.ERROR, "Failed to load contact information.");
+      if (this.isConnected) this.render();
     }
   }
 

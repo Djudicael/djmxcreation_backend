@@ -10,6 +10,7 @@
 @import "project-page.css";
 @import "module.css";
 @import "mobile.css";
+@import "../../shared/style/components.css";
 /*===== VARIABLES CSS =====*/
 
 :root {

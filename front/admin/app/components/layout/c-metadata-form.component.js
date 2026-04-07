@@ -31,12 +31,27 @@ export class MetadataFormComponent extends TemplateRenderer {
 
     createProject = (e) => {
         e.preventDefault();
-        if (this.$form.checkValidity()) {
-            const title = this.$title.value;
-            const subTitle = this.$subTitle.value;
-            const client = this.$client.value;
-            this.dispatchEvent(new CustomEvent('create-project', { detail: { title, subTitle, client }, bubbles: true, composed: true }))
+        if (!this.$form.checkValidity()) {
+            this.$form.reportValidity();
+            return;
         }
+
+        const title = this.$title.value.trim();
+        const subTitle = this.$subTitle.value.trim();
+        const client = this.$client.value.trim();
+
+        if (!title || title.length > 200) {
+            this.$title.setCustomValidity('Title must be between 1 and 200 characters');
+            this.$form.reportValidity();
+            this.$title.setCustomValidity('');
+            return;
+        }
+
+        this.dispatchEvent(new CustomEvent('create-project', {
+            detail: { title, subTitle, client },
+            bubbles: true,
+            composed: true,
+        }));
     }
 
     cancelCreation = (e) => {

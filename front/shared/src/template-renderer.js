@@ -49,12 +49,93 @@ export function sanitizeHtml(htmlContent) {
     return doc.body.innerHTML;
 }
 
+/**
+ * Sanitize HTML then wrap it with lit-html's unsafeHTML directive.
+ * Use this instead of calling unsafeHTML() directly to prevent XSS.
+ */
+export function safeHTML(htmlContent) {
+    return exportedUnsafeHTML(sanitizeHtml(htmlContent));
+}
+
+/**
+ * Component loading states.
+ * @readonly
+ * @enum {string}
+ */
+export const LoadState = Object.freeze({
+    IDLE: "idle",
+    LOADING: "loading",
+    ERROR: "error",
+    DONE: "done",
+});
+
+/**
+ * Base class for all web components.
+ * Provides rendering, loading/error state management, and
+ * an AbortController that is wired to the component lifecycle.
+ */
 export class TemplateRenderer extends HTMLElement {
+    constructor() {
+        super();
+        /** @type {AbortController | null} */
+        this._abortController = null;
+        /** @type {string} */
+        this._loadState = LoadState.IDLE;
+        /** @type {string | null} */
+        this._errorMessage = null;
+    }
+
+    /** AbortSignal tied to this component's lifecycle. */
+    get signal() {
+        return this._abortController?.signal;
+    }
+
+    /**
+     * Set the loading state and optionally re-render.
+     * @param {string} state - One of LoadState values.
+     * @param {string} [errorMessage]
+     */
+    setLoadState(state, errorMessage = null) {
+        this._loadState = state;
+        this._errorMessage = errorMessage;
+    }
+
+    /** @returns {boolean} */
+    get isLoading() {
+        return this._loadState === LoadState.LOADING;
+    }
+
+    /** @returns {boolean} */
+    get hasError() {
+        return this._loadState === LoadState.ERROR;
+    }
+
+    /** Loading indicator fragment — override in subclasses for custom UI. */
+    get loadingTemplate() {
+        return html`<div class="loading-indicator" role="status" aria-live="polite">
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span>Loading...</span>
+        </div>`;
+    }
+
+    /** Error indicator fragment — override in subclasses for custom UI. */
+    get errorTemplate() {
+        return html`<div class="error-indicator" role="alert">
+            <p class="error-message">${this._errorMessage || "Something went wrong."}</p>
+        </div>`;
+    }
+
     connectedCallback() {
+        this._abortController = new AbortController();
         if (!this.noShadow) {
             this.attachShadow({ mode: "open" });
         }
         this.render();
+    }
+
+    disconnectedCallback() {
+        this._abortController?.abort();
+        this._abortController = null;
     }
 
     render(template) {

@@ -1,6 +1,6 @@
-import { TemplateRenderer, html, unsafeHTML } from "../utils/template-renderer";
+import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-renderer";
 
-import PortfolioApi from "../api/portfolio.api.js";
+import portfolioApi from "../api/portfolio.api.js";
 import { lerp } from "../utils/helper.js";
 export default class WorksComponent extends TemplateRenderer {
     constructor() {
@@ -9,7 +9,7 @@ export default class WorksComponent extends TemplateRenderer {
         menu?.hideMenu?.();
         this.routerOutlet = document.querySelector('router-outlet');
         this.noShadow = true;
-        this.api = new PortfolioApi();
+        this.api = portfolioApi;
         this.projects = [];
         this.canvas = null;
         this.ctx = null;
@@ -48,9 +48,12 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     get template() {
-        const projects = this.projects ? html`${this.projects.map(({ id, metadata, adult }) => html`<li class="project" project-id=${id}>${metadata.title} ${unsafeHTML(this.nsfwFragment(adult))} </li>`)}` : html``;
+        if (this.isLoading && !this.projects.length) return this.loadingTemplate;
+        if (this.hasError && !this.projects.length) return this.errorTemplate;
+
+        const projects = this.projects ? html`${this.projects.map(({ id, metadata, adult }) => html`<li class="project" role="button" tabindex="0" project-id=${id}>${metadata.title} ${safeHTML(this.nsfwFragment(adult))} </li>`)}` : html``;
         const loadMore = this.page < this.totalPages ? html`<div class="load-more-container">
-        <button class="load-more">
+        <button class="load-more" aria-label="Load more projects">
             <span class="button-text">Load More</span>
             <span class="button-arrow"></span>
         </button>
@@ -70,17 +73,20 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     async getProjects() {
+        this.setLoadState(LoadState.LOADING);
         try {
             const { totalPages, page, size, projects } = await this.api.getProjects({ page: this.page, pageSize: this.pageSize });
+            if (!this.isConnected) return;
             this.totalPages = totalPages;
             this.page = page;
             this.pageSize = size;
             this.projects.push(...projects);
-            if (this.isConnected) {
-                super.render();
-            }
+            this.setLoadState(LoadState.DONE);
+            super.render();
         } catch (error) {
-            console.error('Failed to load works', error);
+            if (error.name === "AbortError") return;
+            this.setLoadState(LoadState.ERROR, "Failed to load works.");
+            if (this.isConnected) super.render();
         }
     }
 
@@ -145,6 +151,7 @@ export default class WorksComponent extends TemplateRenderer {
             link.removeEventListener('mouseenter', handlers.onMouseEnter);
             link.removeEventListener('mouseleave', handlers.onMouseLeaveTarget);
             link.removeEventListener('click', handlers.onClick);
+            link.removeEventListener('keydown', handlers.onKeydown);
         });
         this._linkHandlers = [];
 
@@ -238,11 +245,19 @@ export default class WorksComponent extends TemplateRenderer {
                 this.routerOutlet?.navigateTo?.(`/works/${projectId}`);
             };
 
+            const onKeydown = (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onClick();
+                }
+            };
+
             link.addEventListener('mouseover', onMouseOver);
             link.addEventListener('mouseleave', onMouseLeaveOpacity);
             link.addEventListener('mouseenter', onMouseEnter);
             link.addEventListener('mouseleave', onMouseLeaveTarget);
             link.addEventListener('click', onClick);
+            link.addEventListener('keydown', onKeydown);
 
             this._linkHandlers.push({
                 link,
@@ -252,6 +267,7 @@ export default class WorksComponent extends TemplateRenderer {
                     onMouseEnter,
                     onMouseLeaveTarget,
                     onClick,
+                    onKeydown,
                 },
             });
 
@@ -322,6 +338,7 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     disconnectedCallback() {
+        super.disconnectedCallback();
         this.cleanupDynamicResources();
     }
 }

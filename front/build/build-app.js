@@ -112,7 +112,7 @@ export async function buildApp({
     outDir = "dist",
     assetsFolder = "ressource",
     minify = true,
-    sourcemap = true,
+    sourcemap = process.env.NODE_ENV !== "production",
     target = ["chrome58"],
 } = {}) {
     ensureDir(outDir);
@@ -125,6 +125,9 @@ export async function buildApp({
     const define = {
         "import.meta.env": JSON.stringify({
             BACKEND_API_URL: env.BACKEND_API_URL || "",
+            KEYCLOAK_URL: env.KEYCLOAK_URL || "",
+            KEYCLOAK_REALM: env.KEYCLOAK_REALM || "",
+            KEYCLOAK_CLIENT_ID: env.KEYCLOAK_CLIENT_ID || "",
         }),
     };
 
@@ -162,6 +165,9 @@ export async function watchApp({
     const define = {
         "import.meta.env": JSON.stringify({
             BACKEND_API_URL: env.BACKEND_API_URL || "",
+            KEYCLOAK_URL: env.KEYCLOAK_URL || "",
+            KEYCLOAK_REALM: env.KEYCLOAK_REALM || "",
+            KEYCLOAK_CLIENT_ID: env.KEYCLOAK_CLIENT_ID || "",
         }),
     };
 

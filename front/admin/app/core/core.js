@@ -1,17 +1,14 @@
 import { ComponentRegistry } from './component-registry.js';
 import { layoutComponents } from '../components/layout/index.js';
-//PAGES
 import { HomeComponent } from '../pages/home.component.js';
 import { DragDropComponent } from '../components/c-drag-drop.component.js';
 import { ProjectManagementComponent } from '../pages/projects.component.js';
-// import { LoginComponent } from '../pages/login.component.js';
 import { ServiceComponent } from '../pages/service.component.js';
 import { WorkComponent } from '../pages/work.component.js';
 import { AboutComponent } from '../pages/about.component.js';
 import { ContactComponent } from '../pages/contact.component.js';
 import { ProjectComponent } from '../pages/project.component.js';
 import { NotFoundComponent } from '../pages/not-found.component.js';
-
 import { RouterOutlet } from '../controller/router-outlet.js';
 
 
@@ -35,10 +32,6 @@ Core.inst = null;
 
 const components = [
     ...layoutComponents,
-    // {
-    //     tagName: 'c-login',
-    //     component: LoginComponent
-    // },
     {
         tagName: 'c-drag-drop',
         component: DragDropComponent

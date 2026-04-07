@@ -1,8 +1,13 @@
 import Keycloak from "keycloak-js";
+
+const KEYCLOAK_URL = import.meta?.env?.KEYCLOAK_URL || "http://localhost:8080";
+const KEYCLOAK_REALM = import.meta?.env?.KEYCLOAK_REALM || "portfolio";
+const KEYCLOAK_CLIENT_ID = import.meta?.env?.KEYCLOAK_CLIENT_ID || "portfolio";
+
 const keycloak = new Keycloak({
-  url: "http://localhost:8080",
-  realm: "portfolio",
-  clientId: "portfolio",
+  url: KEYCLOAK_URL,
+  realm: KEYCLOAK_REALM,
+  clientId: KEYCLOAK_CLIENT_ID,
   "public-client": true,
 });
 

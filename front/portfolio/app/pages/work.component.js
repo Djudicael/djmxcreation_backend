@@ -1,5 +1,6 @@
-import { TemplateRenderer, html, sanitizeHtml, unsafeHTML } from "../utils/template-renderer";
-import PortfolioApi from "../api/portfolio.api.js";
+import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-renderer";
+import { EventBinder } from "../../../shared/src/event-binder.js";
+import portfolioApi from "../api/portfolio.api.js";
 import { htmlDescription } from "../utils/helper.js";
 
 export default class WorkComponent extends TemplateRenderer {
@@ -10,16 +11,18 @@ export default class WorkComponent extends TemplateRenderer {
         menu?.hideMenu?.();
         this.routerOutlet = document.querySelector('router-outlet');
         this.doc = document.documentElement;
-        this.api = new PortfolioApi();
-        this.title;
-        this.subTitle;
-        this.client;
-        this.contents;
-        this.$image;
+        this.api = portfolioApi;
+        this.title = null;
+        this.subTitle = null;
+        this.client = null;
+        this.contents = null;
+        this.$image = null;
         this.initImageOverlayEvent = this.initImageOverlayEvent.bind(this);
         this._overlayClickHandler = () => this.hideImageOverlay();
-        this._imageClickHandlers = [];
-
+        this._overlayKeyHandler = (e) => {
+            if (e.key === "Escape") this.hideImageOverlay();
+        };
+        this._imageClickBinder = new EventBinder();
     }
 
     getTitleFragment(title) {
@@ -51,8 +54,10 @@ export default class WorkComponent extends TemplateRenderer {
     }
 
     get template() {
-        const safeDescription = sanitizeHtml(htmlDescription(this.description));
-        const description = html`${unsafeHTML(safeDescription)}`;
+        if (this.isLoading) return this.loadingTemplate;
+        if (this.hasError) return this.errorTemplate;
+
+        const description = html`${safeHTML(htmlDescription(this.description))}`;
         const projectHeader = html`
         <div class="project_header">	
             ${this.getTitleFragment(this.title)}
@@ -60,18 +65,22 @@ export default class WorkComponent extends TemplateRenderer {
             ${this.getFragmentClient(this.client)}
         </div>`;
         const imageOverlay = html`
-        <div class="image-overlay" >
+        <div class="image-overlay" role="dialog" aria-modal="true" aria-label="Image preview">
             <div class="image-overlay-content">
-            <img src="" class="overlay-image">
+            <img src="" class="overlay-image" alt="Full size preview">
             </div>
         </div>`;
 
         const images = this.contents
-            ? html`${this.contents.map(({ url }) => html`
+            ? html`${this.contents.map(({ url }, index) => html`
             <img
             src="${url}"
             data-hi-res="${url}"
-            class="pro-image" 
+            class="pro-image"
+            alt="${this.title ? `${this.title} - image ${index + 1}` : `Project image ${index + 1}`}"
+            loading="lazy"
+            role="button"
+            tabindex="0"
             >
     `)}` : html``;
 
@@ -90,26 +99,30 @@ export default class WorkComponent extends TemplateRenderer {
     }
 
     async getProject(id) {
+        this.setLoadState(LoadState.LOADING);
+        this.render();
         try {
             const { metadata, description, contents } = await this.api.getProject(id);
+            if (!this.isConnected) return;
             this.title = metadata.title;
             this.subTitle = metadata.subTitle;
             this.client = metadata.client;
             this.description = description;
             this.contents = contents;
-            if (this.isConnected) {
-                super.render();
-            }
+            this.setLoadState(LoadState.DONE);
+            super.render();
         } catch (error) {
-            console.error('Failed to load work', error);
+            if (error.name === "AbortError") return;
+            this.setLoadState(LoadState.ERROR, "Failed to load project.");
+            if (this.isConnected) this.render();
         }
     }
 
     async init() {
         this.$image = this.querySelector('.image-overlay');
         this.$image?.addEventListener('click', this._overlayClickHandler);
+        document.addEventListener('keydown', this._overlayKeyHandler);
         this.initImageOverlayEvent();
-
     }
 
     async connectedCallback() {
@@ -129,6 +142,7 @@ export default class WorkComponent extends TemplateRenderer {
     }
 
     showImageOverlay(e) {
+        this._lastFocusedElement = document.activeElement;
         const element = e.currentTarget;
         const url = element.dataset.hiRes;
         const overlay = this.querySelector(".image-overlay");
@@ -140,7 +154,9 @@ export default class WorkComponent extends TemplateRenderer {
             return;
         }
         image.src = url;
+        image.alt = element.alt || "Full size preview";
         overlay.style.display = "flex";
+        overlay.focus();
     }
 
     hideImageOverlay() {
@@ -149,32 +165,29 @@ export default class WorkComponent extends TemplateRenderer {
             return;
         }
         overlay.style.display = "none";
+        this._lastFocusedElement?.focus?.();
+    }
+
+    _handleImageKeydown(e) {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            this.showImageOverlay(e);
+        }
     }
 
     initImageOverlayEvent = () => {
-        this.querySelectorAll('.pro-image').forEach((item, index) => {
-            const oldHandler = this._imageClickHandlers[index];
-            if (oldHandler) {
-                item.removeEventListener('click', oldHandler);
-            }
-        });
-
-        this._imageClickHandlers = [];
-        this.querySelectorAll('.pro-image').forEach(item => {
-            const handler = (event) => this.showImageOverlay(event);
-            this._imageClickHandlers.push(handler);
-            item.addEventListener('click', handler)
+        this._imageClickBinder.bindAll(
+            this.querySelectorAll('.pro-image'), 'click', (e) => this.showImageOverlay(e)
+        );
+        this.querySelectorAll('.pro-image').forEach(img => {
+            img.addEventListener('keydown', (e) => this._handleImageKeydown(e));
         });
     }
 
     disconnectedCallback() {
+        super.disconnectedCallback();
         this.$image?.removeEventListener('click', this._overlayClickHandler);
-        this.querySelectorAll('.pro-image').forEach((item, index) => {
-            const handler = this._imageClickHandlers[index];
-            if (handler) {
-                item.removeEventListener('click', handler);
-            }
-        });
-        this._imageClickHandlers = [];
+        document.removeEventListener('keydown', this._overlayKeyHandler);
+        this._imageClickBinder.unbindAll();
     }
 }
