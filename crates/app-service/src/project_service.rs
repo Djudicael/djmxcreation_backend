@@ -295,7 +295,6 @@ impl IProjectService for ProjectService {
                     .updated_on(data.updated_on)
                     .thumbnail(thumbnail_view)
                     .contents(contents)
-                    .build()
             })
             .collect();
 

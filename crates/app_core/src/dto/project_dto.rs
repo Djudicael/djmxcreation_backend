@@ -79,17 +79,4 @@ impl ProjectDto {
         self
     }
 
-    pub fn build(self) -> Self {
-        ProjectDto {
-            id: self.id,
-            metadata: self.metadata,
-            description: self.description,
-            visible: self.visible,
-            adult: self.adult,
-            created_on: self.created_on,
-            updated_on: self.updated_on,
-            contents: self.contents,
-            thumbnail: self.thumbnail,
-        }
-    }
 }

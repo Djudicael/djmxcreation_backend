@@ -158,7 +158,7 @@ fn add_project_uploads_using_bucket_prefixed_key_and_returns_resolved_url() {
     );
 
     let (project_repo, project_probe) = create_project_repository(
-        Some(ProjectDto::new().build()),
+        Some(ProjectDto::new()),
         Some(project_content.clone()),
         None,
         None,
@@ -221,7 +221,7 @@ fn delete_project_content_removes_storage_object_and_thumbnail_entry() {
     );
 
     let (project_repo, project_probe) = create_project_repository(
-        Some(ProjectDto::new().build()),
+        Some(ProjectDto::new()),
         None,
         Some(content.clone()),
         Some(thumbnail),

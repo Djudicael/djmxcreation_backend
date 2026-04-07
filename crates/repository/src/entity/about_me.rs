@@ -1,7 +1,9 @@
-use app_core::dto::{about_me_dto::AboutMeDto, content_dto::ContentDto};
+use app_core::dto::about_me_dto::AboutMeDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+
+use super::value_to_content;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct AboutMe {
@@ -37,11 +39,7 @@ impl From<AboutMe> for AboutMeDto {
             val.first_name,
             val.last_name,
             val.description,
-            val.photo.map(|photo_json| photo_json).and_then(to_content),
+            val.photo.and_then(value_to_content),
         )
     }
-}
-
-fn to_content(value: Value) -> Option<ContentDto> {
-    serde_json::from_value(value).ok()
 }

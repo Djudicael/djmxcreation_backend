@@ -1,14 +1,17 @@
-use app_core::dto::{content_dto::ContentDto, project_content_dto::ProjectContentDto};
+use app_core::dto::project_content_dto::ProjectContentDto;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+
+use super::value_to_content;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectContent {
     id: Option<Uuid>,
     project_id: Uuid,
     content: Option<Value>,
-    created_on: Option<chrono::DateTime<chrono::Utc>>,
+    created_on: Option<DateTime<Utc>>,
 }
 
 impl ProjectContent {
@@ -16,7 +19,7 @@ impl ProjectContent {
         id: Option<Uuid>,
         project_id: Uuid,
         content: Option<Value>,
-        created_on: Option<chrono::DateTime<chrono::Utc>>,
+        created_on: Option<DateTime<Utc>>,
     ) -> Self {
         Self {
             id,
@@ -32,12 +35,8 @@ impl From<ProjectContent> for ProjectContentDto {
         ProjectContentDto::new(
             val.id,
             val.project_id,
-            val.content.and_then(to_content),
+            val.content.and_then(value_to_content),
             val.created_on,
         )
     }
-}
-
-fn to_content(value: Value) -> Option<ContentDto> {
-    serde_json::from_value(value).ok()
 }

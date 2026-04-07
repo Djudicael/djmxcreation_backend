@@ -25,7 +25,10 @@ use repository::config::{
 };
 use serde_json::json;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 use tracing::info;
 
 const HTTP_TIMEOUT_SECS: u64 = 30;
@@ -120,7 +123,19 @@ pub async fn start() -> anyhow::Result<()> {
                 .layer(HandleErrorLayer::new(handle_timeout_error))
                 .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS)),
         )
-        .layer(CorsLayer::permissive())
+        .layer(if config.cors_origins.is_empty() {
+            CorsLayer::new()
+        } else {
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list(
+                    config
+                        .cors_origins
+                        .iter()
+                        .filter_map(|o| o.parse().ok()),
+                ))
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any)
+        })
         .route_layer(middleware::from_fn(track_metrics));
 
     // ── Server ────────────────────────────────────────────────────────────────

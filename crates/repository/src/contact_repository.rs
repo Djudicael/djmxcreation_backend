@@ -53,14 +53,13 @@ impl IContactRepository for ContactRepository {
 
     async fn update_contact(&self, id: Uuid, contact: &ContactDto) -> Result<ContactDto, Error> {
         let sql = "UPDATE contact SET description = $1 WHERE id = $2 RETURNING *";
-        let description = contact.description.as_ref().map(|v| v.to_string());
         let client = self
             .client
             .get_client()
             .await
             .map_err(|e| to_error(e, None))?;
         let row = client
-            .query_one(sql, &[&Json(description), &id])
+            .query_one(sql, &[&Json(&contact.description), &id])
             .await
             .map_err(|sql_error| to_error(PoolError::Backend(sql_error), None))?;
         let contact = ContactRepository::map_row_to_contact(&row)?;

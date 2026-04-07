@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -14,8 +15,8 @@ pub struct ProjectView {
     pub description: Option<Value>,
     pub visible: bool,
     pub adult: bool,
-    created_on: Option<chrono::DateTime<chrono::Utc>>,
-    updated_on: Option<chrono::DateTime<chrono::Utc>>,
+    created_on: Option<DateTime<Utc>>,
+    updated_on: Option<DateTime<Utc>>,
     pub contents: Vec<ContentView>,
     pub thumbnail: Option<ContentView>,
 }
@@ -60,12 +61,12 @@ impl ProjectView {
         self
     }
 
-    pub fn created_on(mut self, created_on: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+    pub fn created_on(mut self, created_on: Option<DateTime<Utc>>) -> Self {
         self.created_on = created_on;
         self
     }
 
-    pub fn updated_on(mut self, updated_on: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+    pub fn updated_on(mut self, updated_on: Option<DateTime<Utc>>) -> Self {
         self.updated_on = updated_on;
         self
     }
@@ -80,25 +81,10 @@ impl ProjectView {
         self
     }
 
-    pub fn build(self) -> ProjectView {
-        ProjectView {
-            id: self.id,
-            metadata: self.metadata,
-            description: self.description,
-            visible: self.visible,
-            adult: self.adult,
-            created_on: self.created_on,
-            updated_on: self.updated_on,
-            contents: self.contents,
-            thumbnail: self.thumbnail,
-        }
-    }
 }
 
 impl From<ProjectDto> for ProjectView {
     fn from(dto: ProjectDto) -> Self {
-        let contents: Vec<ContentView> = vec![];
-
         Self::new()
             .id(dto.id)
             .metadata(dto.metadata)
@@ -107,7 +93,5 @@ impl From<ProjectDto> for ProjectView {
             .adult(dto.adult)
             .created_on(dto.created_on)
             .updated_on(dto.updated_on)
-            .contents(contents)
-            .build()
     }
 }

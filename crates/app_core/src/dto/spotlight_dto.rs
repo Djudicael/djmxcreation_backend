@@ -55,14 +55,4 @@ impl SpotlightDto {
         self
     }
 
-    pub fn build(self) -> Self {
-        SpotlightDto {
-            id: self.id,
-            project_id: self.project_id,
-            adult: self.adult,
-            metadata: self.metadata,
-            created_on: self.created_on,
-            thumbnail: self.thumbnail,
-        }
-    }
 }

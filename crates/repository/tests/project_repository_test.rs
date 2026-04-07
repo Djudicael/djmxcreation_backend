@@ -118,8 +118,7 @@ async fn test_project_crud_operations() {
         .description(Some(json!({"details": "Test description"})))
         .visible(true)
         .adult(false)
-        .contents(vec![])
-        .build();
+        .contents(vec![]);
 
     // Perform update
     ctx.repo
@@ -446,8 +445,7 @@ async fn test_edge_cases() {
     // Test updating with empty metadata
     let empty_project = ProjectDto::new()
         .id(Some(ctx.id))
-        .metadata(Some(MetadataDto::new(None, None, None)))
-        .build();
+        .metadata(Some(MetadataDto::new(None, None, None)));
 
     ctx.repo
         .update_project_entity(ctx.id, &empty_project)

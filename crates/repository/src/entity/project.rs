@@ -1,11 +1,9 @@
-use app_core::dto::{
-    content_dto::ContentDto, metadata_dto::MetadataDto, project_content_dto::ProjectContentDto,
-    project_dto::ProjectDto,
-};
+use app_core::dto::{project_content_dto::ProjectContentDto, project_dto::ProjectDto};
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::project_content::ProjectContent;
+use super::{project_content::ProjectContent, value_to_content, value_to_metadata};
 
 #[derive(Default, Debug, Clone)]
 pub struct Project {
@@ -14,21 +12,10 @@ pub struct Project {
     pub description: Option<Value>,
     pub visible: bool,
     pub adult: bool,
-    pub created_on: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_on: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_on: Option<DateTime<Utc>>,
+    pub updated_on: Option<DateTime<Utc>>,
     pub contents: Vec<Value>,
     pub thumbnail_content: Option<Value>,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct ProjectCreated {
-    pub id: Option<Uuid>,
-    pub metadata: Option<Value>,
-    pub description: Option<Value>,
-    pub visible: bool,
-    pub adult: bool,
-    pub created_on: Option<chrono::DateTime<chrono::Utc>>,
-    pub updated_on: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl Project {
@@ -71,12 +58,12 @@ impl Project {
         self
     }
 
-    pub fn created_on(mut self, created_on: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+    pub fn created_on(mut self, created_on: Option<DateTime<Utc>>) -> Self {
         self.created_on = created_on;
         self
     }
 
-    pub fn updated_on(mut self, updated_on: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+    pub fn updated_on(mut self, updated_on: Option<DateTime<Utc>>) -> Self {
         self.updated_on = updated_on;
         self
     }
@@ -91,30 +78,13 @@ impl Project {
         self
     }
 
-    pub fn build(self) -> Project {
-        Project {
-            id: self.id,
-            metadata: self.metadata,
-            description: self.description,
-            visible: self.visible,
-            adult: self.adult,
-            created_on: self.created_on,
-            updated_on: self.updated_on,
-            contents: self.contents,
-            thumbnail_content: self.thumbnail_content,
-        }
-    }
 }
 
 impl From<Project> for ProjectDto {
     fn from(val: Project) -> ProjectDto {
         ProjectDto::new()
             .id(val.id)
-            .metadata(
-                val.metadata
-                    .map(|metadata_json| metadata_json)
-                    .and_then(to_metadata),
-            )
+            .metadata(val.metadata.and_then(value_to_metadata))
             .description(val.description)
             .visible(val.visible)
             .adult(val.adult)
@@ -123,38 +93,11 @@ impl From<Project> for ProjectDto {
             .contents(
                 val.contents
                     .into_iter()
-                    .flat_map(to_content)
+                    .filter_map(|v| serde_json::from_value::<ProjectContent>(v).ok())
                     .map(ProjectContentDto::from)
                     .collect(),
             )
-            .thumbnail(val.thumbnail_content.and_then(to_thumbnail))
-            .build()
+            .thumbnail(val.thumbnail_content.and_then(value_to_content))
     }
-}
-impl From<ProjectCreated> for ProjectDto {
-    fn from(val: ProjectCreated) -> ProjectDto {
-        ProjectDto::new()
-            .id(val.id)
-            .metadata(val.metadata.and_then(to_metadata))
-            .description(val.description)
-            .visible(val.visible)
-            .adult(val.adult)
-            .created_on(val.created_on)
-            .updated_on(val.updated_on)
-            .contents(vec![])
-            .thumbnail(None)
-            .build()
-    }
-}
-
-fn to_content(value: Value) -> Option<ProjectContent> {
-    serde_json::from_value(value).ok()
-}
-fn to_thumbnail(value: Value) -> Option<ContentDto> {
-    serde_json::from_value(value).ok()
-}
-
-fn to_metadata(value: Value) -> Option<MetadataDto> {
-    serde_json::from_value(value).ok()
 }
 

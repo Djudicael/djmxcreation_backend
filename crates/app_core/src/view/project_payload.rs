@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::dto::{metadata_dto::MetadataDto, project_dto::ProjectDto};
 
@@ -30,12 +30,10 @@ impl ProjectPayload {
 
 impl From<ProjectPayload> for ProjectDto {
     fn from(val: ProjectPayload) -> Self {
-        let description_json = val.description.map(|description| json!(description));
         ProjectDto::new()
             .metadata(val.metadata)
-            .description(description_json)
+            .description(val.description)
             .visible(val.visible)
             .adult(val.adult)
-            .build()
     }
 }

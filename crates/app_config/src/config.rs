@@ -11,6 +11,8 @@ pub struct Config {
     pub database: DatabaseConfiguration,
     pub storage: StorageConfiguration,
     pub port: String,
+    /// Allowed CORS origins (comma-separated). Empty means no origins allowed.
+    pub cors_origins: Vec<String>,
 }
 
 impl Config {
@@ -58,10 +60,19 @@ impl Config {
         // ── Server ──────────────────────────────────────────────────────────
         let port = env::var("PORT").unwrap_or_else(|_| "8081".to_string());
 
+        // ── CORS ────────────────────────────────────────────────────────────
+        let cors_origins: Vec<String> = env::var("CORS_ORIGINS")
+            .unwrap_or_default()
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
         Ok(Self {
             database,
             storage,
             port,
+            cors_origins,
         })
     }
 

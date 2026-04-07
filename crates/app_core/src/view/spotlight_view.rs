@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -11,7 +12,7 @@ pub struct SpotlightView {
     pub project_id: Uuid,
     pub adult: bool,
     pub metadata: Option<MetadataDto>,
-    pub created_on: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_on: Option<DateTime<Utc>>,
     pub thumbnail: Option<ContentView>,
 }
 
@@ -21,7 +22,7 @@ impl SpotlightView {
         project_id: Uuid,
         adult: bool,
         metadata: Option<MetadataDto>,
-        created_on: Option<chrono::DateTime<chrono::Utc>>,
+        created_on: Option<DateTime<Utc>>,
         thumbnail: Option<ContentView>,
     ) -> Self {
         Self {
@@ -35,15 +36,3 @@ impl SpotlightView {
     }
 }
 
-impl From<SpotlightView> for crate::dto::spotlight_dto::SpotlightDto {
-    fn from(value: SpotlightView) -> Self {
-        Self::new()
-            .adult(value.adult)
-            .project_id(value.project_id)
-            .created_on(value.created_on)
-            .id(value.id)
-            .metadata(value.metadata)
-            .thumbnail(None)
-            .build()
-    }
-}
