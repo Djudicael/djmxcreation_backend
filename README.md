@@ -245,6 +245,73 @@ If needed, override API base URL via:
 
 ---
 
+## Build recipes
+
+Use these commands from the repository root.
+
+### Build the backend (native)
+
+```bash
+# Debug build
+cargo build --bin djmxcreation-backend-axum
+
+# Release build
+cargo build --release --bin djmxcreation-backend-axum
+```
+
+Backend binary outputs:
+
+- Debug: `target/debug/djmxcreation-backend-axum`
+- Release: `target/release/djmxcreation-backend-axum`
+
+### Build all workspace crates
+
+```bash
+cargo build --workspace
+```
+
+### Build each backend component crate
+
+```bash
+cargo build -p djmxcreation-backend-axum
+cargo build -p app-service
+cargo build -p repository
+cargo build -p app_core
+cargo build -p app_config
+cargo build -p app-error
+cargo build -p test-util
+cargo build -p dev-server
+```
+
+The `migration` crate is not currently part of the workspace members, so build it with:
+
+```bash
+cargo build --manifest-path crates/migration/Cargo.toml
+```
+
+### Build backend for Wasmer (WASI)
+
+```bash
+# Install WASI target (if not installed)
+rustup target add wasm32-wasi
+
+# Build backend as a WASM module
+cargo build --release --target wasm32-wasi -p djmxcreation-backend-axum
+```
+
+WASI artifact:
+
+- `target/wasm32-wasi/release/djmxcreation-backend-axum.wasm`
+
+If your Rust toolchain does not provide `wasm32-wasi`, use the newer target name:
+
+```bash
+rustup target add wasm32-wasip1
+cargo build --release --target wasm32-wasip1 -p djmxcreation-backend-axum
+```
+
+---
+
 ## WASM / WASI target (in progress)
 
 The goal is to compile the backend to `wasm32-wasi` so it can run on
