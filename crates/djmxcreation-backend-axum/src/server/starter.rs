@@ -10,14 +10,14 @@ use crate::{
 use anyhow::Context;
 use app_config::config::Config;
 use axum::{
+    BoxError, Json, Router,
     error_handling::HandleErrorLayer,
-    extract::MatchedPath,
+    extract::{MatchedPath, Request},
     middleware::{self, Next},
     response::Response,
     routing::get,
-    BoxError, Json, Router,
 };
-use hyper::{Request, StatusCode};
+use hyper::StatusCode;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 use repository::config::{
     db::DatabasePool,
@@ -55,7 +55,7 @@ async fn handle_timeout_error(err: BoxError) -> (StatusCode, Json<serde_json::Va
 }
 
 /// Record HTTP request duration for Prometheus metrics.
-async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
+async fn track_metrics(request: Request, next: Next) -> Response {
     let path = request
         .extensions()
         .get::<MatchedPath>()
@@ -65,7 +65,7 @@ async fn track_metrics<B>(request: Request<B>, next: Next<B>) -> Response {
 
     let response = next.run(request).await;
 
-    metrics::histogram!(
+    let _ = metrics::histogram!(
         "http_requests_duration_seconds",
         "method" => method.to_string(),
         "path"   => path,
@@ -107,15 +107,23 @@ pub async fn start() -> anyhow::Result<()> {
         .context("failed to install prometheus recorder")?;
 
     // ── Services ──────────────────────────────────────────────────────────────
-    let service_register =
-        ServiceRegister::new(Arc::new(client_db), storage_client, bucket_name);
+    let service_register = ServiceRegister::new(Arc::new(client_db), storage_client, bucket_name);
 
     // ── Router ────────────────────────────────────────────────────────────────
     let router = Router::new()
         .nest("/", ObservabilityRouter::new_router())
-        .nest("/api/about", AboutMeRouter::new_router(service_register.clone()))
-        .nest("/api/portfolio", ProjectRouter::new_router(service_register.clone()))
-        .nest("/api/contact", ContactRouter::new_router(service_register.clone()))
+        .nest(
+            "/api/about",
+            AboutMeRouter::new_router(service_register.clone()),
+        )
+        .nest(
+            "/api/portfolio",
+            ProjectRouter::new_router(service_register.clone()),
+        )
+        .nest(
+            "/api/contact",
+            ContactRouter::new_router(service_register.clone()),
+        )
         .route("/metrics", get(move || ready(recorder_handle.render())))
         .layer(
             ServiceBuilder::new()
@@ -128,10 +136,7 @@ pub async fn start() -> anyhow::Result<()> {
         } else {
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list(
-                    config
-                        .cors_origins
-                        .iter()
-                        .filter_map(|o| o.parse().ok()),
+                    config.cors_origins.iter().filter_map(|o| o.parse().ok()),
                 ))
                 .allow_methods(tower_http::cors::Any)
                 .allow_headers(tower_http::cors::Any)

@@ -94,10 +94,9 @@ pub fn create_storage_repository(
         url_requests: Mutex::new(Vec::new()),
     });
 
-    let repository: DynIStorageRepository =
-        Arc::<dyn IStorageRepository + Send + Sync>::from(Arc::new(FakeStorageRepository {
-            state: state.clone(),
-        }));
+    let repository: DynIStorageRepository = Arc::new(FakeStorageRepository {
+        state: state.clone(),
+    });
 
     (repository, StorageRepositoryProbe { state })
 }

@@ -85,10 +85,9 @@ pub fn create_about_me_repository(
         deleted_photo_ids: Mutex::new(Vec::new()),
     });
 
-    let repository: DynIAboutMeRepository =
-        Arc::<dyn IAboutMeRepository + Send + Sync>::from(Arc::new(FakeAboutMeRepository {
-            state: state.clone(),
-        }));
+    let repository: DynIAboutMeRepository = Arc::new(FakeAboutMeRepository {
+        state: state.clone(),
+    });
 
     (repository, AboutMeRepositoryProbe { state })
 }

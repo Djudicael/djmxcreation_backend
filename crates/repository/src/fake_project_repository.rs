@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use app_core::{
-    dto::{content_dto::ContentDto, project_content_dto::ProjectContentDto, project_dto::ProjectDto},
+    dto::{
+        content_dto::ContentDto, project_content_dto::ProjectContentDto, project_dto::ProjectDto,
+    },
     project::project_repository::{DynIProjectRepository, IProjectRepository},
 };
 use app_error::Error;
@@ -54,7 +56,10 @@ impl ProjectRepositoryProbe {
 
 #[async_trait]
 impl IProjectRepository for FakeProjectRepository {
-    async fn create(&self, _metadata: &app_core::dto::metadata_dto::MetadataDto) -> Result<ProjectDto, Error> {
+    async fn create(
+        &self,
+        _metadata: &app_core::dto::metadata_dto::MetadataDto,
+    ) -> Result<ProjectDto, Error> {
         unreachable!("create is not used in these service tests")
     }
 
@@ -109,7 +114,10 @@ impl IProjectRepository for FakeProjectRepository {
         unreachable!("update_project_entity is not used in these service tests")
     }
 
-    async fn get_projects_contents(&self, _project_id: Uuid) -> Result<Vec<ProjectContentDto>, Error> {
+    async fn get_projects_contents(
+        &self,
+        _project_id: Uuid,
+    ) -> Result<Vec<ProjectContentDto>, Error> {
         unreachable!("get_projects_contents is not used in these service tests")
     }
 
@@ -134,7 +142,10 @@ impl IProjectRepository for FakeProjectRepository {
         unreachable!("delete_project_by_id is not used in these service tests")
     }
 
-    async fn get_projects_content_thumbnail(&self, _project_id: Uuid) -> Result<Vec<ProjectContentDto>, Error> {
+    async fn get_projects_content_thumbnail(
+        &self,
+        _project_id: Uuid,
+    ) -> Result<Vec<ProjectContentDto>, Error> {
         unreachable!("get_projects_content_thumbnail is not used in these service tests")
     }
 
@@ -172,10 +183,9 @@ pub fn create_project_repository(
         deleted_thumbnail_requests: Mutex::new(Vec::new()),
     });
 
-    let repository: DynIProjectRepository =
-        Arc::<dyn IProjectRepository + Send + Sync>::from(Arc::new(FakeProjectRepository {
-            state: state.clone(),
-        }));
+    let repository: DynIProjectRepository = Arc::new(FakeProjectRepository {
+        state: state.clone(),
+    });
     let probe = ProjectRepositoryProbe { state };
 
     (repository, probe)
