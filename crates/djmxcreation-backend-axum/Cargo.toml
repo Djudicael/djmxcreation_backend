@@ -27,6 +27,7 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 serde_json = { workspace = true }
 
+
 [[bin]]
 name = "djmxcreation-backend-axum"
 path = "src/main.rs"

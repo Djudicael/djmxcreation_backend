@@ -1,15 +1,13 @@
-use std::time::Duration;
-
 use app_core::storage::storage_repository::IStorageRepository;
 use app_error::Error;
 use async_trait::async_trait;
-use aws_sdk_s3::{presigning::PresigningConfig, primitives::ByteStream};
+use s3::Bucket;
 use tracing::error;
 
 use crate::config::storage::StorageClient;
 
 /// Presigned URL validity window (seconds).
-const PRESIGN_EXPIRY_SECS: u64 = 8_640; // 2.4 hours
+const PRESIGN_EXPIRY_SECS: u32 = 8_640; // 2.4 hours
 
 pub struct StorageRepository {
     client: StorageClient,
@@ -18,6 +16,19 @@ pub struct StorageRepository {
 impl StorageRepository {
     pub fn new(client: StorageClient) -> Self {
         Self { client }
+    }
+
+    fn get_bucket(&self, bucket_name: &str) -> Result<Box<Bucket>, Error> {
+        let mut bucket = Bucket::new(
+            bucket_name,
+            self.client.region.clone(),
+            self.client.credentials.clone(),
+        ).map_err(|e| {
+            error!(error = ?e, "Failed to create bucket instance");
+            Error::BucketCreation
+        })?;
+        bucket.set_path_style();
+        Ok(bucket)
     }
 }
 
@@ -29,55 +40,36 @@ impl IStorageRepository for StorageRepository {
         file_name: &str,
         file: &[u8],
     ) -> Result<(), Error> {
-        let body = ByteStream::from(file.to_owned());
-        self.client
-            .put_object()
-            .bucket(bucket_name)
-            .key(file_name)
-            .body(body)
-            .send()
-            .await
-            .map_err(|e| {
-                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to upload file");
-                Error::StorageUpload
-            })?;
+        let bucket = self.get_bucket(bucket_name)?;
+        
+        bucket.put_object(file_name, file).await.map_err(|e| {
+            error!(bucket = bucket_name, key = file_name, error = ?e, "failed to upload file");
+            Error::StorageUpload
+        })?;
+
         Ok(())
     }
 
     async fn get_object_url(&self, bucket_name: &str, file_name: &str) -> Result<String, Error> {
-        let expires_in = Duration::from_secs(PRESIGN_EXPIRY_SECS);
-        let presign_config = PresigningConfig::expires_in(expires_in)
-            .map_err(|e| {
-                error!(error = ?e, "invalid presign config");
-                Error::StorageGetObjectUrl
-            })?;
+        let bucket = self.get_bucket(bucket_name)?;
+        
+        // rust-s3 has `presign_get` which returns the generated URL as a String
+        let presigned_url = bucket.presign_get(file_name, PRESIGN_EXPIRY_SECS, None).await.map_err(|e| {
+            error!(bucket = bucket_name, key = file_name, error = ?e, "failed to generate presigned URL");
+            Error::StorageGetObjectUrl
+        })?;
 
-        let presigned = self
-            .client
-            .get_object()
-            .bucket(bucket_name)
-            .key(file_name)
-            .presigned(presign_config)
-            .await
-            .map_err(|e| {
-                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to generate presigned URL");
-                Error::StorageGetObjectUrl
-            })?;
-
-        Ok(presigned.uri().to_string())
+        Ok(presigned_url)
     }
 
     async fn remove_object(&self, bucket_name: &str, file_name: &str) -> Result<(), Error> {
-        self.client
-            .delete_object()
-            .bucket(bucket_name)
-            .key(file_name)
-            .send()
-            .await
-            .map_err(|e| {
-                error!(bucket = bucket_name, key = file_name, error = ?e, "failed to delete object");
-                Error::StorageDeleteObject
-            })?;
+        let bucket = self.get_bucket(bucket_name)?;
+        
+        bucket.delete_object(file_name).await.map_err(|e| {
+            error!(bucket = bucket_name, key = file_name, error = ?e, "failed to delete object");
+            Error::StorageDeleteObject
+        })?;
+        
         Ok(())
     }
 }

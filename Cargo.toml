@@ -7,7 +7,16 @@ members = [
     "crates/test-util",
     "crates/app_core",
     "crates/app_config",
-    "crates/dev-server",
+]
+
+resolver = "3"
+default-members = [
+    "crates/app-error",
+    "crates/djmxcreation-backend-axum",
+    "crates/repository",
+    "crates/app-service",
+    "crates/app_core",
+    "crates/app_config",
 ]
 
 [workspace.dependencies]
@@ -15,7 +24,6 @@ app-error = { path = "crates/app-error" }
 app_config = { path = "crates/app_config" }
 app_core = { path = "crates/app_core" }
 app-service = { path = "crates/app-service" }
-aws-sdk-s3 = "1.67.0"
 dotenv = "0.15.0"
 repository = { path = "crates/repository" }
 test-util = { path = "crates/test-util" }
@@ -24,17 +32,17 @@ anyhow = "1.0.95"
 async-trait = "0.1.84"
 axum = { version = "0.8.4", features = ["multipart", "macros"] }
 chrono = { version = "0.4.39", features = ["serde"] }
-deadpool-postgres = "0.14.1"
+deadpool-postgres = "0.10.5"
 futures = "0.3.31"
 hyper = "1.5.2"
 metrics = "0.24.1"
 metrics-exporter-prometheus = "0.16.0"
-refinery = { version = "0.8.16", features = ["tokio-postgres"] }
+refinery = { version = "0.8.10", features = ["tokio-postgres"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 thiserror = "2.0.9"
 tokio = { version = "1.45.1", features = ["full"] }
-tokio-postgres = { version = "0.7.12", features = [
+tokio-postgres = { version = "0.7.8", features = [
     "with-serde_json-1",
     "with-uuid-1",
     "with-chrono-0_4",
@@ -44,4 +52,17 @@ tower = { version = "0.5.2", features = ["timeout"] }
 tower-http = { version = "0.6.6", features = ["trace", "cors", "fs"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "1.11.0", features = ["v4", "fast-rng", "serde"] }
+uuid = { version = "=1.11.0", features = ["v4", "fast-rng", "serde"] }
+
+
+[patch.crates-io]
+tokio = { git = "https://github.com/wasix-org/tokio.git", branch = "wasix-1.47.0" }
+socket2 = { git = "https://github.com/wasix-org/socket2.git", branch = "v0.5.5" }
+hyper = { git = "https://github.com/wasix-org/hyper.git", branch = "wasix-1.6.0" }
+home = { path = "crates/home-patch" }
+rustls-native-certs = { git = "https://github.com/wasix-org/rustls-native-certs.git", branch = "wasix-0.8.1" }
+tokio-postgres = { git = "https://github.com/wasix-org/rust-postgres.git", branch = "wasix" }
+rustls = { git = "https://github.com/wasix-org/rustls.git", branch = "wasix-0.23.31" }
+ring = { git = "https://github.com/wasix-org/ring.git", branch = "0.17.7" }
+reqwest = { git = "https://github.com/wasix-org/reqwest.git", branch = "wasix-0.12.22" }
+wasm-streams = { path = "crates/wasm-streams-patch" }
