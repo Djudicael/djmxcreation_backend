@@ -1,7 +1,9 @@
+use app_core::about_me::about_me_service::IAboutMeService;
 use app_core::dto::{
     about_me_dto::AboutMeDto, content_dto::ContentDto, project_content_dto::ProjectContentDto,
     project_dto::ProjectDto,
 };
+use app_core::project::project_service::IProjectService;
 use app_service::{about_me_service::AboutMeService, project_service::ProjectService};
 use repository::{
     fake_about_me_repository::create_about_me_repository,
@@ -9,7 +11,6 @@ use repository::{
     fake_spotlight_repository::create_spotlight_repository,
     fake_storage_repository::create_storage_repository,
 };
-use serde_json::Value;
 use uuid::Uuid;
 
 fn run<F, T>(future: F) -> T
@@ -17,16 +18,6 @@ where
     F: std::future::Future<Output = T>,
 {
     futures::executor::block_on(future)
-}
-
-fn assert_json_path<'a>(value: &'a Value, path: &[&str]) -> &'a Value {
-    let mut current = value;
-    for segment in path {
-        current = current
-            .get(segment)
-            .unwrap_or_else(|| panic!("missing JSON field '{segment}' in {value:?}"));
-    }
-    current
 }
 
 #[test]
@@ -53,12 +44,9 @@ fn about_me_resolves_photo_url_from_storage() {
     let result = run(service.about_me()).expect("about_me should succeed");
     let view = serde_json::to_value(result).expect("view should serialize");
 
-    assert_eq!(assert_json_path(&view, &["firstName"]), "Ada");
-    assert_eq!(assert_json_path(&view, &["lastName"]), "Lovelace");
-    assert_eq!(
-        assert_json_path(&view, &["photoUrl"]),
-        "https://cdn.example/about/profile.png"
-    );
+    assert_eq!(view["firstName"], "Ada");
+    assert_eq!(view["lastName"], "Lovelace");
+    assert_eq!(view["photoUrl"], "https://cdn.example/about/profile.png");
     assert_eq!(
         storage_probe.url_requests(),
         vec![("bucket-a".to_string(), "about/profile.png".to_string())]
@@ -185,11 +173,8 @@ fn add_project_uploads_using_bucket_prefixed_key_and_returns_resolved_url() {
         )]
     );
     assert_eq!(project_probe.added_content_requests().len(), 1);
-    assert_eq!(assert_json_path(&view, &["mimeType"]), "image/png");
-    assert_eq!(
-        assert_json_path(&view, &["url"]),
-        "https://cdn.example/portfolio-assets/hero.png"
-    );
+    assert_eq!(view["mimeType"], "image/png");
+    assert_eq!(view["url"], "https://cdn.example/portfolio-assets/hero.png");
 }
 
 #[test]
