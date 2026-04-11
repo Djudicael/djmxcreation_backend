@@ -46,21 +46,24 @@ impl DatabasePool {
         config: &DatabaseConfiguration,
         database_url: Option<&str>,
     ) -> Result<Self, DatabaseError> {
-        let mut cfg = Config::new();
-
-        if let Some(url) = database_url {
-            cfg.url = Some(url.to_string());
+        let pool = if let Some(url) = database_url {
+            let tokio_config: tokio_postgres::Config = url.parse().expect("Invalid database URL");
+            let mgr = deadpool_postgres::Manager::new(tokio_config, NoTls);
+            Pool::builder(mgr)
+                .runtime(Runtime::Tokio1)
+                .build()
+                .expect("Failed to build database pool from URL")
         } else {
+            let mut cfg = Config::new();
             cfg.host = Some(config.pg_host.clone());
             cfg.user = Some(config.pg_user.clone());
             cfg.password = Some(config.pg_password.clone());
             cfg.dbname = Some(config.pg_db.clone());
             cfg.port = Some(config.pg_port);
-        }
 
-        let pool = cfg
-            .create_pool(Some(Runtime::Tokio1), NoTls)
-            .map_err(DatabaseError::Pool)?;
+            cfg.create_pool(Some(Runtime::Tokio1), NoTls)
+                .map_err(DatabaseError::Pool)?
+        };
 
         let mut conn = pool.get().await.map_err(DatabaseError::PoolConnection)?;
         apply_migrations(conn.as_mut())

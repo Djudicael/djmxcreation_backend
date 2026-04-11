@@ -1,76 +1,61 @@
 use app_config::storage_configuration::StorageConfiguration;
 use app_error::Error;
-use s3::creds::Credentials;
-use s3::region::Region;
-use s3::Bucket;
+use aws_sdk_s3::Client;
+use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
 use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct StorageClient {
-    pub credentials: Credentials,
-    pub region: Region,
+    pub inner: Client,
 }
 
 pub fn get_storage_client(cfg: StorageConfiguration) -> Result<StorageClient, Error> {
-    let credentials = Credentials::new(
-        Some(&cfg.access_key),
-        Some(&cfg.secret_key),
-        None,
-        None,
-        None,
-    ).map_err(|_| Error::BucketCreation)?;
+    let credentials = Credentials::new(&cfg.access_key, &cfg.secret_key, None, None, "Static");
 
-    let region = Region::Custom {
-        region: cfg.region,
-        endpoint: cfg.endpoint,
-    };
+    let mut builder = S3ConfigBuilder::new()
+        .credentials_provider(credentials)
+        .region(Region::new(cfg.region))
+        .endpoint_url(cfg.endpoint)
+        .force_path_style(true);
 
-    Ok(StorageClient {
-        credentials,
-        region,
-    })
+    #[cfg(target_os = "wasi")]
+    {
+        use crate::config::wasi_http_client::WasiHttpClient;
+        builder = builder.http_client(WasiHttpClient::new());
+    }
+
+    let config = builder.build();
+    let client = Client::from_conf(config);
+
+    Ok(StorageClient { inner: client })
 }
 
 pub async fn ensure_bucket(bucket_name: &str, client: &StorageClient) -> Result<(), Error> {
-    let mut bucket = Bucket::new(
-        bucket_name,
-        client.region.clone(),
-        client.credentials.clone(),
-    ).map_err(|e| {
-        warn!(error = ?e, "error creating bucket config");
-        Error::BucketCreation
-    })?;
-
-    bucket.set_path_style();
-
     // Check if it exists
-    match bucket.head_object("/").await {
-        Ok(_) | Err(s3::error::S3Error::HttpFailWithBody(404, _)) | Err(s3::error::S3Error::HttpFailWithBody(403, _)) => {
+    match client.inner.head_bucket().bucket(bucket_name).send().await {
+        Ok(_) => {
+            info!(bucket = bucket_name, "storage bucket already exists");
+            Ok(())
+        }
+        Err(_) => {
             // we will create the bucket if it's 404
-            match Bucket::create_with_path_style(
-                bucket_name,
-                client.region.clone(),
-                client.credentials.clone(),
-                s3::BucketConfiguration::default(),
-            ).await {
+            match client
+                .inner
+                .create_bucket()
+                .bucket(bucket_name)
+                .send()
+                .await
+            {
                 Ok(_) => {
                     info!(bucket = bucket_name, "storage bucket created");
                     Ok(())
                 }
-                Err(s3::error::S3Error::HttpFailWithBody(409, _)) => {
-                    info!(bucket = bucket_name, "storage bucket already exists");
-                    Ok(())
-                }
-                Err(e) => {
-                    warn!(error = ?e, "error checking storage bucket");
+                Err(err) => {
+                    warn!(error = ?err, "error creating storage bucket");
                     // maybe it already exists
                     Ok(())
                 }
             }
-        }
-        Err(e) => {
-            warn!(error = ?e, "error checking storage bucket");
-            Ok(())
         }
     }
 }

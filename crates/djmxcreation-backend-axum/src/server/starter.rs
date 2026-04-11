@@ -151,5 +151,6 @@ pub async fn start() -> anyhow::Result<()> {
     info!(address = %addr, "server listening");
 
     axum::serve(listener, router.into_make_service()).await?;
+
     Ok(())
 }

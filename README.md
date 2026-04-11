@@ -1,6 +1,6 @@
 # djmxcreation — Portfolio & CMS Backend
 
-A Rust backend for a personal art-portfolio website with a companion CMS.  
+A Rust backend for a personal art-portfolio website with a companion CMS.
 This is a one-person, in-progress project that serves as both a practical portfolio
 and a playground for experimenting with Rust, WASM/WASI, and self-hosted infrastructure.
 
@@ -312,31 +312,25 @@ cargo build --release --target wasm32-wasip1 -p djmxcreation-backend-axum
 
 ---
 
-## WASM / WASI target (in progress)
+## WASI 0.2 Target (In Progress)
 
-The goal is to compile the backend to `wasm32-wasi` so it can run on
-[Wasmer](https://wasmer.io/) or [WasmCloud](https://wasmcloud.com/).
+The goal is to compile the backend to `wasm32-wasip2` so it can run as a native component on Wasm Cloud Platforms like [Wasmer](https://wasmer.io/).
 
-The workspace root `Cargo.toml` patches `tokio`, `hyper`, and `socket2` with
-WASI-ready forks from [second-state](https://github.com/second-state):
+**We are actively migrating away from old WASIX (`[patch.crates-io]`) forks.**
+Instead of relying on unmaintained full-ecosystem forks from 2022, we are targeting the official **WASI 0.2 (Preview 2)** Component Model specification.
 
-```toml
-[patch.crates-io]
-tokio   = { git = "https://github.com/second-state/wasi_tokio.git",  branch = "v1.40.x" }
-socket2 = { git = "https://github.com/second-state/socket2.git",     branch = "v0.5.x"  }
-hyper   = { git = "https://github.com/second-state/wasi_hyper.git",  branch = "v0.14.x" }
-```
+This requires:
+1. **Bleeding-edge Tokio:** Compiling `tokio` with experimental WASI flags to use `poll_oneoff`.
+2. **Minimal Patches:** Creating a tiny fork of `tokio-postgres` to comment out unsupported OS flags (like `TCP_KEEPALIVE` and `SO_RCVBUF`) that the WASI 0.2 specification does not yet understand.
+3. **WASI-HTTP Adapters:** Exporting the Axum Router via `wasi-http` rather than opening a raw `tokio::net::TcpListener`, allowing the platform host (e.g., Pingora) to handle raw TCP parsing.
 
-> **Note:** Full WASM compilation is not yet verified. The patches currently cover
-> hyper 0.14.x; axum 0.8 uses hyper 1.x which will need a separate patch once
-> second-state publishes one.  
-> Tracking this as a future milestone.
+> **Note:** Compiling raw TCP database connections (`tokio-postgres`) to WASI 0.2 is currently bleeding-edge. Tracking the custom `tokio-postgres` fork and Tokio WASI compatibility as a major future milestone.
 
 ---
 
 ## Security
 
-Currently the API is protected by HTTP Basic Auth (username/password from env).  
+Currently the API is protected by HTTP Basic Auth (username/password from env).
 The full security model will use:
 
 1. **API gateway** — only the gateway knows the API key; internal traffic is trusted.
