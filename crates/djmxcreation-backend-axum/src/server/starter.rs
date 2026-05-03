@@ -20,7 +20,7 @@ use axum::{
 use hyper::StatusCode;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 use repository::config::{
-    db::DatabasePool,
+    db::DatabaseConfig,
     storage::{ensure_bucket, get_storage_client},
 };
 use serde_json::json;
@@ -80,10 +80,8 @@ pub async fn start() -> anyhow::Result<()> {
     let config = Config::from_env().context("failed to load configuration")?;
 
     // ── Database ─────────────────────────────────────────────────────────────
-    let client_db = DatabasePool::new(&config.database, None)
-        .await
-        .context("failed to initialise database pool")?;
-    info!("database pool ready");
+    let client_db = DatabaseConfig::new(&config.database);
+    info!("database config ready");
 
     // ── Object storage ────────────────────────────────────────────────────────
     let storage_cfg = config.get_storage();

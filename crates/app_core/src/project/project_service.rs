@@ -2,6 +2,11 @@ use std::sync::Arc;
 
 use app_error::Error;
 use async_trait::async_trait;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type DynIProjectService = Arc<dyn IProjectService + Send + Sync>;
+#[cfg(target_arch = "wasm32")]
+pub type DynIProjectService = Arc<dyn IProjectService + Sync>;
 use uuid::Uuid;
 
 use crate::{
@@ -12,9 +17,8 @@ use crate::{
     },
 };
 
-pub type DynIProjectService = Arc<dyn IProjectService + Send + Sync>;
-
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 pub trait IProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error>;
     async fn add_project(
@@ -32,7 +36,7 @@ pub trait IProjectService {
     async fn find_project(&self, id: Uuid) -> Result<ProjectView, Error>;
     async fn delete_project(&self, id: Uuid) -> Result<(), Error>;
     async fn delete_project_content(&self, project_id: Uuid, content_id: Uuid)
-        -> Result<(), Error>;
+    -> Result<(), Error>;
     async fn get_portfolio_projects(&self) -> Result<Vec<ProjectView>, Error>;
     async fn get_projects_with_filter(
         &self,

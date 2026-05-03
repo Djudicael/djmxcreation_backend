@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 struct FakeSpotlightRepository;
 
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl ISpotlightRepository for FakeSpotlightRepository {
     async fn add_spotlight(&self, _project_id: Uuid) -> Result<SpotlightDto, Error> {
         unreachable!("spotlight is not used in these service tests")

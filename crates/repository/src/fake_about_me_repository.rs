@@ -41,7 +41,8 @@ impl AboutMeRepositoryProbe {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl IAboutMeRepository for FakeAboutMeRepository {
     async fn update_about_me(&self, _id: Uuid, _about: &AboutMeDto) -> Result<AboutMeDto, Error> {
         Ok(self.state.about_me_by_id.clone())

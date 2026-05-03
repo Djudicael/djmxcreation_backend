@@ -1,11 +1,11 @@
 use app_config::database_configuration::DatabaseConfiguration;
 use app_core::dto::{content_dto::ContentDto, metadata_dto::MetadataDto, project_dto::ProjectDto};
 use app_core::project::project_repository::IProjectRepository;
-use repository::config::db::DatabasePool;
+use repository::config::db::DatabaseConfig;
 use repository::project_repository::ProjectRepository;
 use serde_json::json;
 use std::sync::Arc;
-use test_util::postgresql::{init_postgresql, PostgresContainer};
+use test_util::postgresql::{PostgresContainer, init_postgresql};
 use uuid::Uuid;
 
 struct TestContext {
@@ -32,12 +32,8 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        // Create database pool with the test configuration and URL
-        let pool = DatabasePool::new(&test_db_config, Some(&url))
-            .await
-            .expect("Failed to create database pool");
-
-        let repo = ProjectRepository::new(Arc::new(pool));
+        let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&url));
+        let repo = ProjectRepository::new(config);
 
         // Initialize test data
         let project = repo

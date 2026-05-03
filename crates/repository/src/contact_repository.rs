@@ -3,67 +3,62 @@ use std::sync::Arc;
 use app_core::{contact::contact_repository::IContactRepository, dto::contact_dto::ContactDto};
 use app_error::Error;
 use async_trait::async_trait;
-use deadpool_postgres::PoolError;
 use serde_json::Value;
-
-use tokio_postgres::{types::Json, Row};
 use uuid::Uuid;
 
-use crate::{config::db::DatabasePool, entity::contact::Contact, error::to_error};
+use wasi_pg_client::Row;
+
+use crate::{config::db::DatabaseConfig, entity::contact::Contact, error::to_error};
 
 pub struct ContactRepository {
-    client: Arc<DatabasePool>,
+    config: Arc<DatabaseConfig>,
 }
 
 impl ContactRepository {
-    pub fn new(client: Arc<DatabasePool>) -> Self {
-        Self { client }
+    pub fn new(config: Arc<DatabaseConfig>) -> Self {
+        Self { config }
     }
 
     fn map_row_to_contact(row: &Row) -> Result<Contact, Error> {
         let description: Option<Value> = row
-            .try_get::<_, Option<Json<Value>>>("description")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?
-            .map(|json| json.0);
+            .get_by_name::<Option<Value>>("description")
+            .map_err(|e| to_error(e, None))?;
 
-        let id: Uuid = row
-            .try_get("id")
-            .map_err(|e| to_error(PoolError::Backend(e), None))?;
+        let id: Uuid = row.get_by_name("id").map_err(|e| to_error(e, None))?;
 
         Ok(Contact::new(Some(id), description))
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl IContactRepository for ContactRepository {
     async fn get_contact(&self) -> Result<ContactDto, Error> {
         let sql = "SELECT * FROM contact FETCH FIRST ROW ONLY";
-        let client = self
-            .client
-            .get_client()
+        let mut conn = self.config.connect().await.map_err(|e| to_error(e, None))?;
+        let row = conn
+            .query_one(sql)
             .await
-            .map_err(|e| to_error(e, None))?;
-        let row = client
-            .query_one(sql, &[])
-            .await
-            .map_err(|sql_error| to_error(PoolError::Backend(sql_error), None))?;
+            .map_err(|e| to_error(e, None))?
+            .ok_or_else(|| Error::EntityNotFound("contact not found".to_string()))?;
+
         let contact = ContactRepository::map_row_to_contact(&row)?;
         Ok(ContactDto::from(contact))
     }
 
     async fn update_contact(&self, id: Uuid, contact: &ContactDto) -> Result<ContactDto, Error> {
         let sql = "UPDATE contact SET description = $1 WHERE id = $2 RETURNING *";
-        let client = self
-            .client
-            .get_client()
+        let mut conn = self.config.connect().await.map_err(|e| to_error(e, None))?;
+        let row = conn
+            .query_params(sql, &[&contact.description, &id])
             .await
-            .map_err(|e| to_error(e, None))?;
-        let row = client
-            .query_one(sql, &[&Json(&contact.description), &id])
-            .await
-            .map_err(|sql_error| to_error(PoolError::Backend(sql_error), None))?;
-        let contact = ContactRepository::map_row_to_contact(&row)?;
+            .map_err(|e| to_error(e, None))?
+            .into_rows()
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::EntityNotFound(format!("contact not found for id: {}", id)))?;
 
+        let contact = ContactRepository::map_row_to_contact(&row)?;
         Ok(ContactDto::from(contact))
     }
 }

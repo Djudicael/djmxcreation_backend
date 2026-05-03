@@ -4,11 +4,11 @@ use app_core::dto::metadata_dto::MetadataDto;
 use app_core::project::project_repository::IProjectRepository;
 use app_core::spotlight::spotlight_repository::ISpotlightRepository;
 use app_error::Error;
-use repository::config::db::DatabasePool;
+use repository::config::db::DatabaseConfig;
 use repository::project_repository::ProjectRepository;
 use repository::spotlight_repository::SpotlightRepository;
 use std::sync::Arc;
-use test_util::postgresql::{init_postgresql, PostgresContainer};
+use test_util::postgresql::{PostgresContainer, init_postgresql};
 use uuid::Uuid;
 
 struct TestContext {
@@ -37,15 +37,11 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        let pool = Arc::new(
-            DatabasePool::new(&test_db_config, Some(&url))
-                .await
-                .expect("Failed to create database pool"),
-        );
+        let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&url));
 
-        let repo = SpotlightRepository::new(pool.clone());
+        let repo = SpotlightRepository::new(config.clone());
 
-        let project_repo = ProjectRepository::new(pool.clone());
+        let project_repo = ProjectRepository::new(config.clone());
         let created_project = project_repo
             .create(&MetadataDto::new(
                 Some("Test Project".to_string()),

@@ -95,7 +95,8 @@ impl ProjectService {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl IProjectService for ProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error> {
         debug!(title = ?metadata.title, "creating project");
@@ -340,7 +341,12 @@ impl IProjectService for ProjectService {
             })
             .collect();
 
-        Ok(ProjectsView::new(page, size, total_pages, join_all(futures).await))
+        Ok(ProjectsView::new(
+            page,
+            size,
+            total_pages,
+            join_all(futures).await,
+        ))
     }
 
     async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightView, Error> {
@@ -372,7 +378,10 @@ impl IProjectService for ProjectService {
         let results = join_all(futures).await;
         Ok(results
             .into_iter()
-            .filter_map(|r| r.inspect_err(|e| warn!(error = ?e, "failed to build spotlight view")).ok())
+            .filter_map(|r| {
+                r.inspect_err(|e| warn!(error = ?e, "failed to build spotlight view"))
+                    .ok()
+            })
             .collect())
     }
 

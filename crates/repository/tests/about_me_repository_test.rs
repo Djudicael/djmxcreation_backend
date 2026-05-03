@@ -3,7 +3,7 @@ use app_core::about_me::about_me_repository::IAboutMeRepository;
 use app_core::dto::about_me_dto::AboutMeDto;
 use app_core::dto::content_dto::ContentDto;
 use repository::about_me_repository::AboutMeRepository;
-use repository::config::db::DatabasePool;
+use repository::config::db::DatabaseConfig;
 use test_util::postgresql::PostgresContainer;
 
 use serde_json::json;
@@ -14,11 +14,13 @@ use uuid::Uuid;
 struct TestContext {
     repo: AboutMeRepository,
     id: Uuid,
-    _container: PostgresContainer, // Keep container alive
+    _container: PostgresContainer,
 }
 
 impl TestContext {
     async fn new() -> Self {
+        let id = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid parse error");
+
         let test_db_config = DatabaseConfiguration {
             pg_user: "postgres".to_string(),
             pg_password: "postgres".to_string(),
@@ -35,27 +37,22 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        // Create database pool with the test configuration and URL
-        let pool = DatabasePool::new(&test_db_config, Some(&url))
+        let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&url));
+
+        // Seed test data
+        {
+            let mut conn = DatabaseConfig::connect_str(&url)
+                .await
+                .expect("Failed to connect");
+            conn.execute_params(
+                "INSERT INTO about (id, first_name, last_name, description) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET first_name = $2, last_name = $3, description = $4",
+                &[&id, &"Test", &"User", &json!({"bio": "Tester"})],
+            )
             .await
-            .expect("Failed to create database pool");
+            .expect("Failed to insert test data");
+        }
 
-        let repo = AboutMeRepository::new(Arc::new(pool));
-        let id = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid parse error");
-
-        // Initialize test data
-        repo.update_about_me(
-            id,
-            &AboutMeDto {
-                id: None,
-                first_name: "Test".to_string(),
-                last_name: "User".to_string(),
-                description: Some(json!({"bio": "Tester"})),
-                photo: None,
-            },
-        )
-        .await
-        .expect("Failed to insert test data");
+        let repo = AboutMeRepository::new(config);
 
         Self {
             repo,
@@ -69,7 +66,6 @@ impl TestContext {
 async fn test_about_me_crud_operations() {
     let ctx = TestContext::new().await;
 
-    // Test 1: Get initial about me
     let about_me = ctx
         .repo
         .get_about_me_by_id(ctx.id)
@@ -78,7 +74,6 @@ async fn test_about_me_crud_operations() {
     assert_eq!(about_me.first_name, "Test");
     assert_eq!(about_me.last_name, "User");
 
-    // Test 2: Update about me
     let updated = ctx
         .repo
         .update_about_me(
@@ -96,7 +91,6 @@ async fn test_about_me_crud_operations() {
     assert_eq!(updated.first_name, "Alice");
     assert_eq!(updated.last_name, "Doe");
 
-    // Test 3: Update photo
     let content = ContentDto {
         id: None,
         bucket_name: "test_bucket".to_string(),
@@ -115,7 +109,6 @@ async fn test_about_me_crud_operations() {
         .expect("Failed to get about_me with photo");
     assert!(with_photo.photo.is_some());
 
-    // Test 4: Delete photo
     ctx.repo
         .delete_about_me_photo(ctx.id)
         .await
@@ -128,7 +121,6 @@ async fn test_about_me_crud_operations() {
         .expect("Failed to get about_me without photo");
     assert!(without_photo.photo.is_none());
 
-    // Test 5: Get about me (general)
     let general = ctx
         .repo
         .get_about_me()

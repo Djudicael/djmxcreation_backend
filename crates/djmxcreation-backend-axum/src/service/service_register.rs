@@ -10,7 +10,7 @@ use app_service::{
 };
 use repository::{
     about_me_repository::AboutMeRepository,
-    config::{db::DatabasePool, storage::StorageClient},
+    config::{db::DatabaseConfig, storage::StorageClient},
     contact_repository::ContactRepository,
     project_repository::ProjectRepository,
     spotlight_repository::SpotlightRepository,
@@ -25,7 +25,7 @@ pub struct ServiceRegister {
 }
 
 impl ServiceRegister {
-    pub fn new(client_db: Arc<DatabasePool>, client: StorageClient, bucket: String) -> Self {
+    pub fn new(client_db: Arc<DatabaseConfig>, client: StorageClient, bucket: String) -> Self {
         let project_repository = Arc::new(ProjectRepository::new(client_db.clone()));
         let about_me_repository = Arc::new(AboutMeRepository::new(client_db.clone()));
         let contact_repository = Arc::new(ContactRepository::new(client_db.clone()));

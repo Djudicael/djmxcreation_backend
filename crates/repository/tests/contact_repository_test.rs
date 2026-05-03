@@ -1,12 +1,12 @@
 use app_config::database_configuration::DatabaseConfiguration;
 use app_core::contact::contact_repository::IContactRepository;
 use app_core::dto::contact_dto::ContactDto;
-use repository::config::db::DatabasePool;
+use repository::config::db::DatabaseConfig;
 use repository::contact_repository::ContactRepository;
-use serde_json::json;
 use serde_json::Value;
+use serde_json::json;
 use std::sync::Arc;
-use test_util::postgresql::{init_postgresql, PostgresContainer};
+use test_util::postgresql::{PostgresContainer, init_postgresql};
 use uuid::Uuid;
 
 struct TestContext {
@@ -33,27 +33,23 @@ impl TestContext {
         let url = container.url().await.expect("Failed to get container URL");
         println!("Container started: {:?}", url);
 
-        // Create database pool with the test configuration and URL
-        let pool = DatabasePool::new(&test_db_config, Some(&url))
-            .await
-            .expect("Failed to create database pool");
-
-        let repo = ContactRepository::new(Arc::new(pool));
+        let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&url));
         let id = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid parse error");
 
-        // Initialize test data
-        repo.update_contact(
-            id,
-            &ContactDto {
-                id: None,
-                description: Some(json!({
-                    "email": "test@example.com",
-                    "phone": "+1234567890"
-                })),
-            },
-        )
-        .await
-        .expect("Failed to insert test data");
+        // Seed test data via URL connection
+        {
+            let mut conn = DatabaseConfig::connect_str(&url)
+                .await
+                .expect("Failed to connect");
+            conn.execute_params(
+                "INSERT INTO contact (id, description) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET description = $2",
+                &[&id, &json!({"email": "test@example.com", "phone": "+1234567890"})],
+            )
+            .await
+            .expect("Failed to insert test data");
+        }
+
+        let repo = ContactRepository::new(config);
 
         Self {
             repo,
