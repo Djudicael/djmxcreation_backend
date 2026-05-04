@@ -48,3 +48,4 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "=1.11.0", features = ["v4", "fast-rng", "serde"] }
 wasi-pg-client = { git = "https://github.com/Djudicael/pg_client", features = ["uuid", "serde-json", "chrono"] }
+axum-test = "17.2"

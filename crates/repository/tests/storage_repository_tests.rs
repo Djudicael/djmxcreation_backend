@@ -1,73 +1,53 @@
 use app_core::storage::storage_repository::IStorageRepository;
-use app_error::Error;
+use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
+use aws_sdk_s3::Client;
+use repository::config::storage::StorageClient;
 use repository::storage_repository::StorageRepository;
-
-use s3::creds::Credentials;
-use s3::{Bucket, BucketConfiguration, Region};
-use test_util::minio::{MinioContainer, init_minio};
+use std::sync::Arc;
+use test_util::rustfs::RustFS;
+use test_util::shared_harness::shared_rustfs;
 
 struct TestContext {
     repository: StorageRepository,
     bucket_name: &'static str,
     file_name: &'static str,
     file_content: &'static [u8],
-    _container: Option<MinioContainer>,
 }
 
 impl TestContext {
     async fn new() -> Self {
         let bucket_name = "data";
-        let (podman, minio_image) = init_minio().expect("Failed to initialize MinIO");
+        let endpoint = shared_rustfs().await;
+
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
         let credentials = Credentials::new(
-            Some(&minio_image.secret_access_key()),
-            Some(&minio_image.access_key_id()),
+            "rustfsadmin",
+            "rustfsadmin",
             None,
             None,
-            None,
-        )
-        .expect("Should create credentials");
-        let region_container = minio_image.region().parse().expect("Should parse region");
+            "Static",
+        );
 
-        let container = podman
-            .start(minio_image)
-            .await
-            .expect("Failed to run MinIO container");
-        let endpoint = container
-            .endpoint()
-            .await
-            .expect("Failed to get MinIO endpoint");
+        let config = S3ConfigBuilder::new()
+            .credentials_provider(credentials)
+            .region(Region::new("us-east-1"))
+            .endpoint_url(endpoint)
+            .force_path_style(true)
+            .build();
 
-        println!("Using MinIO endpoint: {}", endpoint);
-        let region = Region::Custom {
-            region: region_container,
-            endpoint,
-        };
-        // Wait for MinIO to be ready (increase to 12s)
-        tokio::time::sleep(std::time::Duration::from_secs(12)).await;
+        let client = Client::from_conf(config);
 
-        let config = BucketConfiguration::public();
+        // Ensure bucket exists
+        let _ = client.create_bucket().bucket(bucket_name).send().await;
 
-        let mut client = Bucket::new(bucket_name, region.clone(), credentials.clone())
-            .expect("Should create bucket")
-            .with_path_style();
-        let exists = client.exists().await.unwrap_or(false);
-        if !exists {
-            client = Bucket::create_with_path_style(bucket_name, region, credentials, config)
-                .await
-                .expect("Should create bucket")
-                .bucket;
-        }
-
-        // Try to create the bucket (ignore error if already exists)
-        // let _ = client.create_bucket("data", region.clone()).await;
-
-        let repository = StorageRepository::new(client);
+        let storage_client = StorageClient { inner: client };
+        let repository = StorageRepository::new(storage_client);
         Self {
             repository,
             bucket_name,
             file_name: "test.txt",
-            file_content: b"Hello, MinIO!",
-            _container: Some(container),
+            file_content: b"Hello, RustFS!",
         }
     }
 }
@@ -81,9 +61,6 @@ async fn test_storage_repository_crud() {
         .repository
         .upload_file(ctx.bucket_name, ctx.file_name, ctx.file_content)
         .await;
-    if let Err(ref e) = upload_result {
-        eprintln!("Upload failed with error: {:?}", e);
-    }
     assert!(upload_result.is_ok(), "Upload failed: {:?}", upload_result);
 
     // Get object URL

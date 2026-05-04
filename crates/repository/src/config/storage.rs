@@ -12,22 +12,34 @@ pub struct StorageClient {
 pub fn get_storage_client(cfg: StorageConfiguration) -> Result<StorageClient, Error> {
     let credentials = Credentials::new(&cfg.access_key, &cfg.secret_key, None, None, "Static");
 
-    let mut builder = S3ConfigBuilder::new()
-        .credentials_provider(credentials)
-        .region(Region::new(cfg.region))
-        .endpoint_url(cfg.endpoint)
-        .force_path_style(true);
+    let region = Region::new(cfg.region);
+    let endpoint = cfg.endpoint;
 
     #[cfg(target_os = "wasi")]
     {
         use crate::config::wasi_http_client::WasiHttpClient;
-        builder = builder.http_client(WasiHttpClient::new());
+        let builder = S3ConfigBuilder::new()
+            .credentials_provider(credentials)
+            .region(region)
+            .endpoint_url(endpoint)
+            .force_path_style(true)
+            .http_client(WasiHttpClient::new());
+        let config = builder.build();
+        let client = Client::from_conf(config);
+        return Ok(StorageClient { inner: client });
     }
 
-    let config = builder.build();
-    let client = Client::from_conf(config);
-
-    Ok(StorageClient { inner: client })
+    #[cfg(not(target_os = "wasi"))]
+    {
+        let builder = S3ConfigBuilder::new()
+            .credentials_provider(credentials)
+            .region(region)
+            .endpoint_url(endpoint)
+            .force_path_style(true);
+        let config = builder.build();
+        let client = Client::from_conf(config);
+        Ok(StorageClient { inner: client })
+    }
 }
 
 pub async fn ensure_bucket(bucket_name: &str, client: &StorageClient) -> Result<(), Error> {

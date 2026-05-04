@@ -26,7 +26,10 @@ metrics = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 serde_json = { workspace = true }
+axum-test = { workspace = true }
 
+[dev-dependencies]
+test-util = { workspace = true }
 
 [[bin]]
 name = "djmxcreation-backend-axum"

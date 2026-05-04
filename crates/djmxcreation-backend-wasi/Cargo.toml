@@ -6,7 +6,7 @@ edition = "2024"
 [lib]
 name = "djmxcreation_backend_wasi"
 path = "src/lib.rs"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 app-error = { workspace = true }
@@ -24,9 +24,13 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
-wstd = "0.6"
-wstd-axum = "0.6"
+axum-test = { workspace = true }
+
+[dev-dependencies]
+test-util = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wstd = "0.6"
+wstd-axum = "0.6"
 wasi = { version = "0.13", features = ["std"] }
 getrandom = { version = "0.4" }

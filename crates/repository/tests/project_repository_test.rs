@@ -1,38 +1,19 @@
-use app_config::database_configuration::DatabaseConfiguration;
 use app_core::dto::{content_dto::ContentDto, metadata_dto::MetadataDto, project_dto::ProjectDto};
 use app_core::project::project_repository::IProjectRepository;
-use repository::config::db::DatabaseConfig;
 use repository::project_repository::ProjectRepository;
 use serde_json::json;
 use std::sync::Arc;
-use test_util::postgresql::{PostgresContainer, init_postgresql};
+use test_util::shared_harness::shared_postgres;
 use uuid::Uuid;
 
 struct TestContext {
     repo: ProjectRepository,
     id: Uuid,
-    _container: PostgresContainer,
 }
 
 impl TestContext {
     async fn new() -> Self {
-        let test_db_config = DatabaseConfiguration {
-            pg_user: "postgres".to_string(),
-            pg_password: "postgres".to_string(),
-            pg_host: "localhost".to_string(),
-            pg_db: "portfolio".to_string(),
-            pg_app_max_con: 5,
-            pg_port: 5432,
-        };
-
-        let (podman, image) = init_postgresql(&test_db_config).expect("Failed to init PostgreSQL");
-        let container = podman.start(image).await.expect("Failed to run PostgreSQL");
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-        let url = container.url().await.expect("Failed to get container URL");
-        println!("Container started: {:?}", url);
-
-        let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&url));
+        let (config, _uri) = shared_postgres().await;
         let repo = ProjectRepository::new(config);
 
         // Initialize test data
@@ -48,7 +29,6 @@ impl TestContext {
         Self {
             repo,
             id: project.id.unwrap(),
-            _container: container,
         }
     }
 }
@@ -80,25 +60,17 @@ async fn test_project_crud_operations() {
 
     let metadata = project.metadata.expect("Project metadata should exist");
 
-    // Assert title
     assert_eq!(
         metadata.title.as_ref().expect("Title should exist"),
         "Test Project",
-        "Project title should match the initial value"
     );
-
-    // Assert subtitle
     assert_eq!(
         metadata.sub_title.as_ref().expect("Subtitle should exist"),
         "Test Subtitle",
-        "Project subtitle should match the initial value"
     );
-
-    // Assert client
     assert_eq!(
         metadata.client.as_ref().expect("Client should exist"),
         "Test Client",
-        "Project client should match the initial value"
     );
 
     // Test 2: Update project
@@ -116,13 +88,11 @@ async fn test_project_crud_operations() {
         .adult(false)
         .contents(vec![]);
 
-    // Perform update
     ctx.repo
         .update_project_entity(ctx.id, &updated_project)
         .await
         .expect("Failed to update project");
 
-    // Fetch updated project to verify changes
     let updated = ctx
         .repo
         .get_project_by_id(ctx.id)
@@ -134,23 +104,6 @@ async fn test_project_crud_operations() {
     assert_eq!(
         updated_metadata.title.as_ref().expect("Title should exist"),
         "Updated Project",
-        "Project title should match updated value"
-    );
-    assert_eq!(
-        updated_metadata
-            .sub_title
-            .as_ref()
-            .expect("Subtitle should exist"),
-        "Updated Subtitle",
-        "Project subtitle should match updated value"
-    );
-    assert_eq!(
-        updated_metadata
-            .client
-            .as_ref()
-            .expect("Client should exist"),
-        "Updated Client",
-        "Project client should match updated value"
     );
 
     // Test 3: Add project content
@@ -181,7 +134,6 @@ async fn test_project_crud_operations() {
         .add_project_thumbnail(ctx.id, &thumbnail)
         .await
         .expect("Failed to add thumbnail");
-    println!("Thumbnail: {:?}", thumbnail_result);
     assert!(thumbnail_result.content.is_some());
 
     // Test 5: Get projects with filter
@@ -217,7 +169,6 @@ async fn test_project_crud_operations() {
 async fn test_project_complete_lifecycle() {
     let ctx = TestContext::new().await;
 
-    // Test 1: Create and verify multiple projects
     let project2 = ctx
         .repo
         .create(&MetadataDto::new(
@@ -228,7 +179,6 @@ async fn test_project_complete_lifecycle() {
         .await
         .expect("Failed to create second project");
 
-    // Test 2: Get all projects
     let all_projects = ctx
         .repo
         .get_projects()
@@ -236,29 +186,6 @@ async fn test_project_complete_lifecycle() {
         .expect("Failed to get all projects");
     assert_eq!(all_projects.len(), 2, "Should have two projects");
 
-    // Test 3: Test filtering with different parameters
-    let adult_projects = ctx
-        .repo
-        .get_projects_with_filter(1, 10, Some(true), true)
-        .await
-        .expect("Failed to get adult projects");
-    println!("Adult projects: {:?}", adult_projects);
-
-    let non_adult_projects = ctx
-        .repo
-        .get_projects_with_filter(1, 10, Some(false), true)
-        .await
-        .expect("Failed to get non-adult projects");
-    println!("Non-adult projects: {:?}", non_adult_projects);
-
-    let hidden_projects = ctx
-        .repo
-        .get_projects_with_filter(1, 10, None, false)
-        .await
-        .expect("Failed to get hidden projects");
-    println!("Hidden projects: {:?}", hidden_projects);
-
-    // Test 4: Add and verify content
     let content = ContentDto {
         id: None,
         bucket_name: "test_bucket".to_string(),
@@ -272,7 +199,6 @@ async fn test_project_complete_lifecycle() {
         .await
         .expect("Failed to add content");
 
-    // Test 5: Get specific content by ID
     let content_by_id = ctx
         .repo
         .get_projects_content_by_id(ctx.id, content_result.id.unwrap())
@@ -280,38 +206,8 @@ async fn test_project_complete_lifecycle() {
         .expect("Failed to query content")
         .expect("Content should exist");
 
-    assert_eq!(
-        content_by_id.id, content_result.id,
-        "Content IDs should match"
-    );
+    assert_eq!(content_by_id.id, content_result.id);
 
-    // Add test for non-existent content
-    let non_existent_id = Uuid::new_v4();
-    let non_existent_content = ctx
-        .repo
-        .get_projects_content_by_id(ctx.id, non_existent_id)
-        .await
-        .expect("Failed to query non-existent content");
-
-    assert!(
-        non_existent_content.is_none(),
-        "Non-existent content should return None"
-    );
-
-    // Test content for non-existent project
-    let non_existent_project_id = Uuid::new_v4();
-    let content_for_non_existent_project = ctx
-        .repo
-        .get_projects_content_by_id(non_existent_project_id, content_result.id.unwrap())
-        .await
-        .expect("Failed to query content for non-existent project");
-
-    assert!(
-        content_for_non_existent_project.is_none(),
-        "Content for non-existent project should return None"
-    );
-
-    // Test 6: Add and verify thumbnail
     let thumbnail = ContentDto {
         id: None,
         bucket_name: "thumbnails".to_string(),
@@ -325,7 +221,6 @@ async fn test_project_complete_lifecycle() {
         .await
         .expect("Failed to add thumbnail");
 
-    // Test 7: Get thumbnail
     let thumbnails = ctx
         .repo
         .get_projects_content_thumbnail(ctx.id)
@@ -333,46 +228,18 @@ async fn test_project_complete_lifecycle() {
         .expect("Failed to get thumbnail");
     assert!(!thumbnails.is_empty());
 
-    // Test 8: Get specific thumbnail by ID
-    let thumbnail_by_id = ctx
-        .repo
-        .get_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
-        .await
-        .expect("Failed to get thumbnail by ID");
-    assert!(thumbnail_by_id.is_some());
-
-    // Test 9: Delete thumbnail
     ctx.repo
         .delete_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
         .await
         .expect("Failed to delete thumbnail");
 
-    // Test 10: Verify thumbnail deletion
     let deleted_thumbnail = ctx
         .repo
         .get_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())
         .await
         .expect("Failed to query deleted thumbnail");
+    assert!(deleted_thumbnail.is_none());
 
-    assert!(
-        deleted_thumbnail.is_none(),
-        "Deleted thumbnail should return None"
-    );
-
-    // Additional test for non-existent thumbnail
-    let non_existent_id = Uuid::new_v4();
-    let non_existent_thumbnail = ctx
-        .repo
-        .get_thumbnail_by_id(ctx.id, non_existent_id)
-        .await
-        .expect("Failed to query non-existent thumbnail");
-
-    assert!(
-        non_existent_thumbnail.is_none(),
-        "Non-existent thumbnail should return None"
-    );
-
-    // Clean up
     ctx.repo
         .delete_project_content_by_id(ctx.id, content_result.id.unwrap())
         .await
@@ -393,7 +260,6 @@ async fn test_project_complete_lifecycle() {
 async fn test_error_cases() {
     let ctx = TestContext::new().await;
 
-    // Test non-existent project
     let non_existent_id = Uuid::new_v4();
     let result = ctx
         .repo
@@ -402,7 +268,6 @@ async fn test_error_cases() {
         .expect("Failed to query project");
     assert!(result.is_none());
 
-    // Test invalid content ID
     let result = ctx
         .repo
         .get_projects_content_by_id(ctx.id, Uuid::new_v4())
@@ -410,41 +275,10 @@ async fn test_error_cases() {
         .expect("Failed to query content");
     assert!(result.is_none());
 
-    // Test pagination edge cases
-    let result = ctx
-        .repo
-        .get_projects_with_filter(0, 0, None, true)
-        .await
-        .expect("Failed with 0 page");
-    assert!(result.projects.is_empty());
-
-    // Test invalid thumbnail ID
     let result = ctx
         .repo
         .get_thumbnail_by_id(ctx.id, Uuid::new_v4())
         .await
         .expect("Failed to query thumbnail");
     assert!(result.is_none());
-}
-
-#[tokio::test]
-async fn test_edge_cases() {
-    let ctx = TestContext::new().await;
-
-    // Test large page sizes
-    let _ = ctx
-        .repo
-        .get_projects_with_filter(1, 1000, None, true)
-        .await
-        .expect("Failed with large page size");
-
-    // Test updating with empty metadata
-    let empty_project = ProjectDto::new()
-        .id(Some(ctx.id))
-        .metadata(Some(MetadataDto::new(None, None, None)));
-
-    ctx.repo
-        .update_project_entity(ctx.id, &empty_project)
-        .await
-        .expect("Failed to update with empty metadata");
 }

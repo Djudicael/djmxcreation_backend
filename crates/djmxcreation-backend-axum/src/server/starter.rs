@@ -75,40 +75,33 @@ async fn track_metrics(request: Request, next: Next) -> Response {
     response
 }
 
-pub async fn start() -> anyhow::Result<()> {
-    // ── Configuration ────────────────────────────────────────────────────────
-    let config = Config::from_env().context("failed to load configuration")?;
+/// Build the application router without binding to a TCP socket.
+///
+/// Useful for integration / end-to-end tests that drive the router directly
+/// via `tower::ServiceExt::oneshot`.
+pub async fn build_router() -> Router {
+    let config = Config::from_env().expect("failed to load configuration");
 
-    // ── Database ─────────────────────────────────────────────────────────────
     let client_db = DatabaseConfig::new(&config.database);
-    info!("database config ready");
-
-    // ── Object storage ────────────────────────────────────────────────────────
     let storage_cfg = config.get_storage();
     let bucket_name = storage_cfg.bucket.clone();
 
     let storage_client =
-        get_storage_client(storage_cfg).context("failed to create storage client")?;
-    ensure_bucket(&bucket_name, &storage_client)
-        .await
-        .context("failed to ensure storage bucket exists")?;
-    info!(bucket = %bucket_name, "storage ready");
+        get_storage_client(storage_cfg).expect("failed to create storage client");
+    let _ = ensure_bucket(&bucket_name, &storage_client).await;
 
-    // ── Prometheus metrics ────────────────────────────────────────────────────
     let recorder_handle = PrometheusBuilder::new()
         .set_buckets_for_metric(
             Matcher::Full("http_requests_duration_seconds".to_string()),
             EXPONENTIAL_SECONDS,
         )
-        .context("invalid prometheus bucket configuration")?
+        .expect("invalid prometheus bucket configuration")
         .install_recorder()
-        .context("failed to install prometheus recorder")?;
+        .expect("failed to install prometheus recorder");
 
-    // ── Services ──────────────────────────────────────────────────────────────
     let service_register = ServiceRegister::new(Arc::new(client_db), storage_client, bucket_name);
 
-    // ── Router ────────────────────────────────────────────────────────────────
-    let router = Router::new()
+    Router::new()
         .nest("/", ObservabilityRouter::new_router())
         .nest(
             "/api/about",
@@ -139,9 +132,13 @@ pub async fn start() -> anyhow::Result<()> {
                 .allow_methods(tower_http::cors::Any)
                 .allow_headers(tower_http::cors::Any)
         })
-        .route_layer(middleware::from_fn(track_metrics));
+        .route_layer(middleware::from_fn(track_metrics))
+}
 
-    // ── Server ────────────────────────────────────────────────────────────────
+pub async fn start() -> anyhow::Result<()> {
+    let router = build_router().await;
+
+    let config = Config::from_env().context("failed to load configuration")?;
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
