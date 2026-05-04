@@ -44,8 +44,7 @@ impl AboutMeService {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 impl IAboutMeService for AboutMeService {
     async fn about_me(&self) -> Result<MeView, Error> {
         let about_me = self.about_me_repository.get_about_me().await?;

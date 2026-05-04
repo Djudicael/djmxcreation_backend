@@ -3,10 +3,7 @@ use std::sync::Arc;
 use app_error::Error;
 use async_trait::async_trait;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type DynIProjectService = Arc<dyn IProjectService + Send + Sync>;
-#[cfg(target_arch = "wasm32")]
-pub type DynIProjectService = Arc<dyn IProjectService + Sync>;
 use uuid::Uuid;
 
 use crate::{
@@ -17,8 +14,7 @@ use crate::{
     },
 };
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 pub trait IProjectService {
     async fn create_project(&self, metadata: &MetadataDto) -> Result<ProjectView, Error>;
     async fn add_project(

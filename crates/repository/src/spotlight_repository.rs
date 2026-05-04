@@ -52,8 +52,7 @@ impl SpotlightRepository {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 impl ISpotlightRepository for SpotlightRepository {
     async fn add_spotlight(&self, project_id: Uuid) -> Result<SpotlightDto, Error> {
         let now_utc: DateTime<Utc> = Utc::now();

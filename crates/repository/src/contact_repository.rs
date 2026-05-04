@@ -30,8 +30,7 @@ impl ContactRepository {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 impl IContactRepository for ContactRepository {
     async fn get_contact(&self) -> Result<ContactDto, Error> {
         let sql = "SELECT * FROM contact FETCH FIRST ROW ONLY";

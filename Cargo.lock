@@ -167,7 +167,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand",
+ "fastrand 2.4.1",
  "hex",
  "http 1.4.0",
  "sha1",
@@ -229,7 +229,7 @@ dependencies = [
  "aws-types",
  "bytes",
  "bytes-utils",
- "fastrand",
+ "fastrand 2.4.1",
  "http 0.2.12",
  "http 1.4.0",
  "http-body 0.4.6",
@@ -261,7 +261,7 @@ dependencies = [
  "aws-smithy-xml",
  "aws-types",
  "bytes",
- "fastrand",
+ "fastrand 2.4.1",
  "hex",
  "hmac 0.12.1",
  "http 0.2.12",
@@ -292,7 +292,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand",
+ "fastrand 2.4.1",
  "http 0.2.12",
  "http 1.4.0",
  "regex-lite",
@@ -316,7 +316,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand",
+ "fastrand 2.4.1",
  "http 0.2.12",
  "http 1.4.0",
  "regex-lite",
@@ -341,7 +341,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-smithy-xml",
  "aws-types",
- "fastrand",
+ "fastrand 2.4.1",
  "http 0.2.12",
  "http 1.4.0",
  "regex-lite",
@@ -512,7 +512,7 @@ dependencies = [
  "aws-smithy-runtime-api",
  "aws-smithy-types",
  "bytes",
- "fastrand",
+ "fastrand 2.4.1",
  "http 0.2.12",
  "http 1.4.0",
  "http-body 0.4.6",
@@ -1251,6 +1251,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "djmxcreation-backend-wasi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-error",
+ "app-service",
+ "app_config",
+ "app_core",
+ "axum",
+ "getrandom 0.4.2",
+ "repository",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "wasi 0.13.3+wasi-0.2.2",
+ "wstd",
+ "wstd-axum",
+]
+
+[[package]]
 name = "docker_credential"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1398,7 +1422,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1417,6 +1441,15 @@ name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
+
+[[package]]
+name = "fastrand"
+version = "1.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51093e27b0797c359783294ca4f0a911c270184cb10f85783b118614a1501be"
+dependencies = [
+ "instant",
+]
 
 [[package]]
 name = "fastrand"
@@ -1554,7 +1587,7 @@ checksum = "175cd8cca9e1d45b87f18ffa75088f2099e3c4fe5e2f83e42de112560bea8ea6"
 dependencies = [
  "fixedbitset",
  "futures-core",
- "futures-lite",
+ "futures-lite 2.6.1",
  "pin-project",
  "smallvec",
 ]
@@ -1584,11 +1617,26 @@ checksum = "cecba35d7ad927e23624b22ad55235f2239cfa44fd10428eecbeba6d6a717718"
 
 [[package]]
 name = "futures-lite"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49a9d51ce47660b1e808d3c990b4709f2f415d928835a17dfd16991515c46bce"
+dependencies = [
+ "fastrand 1.9.0",
+ "futures-core",
+ "futures-io",
+ "memchr",
+ "parking",
+ "pin-project-lite",
+ "waker-fn",
+]
+
+[[package]]
+name = "futures-lite"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
 dependencies = [
- "fastrand",
+ "fastrand 2.4.1",
  "futures-core",
  "futures-io",
  "parking",
@@ -2047,7 +2095,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -2239,6 +2287,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "instant"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
@@ -2527,7 +2584,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2785,7 +2842,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 [[package]]
 name = "pg-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#07209d38b374022526fec0087b59c41e183a121c"
+source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
 dependencies = [
  "bytes",
  "postgres-protocol",
@@ -2795,7 +2852,7 @@ dependencies = [
 [[package]]
 name = "pg-types"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#07209d38b374022526fec0087b59c41e183a121c"
+source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
 dependencies = [
  "bytes",
  "chrono",
@@ -3354,7 +3411,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3962,7 +4019,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8a559c81686f576e8cd0290cd2a24a2a9ad80c98b3478856500fcbd7acd704"
 dependencies = [
  "cfg-if",
- "fastrand",
+ "fastrand 2.4.1",
  "getrandom 0.2.17",
  "once_cell",
  "rustix 0.38.44",
@@ -4491,6 +4548,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
 
 [[package]]
+name = "waker-fn"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "317211a0dc0ceedd78fb2ca9a44aed3d7b9b26f81870d485c07122b4350673b7"
+
+[[package]]
 name = "want"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4517,7 +4580,7 @@ dependencies = [
 [[package]]
 name = "wasi-pg-client"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#07209d38b374022526fec0087b59c41e183a121c"
+source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4539,6 +4602,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "wasip2",
  "webpki-roots 0.26.11",
  "wstd",
 ]
@@ -5067,12 +5131,17 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 
 [[package]]
 name = "wstd"
-version = "0.5.6"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0736607b57fcb58dd3148cf34d6a6ca63ba041fde8a12ab3f2c48ddf6d11877"
+checksum = "0903606f1acdecad11576768ecc61ce215d6848652ac16c0e4592bb265e4200e"
 dependencies = [
+ "anyhow",
  "async-task",
+ "bytes",
+ "futures-lite 1.13.0",
  "http 1.4.0",
+ "http-body 1.0.1",
+ "http-body-util",
  "itoa",
  "pin-project-lite",
  "serde",
@@ -5083,10 +5152,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "wstd-macro"
-version = "0.5.6"
+name = "wstd-axum"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb142608f932022fa7d155d8ed99649d02c56a50532e71913a5a03c7c4e288d3"
+checksum = "3562c0cdfaf96c0e8a18b66615ef08bbdf5917a6e64333ab47ea8ab84d5d60ac"
+dependencies = [
+ "axum",
+ "tower-service",
+ "wstd",
+ "wstd-axum-macro",
+]
+
+[[package]]
+name = "wstd-axum-macro"
+version = "0.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3a2419f03b2ce6e3da7029da0f0462764bd1c9c6dd749fa2a50a3517555f4a8"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "wstd-macro"
+version = "0.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6a9df01a7fb39fbe7e9b5ef76f586f06425dd6f2be350de4781936f72f9899d"
 dependencies = [
  "quote",
  "syn",

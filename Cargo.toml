@@ -2,6 +2,7 @@
 members = [
     "crates/app-error",
     "crates/djmxcreation-backend-axum",
+    "crates/djmxcreation-backend-wasi",
     "crates/repository",
     "crates/app-service",
     "crates/test-util",

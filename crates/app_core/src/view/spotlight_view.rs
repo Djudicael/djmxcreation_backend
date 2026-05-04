@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::dto::metadata_dto::MetadataDto;
+use crate::dto::{metadata_dto::MetadataDto, spotlight_dto::SpotlightDto};
 
 use super::content_view::ContentView;
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
@@ -36,3 +36,15 @@ impl SpotlightView {
     }
 }
 
+impl From<SpotlightDto> for SpotlightView {
+    fn from(dto: SpotlightDto) -> Self {
+        Self::new(
+            dto.id,
+            dto.project_id,
+            dto.adult,
+            dto.metadata,
+            dto.created_on,
+            dto.thumbnail.map(ContentView::from),
+        )
+    }
+}

@@ -3,13 +3,9 @@ use std::sync::Arc;
 use app_error::Error;
 use async_trait::async_trait;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type DynIStorageRepository = Arc<dyn IStorageRepository + Send + Sync>;
-#[cfg(target_arch = "wasm32")]
-pub type DynIStorageRepository = Arc<dyn IStorageRepository + Sync>;
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 pub trait IStorageRepository {
     async fn upload_file(
         &self,

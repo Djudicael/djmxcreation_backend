@@ -20,8 +20,7 @@ impl StorageRepository {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[async_trait]
 impl IStorageRepository for StorageRepository {
     async fn upload_file(
         &self,
