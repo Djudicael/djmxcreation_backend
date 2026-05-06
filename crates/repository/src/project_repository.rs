@@ -65,8 +65,10 @@ impl ProjectRepository {
             None
         };
 
+        let id: Uuid = col(row, "id")?;
+
         Ok(Project {
-            id: Some(col(row, "id")?),
+            id: Some(id),
             metadata: json_opt(row, "metadata")?,
             created_on: timestamp_opt(row, "created_on")?,
             updated_on: timestamp_opt(row, "updated_on")?,
@@ -79,8 +81,10 @@ impl ProjectRepository {
     }
 
     fn map_row_to_project_with_thumbnail(row: &Row) -> Result<ProjectWithThumbnail, Error> {
+        let id: Uuid = col(row, "id")?;
+
         Ok(ProjectWithThumbnail {
-            id: Some(col(row, "id")?),
+            id: Some(id),
             metadata: json_opt(row, "metadata")?,
             created_on: timestamp(row, "created_on")?,
             updated_on: timestamp_opt(row, "updated_on")?,
@@ -93,9 +97,12 @@ impl ProjectRepository {
     }
 
     fn map_row_to_project_content(row: &Row) -> Result<ProjectContent, Error> {
+        let id: Uuid = col(row, "id")?;
+        let project_id: Uuid = col(row, "project_id")?;
+
         Ok(ProjectContent::new(
-            Some(col(row, "id")?),
-            col(row, "project_id")?,
+            Some(id),
+            project_id,
             json_opt(row, "content")?,
             timestamp_opt(row, "created_on")?,
         ))

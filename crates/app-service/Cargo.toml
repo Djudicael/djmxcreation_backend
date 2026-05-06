@@ -14,3 +14,6 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 repository = { workspace = true, features = ["test-fakes"] }
+test-util = { workspace = true }
+tokio = { workspace = true }
+aws-sdk-s3 = "1.21"

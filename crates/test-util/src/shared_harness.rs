@@ -33,7 +33,7 @@ pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
                 .with_db(test_db_config.pg_db.as_str())
                 .with_user(test_db_config.pg_user.as_str())
                 .with_password(test_db_config.pg_password.as_str())
-                .with_port(ExposedPort::fixed(test_db_config.pg_port, test_db_config.pg_port));
+                .with_port(ExposedPort::new(test_db_config.pg_port));
 
             let podman = Runner::podman().expect("Failed to create Podman runner");
             let container = podman
@@ -63,9 +63,10 @@ pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
 pub async fn shared_rustfs() -> String {
     RUSTFS
         .get_or_init(|| async {
-            let image = rustainers::images::GenericImage::new(
+            let mut image = rustainers::images::GenericImage::new(
                 rustainers::ImageName::new("docker.io/rustfs/rustfs"),
             );
+            image.add_port_mapping(9000);
             let podman = Runner::podman().expect("Failed to create Podman runner");
             let container = podman
                 .start(image)

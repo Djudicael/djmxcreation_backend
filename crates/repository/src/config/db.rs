@@ -7,13 +7,13 @@ use wasi_pg_client::{Config, Connection};
 /// fresh `Connection` for every database operation.
 #[derive(Clone)]
 pub struct DatabaseConfig {
-    host: String,
-    port: u16,
-    user: String,
-    password: String,
-    dbname: String,
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub password: String,
+    pub dbname: String,
     /// Optional full URI override (e.g. for tests connecting to containers).
-    uri: Option<String>,
+    pub uri: Option<String>,
 }
 
 impl DatabaseConfig {

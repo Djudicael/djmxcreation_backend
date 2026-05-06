@@ -93,9 +93,12 @@ dependencies = [
  "app-error",
  "app_core",
  "async-trait",
+ "aws-sdk-s3",
  "futures",
  "repository",
  "serde_json",
+ "test-util",
+ "tokio",
  "tracing",
  "uuid",
 ]
@@ -2167,7 +2170,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -2914,7 +2917,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 [[package]]
 name = "pg-protocol"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
+source = "git+https://github.com/Djudicael/pg_client#061f8815050534c7e10406930664f74778cb5f44"
 dependencies = [
  "bytes",
  "postgres-protocol",
@@ -2924,7 +2927,7 @@ dependencies = [
 [[package]]
 name = "pg-types"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
+source = "git+https://github.com/Djudicael/pg_client#061f8815050534c7e10406930664f74778cb5f44"
 dependencies = [
  "bytes",
  "chrono",
@@ -4722,7 +4725,7 @@ dependencies = [
 [[package]]
 name = "wasi-pg-client"
 version = "0.1.0"
-source = "git+https://github.com/Djudicael/pg_client#7b406c51e8989a0364cf14fabad1c82d4822c954"
+source = "git+https://github.com/Djudicael/pg_client#061f8815050534c7e10406930664f74778cb5f44"
 dependencies = [
  "base64 0.22.1",
  "bytes",

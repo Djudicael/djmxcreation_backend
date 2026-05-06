@@ -1,11 +1,31 @@
 use axum::Router;
 use axum_test::TestServer;
 use serde_json::json;
+use std::env;
 
-use djmxcreation_backend_wasi::server::starter::build_router;
+use djmxcreation_backend_wasi::app_router;
 
 fn test_app() -> TestServer {
-    let router: Router = build_router();
+    // Use shared test DB so e2e tests run against a real containerised Postgres.
+    let rt = tokio::runtime::Handle::current();
+    let (db_cfg, _uri) = rt.block_on(async {
+        test_util::shared_harness::shared_postgres().await
+    });
+
+    unsafe {
+        env::set_var("PG_HOST", &db_cfg.host);
+        env::set_var("PG_PORT", db_cfg.port.to_string());
+        env::set_var("PG_USER", &db_cfg.user);
+        env::set_var("PG_PASSWORD", &db_cfg.password);
+        env::set_var("PG_DB", &db_cfg.dbname);
+        env::set_var("STORAGE_ENDPOINT", "http://127.0.0.1:3900");
+        env::set_var("STORAGE_ACCESS_KEY", "myaccesskey");
+        env::set_var("STORAGE_SECRET_KEY", "mysecretkey");
+        env::set_var("STORAGE_REGION", "us-west-1");
+        env::set_var("STORAGE_BUCKET", "portfolio");
+    }
+
+    let router: Router = app_router();
     TestServer::new(router).expect("should create test server")
 }
 

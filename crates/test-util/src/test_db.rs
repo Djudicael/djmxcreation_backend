@@ -3,10 +3,38 @@ use repository::config::db::DatabaseConfig;
 use rustainers::images::Postgres;
 use rustainers::runner::Runner;
 use rustainers::ExposedPort;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 
 pub type PostgresContainer = rustainers::Container<Postgres>;
+
+fn find_migrations_dir() -> PathBuf {
+    // Try workspace root first (where Cargo.toml with [workspace] lives)
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let candidates = [
+        manifest_dir.join("..").join("..").join("sql").join("migrations"),
+        manifest_dir.join("..").join("sql").join("migrations"),
+        manifest_dir.join("sql").join("migrations"),
+    ];
+    for candidate in &candidates {
+        if candidate.exists() {
+            return candidate.clone();
+        }
+    }
+    // Fallback: search upward from current dir
+    let mut current = std::env::current_dir().unwrap_or_else(|_| manifest_dir.clone());
+    loop {
+        let migrations = current.join("sql").join("migrations");
+        if migrations.exists() {
+            return migrations;
+        }
+        if !current.pop() {
+            break;
+        }
+    }
+    panic!("Could not find sql/migrations directory. Searched from {:?}", std::env::current_dir());
+}
 
 /// Start a PostgreSQL container via Podman and return it together with a
 /// `DatabaseConfig` pointed at the container.
@@ -49,9 +77,11 @@ pub async fn start_postgres() -> (PostgresContainer, Arc<DatabaseConfig>, String
 ///
 /// Files are executed in lexicographic order (V1__, V2__, …).
 pub async fn run_migrations(uri: &str) {
-    let mut entries = fs::read_dir("sql/migrations")
+    let migrations_dir = find_migrations_dir();
+
+    let mut entries = fs::read_dir(&migrations_dir)
         .await
-        .expect("Failed to read migrations directory");
+        .unwrap_or_else(|e| panic!("Failed to read migrations directory {}: {e}", migrations_dir.display()));
 
     let mut files = Vec::new();
     while let Ok(Some(entry)) = entries.next_entry().await {
@@ -76,9 +106,6 @@ pub async fn run_migrations(uri: &str) {
             continue;
         }
 
-        // Split on DO $$ blocks and regular statements to handle them separately
-        // For simplicity, just execute the whole SQL. Refinery-style migrations
-        // usually have one statement per file, but some (like V1) have complex blocks.
         if let Err(e) = conn.execute(&sql).await {
             let msg = e.to_string();
             if msg.contains("duplicate_database") || msg.contains("already exists") {
