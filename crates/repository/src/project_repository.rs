@@ -38,7 +38,7 @@ fn json_opt(row: &Row, col: &str) -> Result<Option<Value>, Error> {
 }
 
 /// Extract a column value from a row.
-fn col<T: wasi_pg_client::pg_types::FromSql>(row: &Row, col_name: &str) -> Result<T, Error> {
+fn col<T: wasi_pg_client::types::FromSql>(row: &Row, col_name: &str) -> Result<T, Error> {
     row.get_by_name(col_name).map_err(|e| to_error(e, None))
 }
 
@@ -131,7 +131,7 @@ impl IProjectRepository for ProjectRepository {
 
                 let project = ProjectRepository::map_row_to_project(&row, false).map_err(|e| {
                     wasi_pg_client::PgError::TypeConversion(
-                        wasi_pg_client::pg_types::Error::Conversion(e.to_string()),
+                        wasi_pg_client::types::Error::Conversion(e.to_string()),
                     )
                 })?;
                 Ok(ProjectDto::from(project))
@@ -166,7 +166,7 @@ impl IProjectRepository for ProjectRepository {
 
                 ProjectRepository::map_row_to_project_content(&row).map_err(|e| {
                     wasi_pg_client::PgError::TypeConversion(
-                        wasi_pg_client::pg_types::Error::Conversion(e.to_string()),
+                        wasi_pg_client::types::Error::Conversion(e.to_string()),
                     )
                 })
             })
@@ -205,7 +205,7 @@ impl IProjectRepository for ProjectRepository {
 
                 ProjectRepository::map_row_to_project_content(&row).map_err(|e| {
                     wasi_pg_client::PgError::TypeConversion(
-                        wasi_pg_client::pg_types::Error::Conversion(e.to_string()),
+                        wasi_pg_client::types::Error::Conversion(e.to_string()),
                     )
                 })
             })

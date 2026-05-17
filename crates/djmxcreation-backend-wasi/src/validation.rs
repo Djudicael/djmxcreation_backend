@@ -1,4 +1,4 @@
-use crate::error::wasi_error::Error;
+use crate::error::error::Error;
 
 /// Sanitise a user-supplied file name received from a multipart upload.
 ///

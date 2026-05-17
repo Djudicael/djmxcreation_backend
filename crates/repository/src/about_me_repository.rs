@@ -23,7 +23,7 @@ fn json_opt(row: &Row, col: &str) -> Result<Option<Value>, Error> {
 }
 
 /// Extract a required column value from a row.
-fn col<T: wasi_pg_client::pg_types::FromSql>(row: &Row, col_name: &str) -> Result<T, Error> {
+fn col<T: wasi_pg_client::types::FromSql>(row: &Row, col_name: &str) -> Result<T, Error> {
     row.get_by_name(col_name).map_err(|e| to_error(e, None))
 }
 

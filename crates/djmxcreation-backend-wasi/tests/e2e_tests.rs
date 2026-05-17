@@ -2,22 +2,27 @@ use axum::Router;
 use axum_test::TestServer;
 use serde_json::json;
 use std::env;
+use std::sync::Once;
 
 use djmxcreation_backend_wasi::app_router;
 
-fn test_app() -> TestServer {
-    // Use shared test DB so e2e tests run against a real containerised Postgres.
-    let rt = tokio::runtime::Handle::current();
-    let (db_cfg, _uri) = rt.block_on(async {
-        test_util::shared_harness::shared_postgres().await
+static INIT: Once = Once::new();
+
+fn init_tracing() {
+    INIT.call_once(|| {
+        tracing_subscriber::fmt()
+            .with_env_filter("debug,repository=trace,wasi_pg_client=debug")
+            .try_init()
+            .ok();
     });
+}
+
+async fn test_app() -> TestServer {
+    init_tracing();
+    let (db_cfg, uri) = test_util::shared_harness::shared_postgres().await;
 
     unsafe {
-        env::set_var("PG_HOST", &db_cfg.host);
-        env::set_var("PG_PORT", db_cfg.port.to_string());
-        env::set_var("PG_USER", &db_cfg.user);
-        env::set_var("PG_PASSWORD", &db_cfg.password);
-        env::set_var("PG_DB", &db_cfg.dbname);
+        env::set_var("DATABASE_URL", &uri);
         env::set_var("STORAGE_ENDPOINT", "http://127.0.0.1:3900");
         env::set_var("STORAGE_ACCESS_KEY", "myaccesskey");
         env::set_var("STORAGE_SECRET_KEY", "mysecretkey");
@@ -31,7 +36,7 @@ fn test_app() -> TestServer {
 
 #[tokio::test]
 async fn wasi_e2e_ping() {
-    let server = test_app();
+    let server = test_app().await;
 
     let response = server.get("/ping").await;
     response.assert_status_ok();
@@ -40,7 +45,7 @@ async fn wasi_e2e_ping() {
 
 #[tokio::test]
 async fn wasi_e2e_about_me_crud() {
-    let server = test_app();
+    let server = test_app().await;
 
     let response = server.get("/api/about/v1/me").await;
     response.assert_status_ok();
@@ -64,7 +69,7 @@ async fn wasi_e2e_about_me_crud() {
 
 #[tokio::test]
 async fn wasi_e2e_contact_crud() {
-    let server = test_app();
+    let server = test_app().await;
 
     let response = server.get("/api/contact/v1/information").await;
     response.assert_status_ok();
@@ -80,7 +85,7 @@ async fn wasi_e2e_contact_crud() {
 
 #[tokio::test]
 async fn wasi_e2e_project_crud() {
-    let server = test_app();
+    let server = test_app().await;
 
     let response = server
         .post("/api/portfolio/v1/projects")
@@ -128,7 +133,7 @@ async fn wasi_e2e_project_crud() {
 
 #[tokio::test]
 async fn wasi_e2e_spotlight_flow() {
-    let server = test_app();
+    let server = test_app().await;
 
     let response = server
         .post("/api/portfolio/v1/projects")
@@ -166,7 +171,7 @@ async fn wasi_e2e_spotlight_flow() {
 
 #[tokio::test]
 async fn wasi_e2e_metrics_endpoint() {
-    let server = test_app();
+    let server = test_app().await;
     let response = server.get("/metrics").await;
     response.assert_status_ok();
 }

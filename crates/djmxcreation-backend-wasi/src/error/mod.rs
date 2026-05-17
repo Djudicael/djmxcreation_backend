@@ -1,1 +1,1 @@
-pub mod wasi_error;
+pub mod error;

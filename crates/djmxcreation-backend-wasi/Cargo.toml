@@ -8,6 +8,10 @@ name = "djmxcreation_backend_wasi"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "djmxcreation-backend-wasi"
+path = "src/main.rs"
+
 [dependencies]
 app-error = { workspace = true }
 app-service = { workspace = true }
@@ -16,21 +20,33 @@ app_config = { workspace = true }
 repository = { workspace = true }
 
 anyhow = { workspace = true }
-axum = { version = "0.8.8", default-features = false, features = ["json", "matched-path", "multipart", "original-uri", "query", "tower-log", "tracing"] }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
-axum-test = { workspace = true }
-
-[dev-dependencies]
-test-util = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wstd = "0.6"
 wstd-axum = "0.6"
 wasi = { version = "0.13", features = ["std"] }
 getrandom = { version = "0.4" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "signal", "macros"] }
+axum = { workspace = true, features = ["tokio", "http1"] }
+hyper = { workspace = true }
+futures = { workspace = true }
+tokio-util = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+metrics = { workspace = true }
+wasi-pg-client = { workspace = true, features = ["tokio-transport", "uuid", "chrono", "serde-json"] }
+
+[dev-dependencies]
+test-util = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "signal", "macros"] }
+axum-test = { workspace = true }

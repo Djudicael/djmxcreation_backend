@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use uuid::Uuid;
 
-use crate::{error::wasi_error::ApiResult, service::service_register::ServiceRegister, validation::{validate_file_name, validate_pagination}};
+use crate::{error::error::ApiResult, service::service_register::ServiceRegister, validation::{validate_file_name, validate_pagination}};
 
 /// Maximum allowed size for multipart file uploads (50 MB).
 const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024;

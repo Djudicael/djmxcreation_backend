@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 
-use app_config::database_configuration::DatabaseConfiguration;
 use repository::config::db::DatabaseConfig;
 use rustainers::images::Postgres;
 use rustainers::runner::Runner;
@@ -12,6 +11,10 @@ use crate::test_db::run_migrations;
 
 pub type PostgresContainer = rustainers::Container<Postgres>;
 
+const TEST_DB_USER: &str = "postgres";
+const TEST_DB_PASSWORD: &str = "postgres";
+const TEST_DB_NAME: &str = "portfolio";
+
 static POSTGRES: OnceCell<(PostgresContainer, Arc<DatabaseConfig>, String)> = OnceCell::const_new();
 
 /// Shared RustFS endpoint — started once per test process.
@@ -20,20 +23,11 @@ static RUSTFS: OnceCell<String> = OnceCell::const_new();
 pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
     let (_, config, uri) = POSTGRES
         .get_or_init(|| async {
-            let test_db_config = DatabaseConfiguration {
-                pg_user: "postgres".to_string(),
-                pg_password: "postgres".to_string(),
-                pg_host: "localhost".to_string(),
-                pg_db: "portfolio".to_string(),
-                pg_app_max_con: 5,
-                pg_port: 5432,
-            };
-
             let image = Postgres::default()
-                .with_db(test_db_config.pg_db.as_str())
-                .with_user(test_db_config.pg_user.as_str())
-                .with_password(test_db_config.pg_password.as_str())
-                .with_port(ExposedPort::new(test_db_config.pg_port));
+                .with_db(TEST_DB_NAME)
+                .with_user(TEST_DB_USER)
+                .with_password(TEST_DB_PASSWORD)
+                .with_port(ExposedPort::new(5432));
 
             let podman = Runner::podman().expect("Failed to create Podman runner");
             let container = podman
@@ -49,7 +43,13 @@ pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
                 .expect("Failed to get container URL")
                 .to_string();
 
-            let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&uri));
+            let uri = if uri.contains('?') {
+                format!("{uri}&sslmode=disable")
+            } else {
+                format!("{uri}?sslmode=disable")
+            };
+
+            let config = Arc::new(DatabaseConfig { url: uri.clone() });
 
             run_migrations(&uri).await;
 

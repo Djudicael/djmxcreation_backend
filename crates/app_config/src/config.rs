@@ -18,29 +18,27 @@ pub struct Config {
 impl Config {
     /// Load configuration from environment variables.
     ///
-    /// Returns `Err(ConfigError)` if any required variable is missing or invalid,
-    /// so the caller can handle startup failure cleanly instead of panicking.
+    /// Primary: `DATABASE_URL` env var.
+    /// Fallback: `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, `PG_PASSWORD` (for backward compat).
     pub fn from_env() -> Result<Self, ConfigError> {
         dotenv().ok();
 
         // ── Database ────────────────────────────────────────────────────────
-        let pg_host = required("PG_HOST")?;
-        let pg_db = required("PG_DB")?;
-        let pg_user = required("PG_USER")?;
-        let pg_password = required("PG_PASSWORD")?;
-        let pg_port = required("PG_PORT")?
-            .parse::<u16>()
-            .map_err(|e| ConfigError::Invalid {
-                key: "PG_PORT",
-                reason: e.to_string(),
-            })?;
+        let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
+            let host = env::var("PG_HOST").unwrap_or_else(|_| "localhost".into());
+            let port = env::var("PG_PORT").unwrap_or_else(|_| "5432".into());
+            let db = env::var("PG_DB").unwrap_or_else(|_| "portfolio".into());
+            let user = env::var("PG_USER").unwrap_or_else(|_| "postgres".into());
+            let password = env::var("PG_PASSWORD").unwrap_or_else(|_| "postgres".into());
+            format!("postgresql://{user}:{password}@{host}:{port}/{db}")
+        });
+
         let pg_max_con = env::var("PG_APP_MAX_CON")
             .ok()
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(5);
 
-        let database =
-            DatabaseConfiguration::new(pg_host, pg_db, pg_user, pg_password, pg_max_con, pg_port);
+        let database = DatabaseConfiguration::new(database_url, pg_max_con);
 
         // ── Object storage (RustFS / S3-compatible) ─────────────────────────
         let storage_endpoint = required("STORAGE_ENDPOINT")?;

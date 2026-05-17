@@ -1,4 +1,3 @@
-use app_config::database_configuration::DatabaseConfiguration;
 use repository::config::db::DatabaseConfig;
 use rustainers::images::Postgres;
 use rustainers::runner::Runner;
@@ -9,8 +8,12 @@ use tokio::fs;
 
 pub type PostgresContainer = rustainers::Container<Postgres>;
 
+const TEST_DB_USER: &str = "postgres";
+const TEST_DB_PASSWORD: &str = "postgres";
+const TEST_DB_NAME: &str = "portfolio";
+const TEST_DB_PORT: u16 = 5432;
+
 fn find_migrations_dir() -> PathBuf {
-    // Try workspace root first (where Cargo.toml with [workspace] lives)
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let candidates = [
         manifest_dir.join("..").join("..").join("sql").join("migrations"),
@@ -22,7 +25,6 @@ fn find_migrations_dir() -> PathBuf {
             return candidate.clone();
         }
     }
-    // Fallback: search upward from current dir
     let mut current = std::env::current_dir().unwrap_or_else(|_| manifest_dir.clone());
     loop {
         let migrations = current.join("sql").join("migrations");
@@ -39,20 +41,11 @@ fn find_migrations_dir() -> PathBuf {
 /// Start a PostgreSQL container via Podman and return it together with a
 /// `DatabaseConfig` pointed at the container.
 pub async fn start_postgres() -> (PostgresContainer, Arc<DatabaseConfig>, String) {
-    let test_db_config = DatabaseConfiguration {
-        pg_user: "postgres".to_string(),
-        pg_password: "postgres".to_string(),
-        pg_host: "localhost".to_string(),
-        pg_db: "portfolio".to_string(),
-        pg_app_max_con: 5,
-        pg_port: 5432,
-    };
-
     let image = Postgres::default()
-        .with_db(test_db_config.pg_db.as_str())
-        .with_user(test_db_config.pg_user.as_str())
-        .with_password(test_db_config.pg_password.as_str())
-        .with_port(ExposedPort::fixed(test_db_config.pg_port, test_db_config.pg_port));
+        .with_db(TEST_DB_NAME)
+        .with_user(TEST_DB_USER)
+        .with_password(TEST_DB_PASSWORD)
+        .with_port(ExposedPort::fixed(TEST_DB_PORT, TEST_DB_PORT));
 
     let podman = Runner::podman().expect("Failed to create Podman runner");
     let container = podman
@@ -60,7 +53,6 @@ pub async fn start_postgres() -> (PostgresContainer, Arc<DatabaseConfig>, String
         .await
         .expect("Failed to start PostgreSQL container");
 
-    // Wait for Postgres to be ready
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
     let uri = container
@@ -69,13 +61,17 @@ pub async fn start_postgres() -> (PostgresContainer, Arc<DatabaseConfig>, String
         .expect("Failed to get container URL")
         .to_string();
 
-    let config = Arc::new(DatabaseConfig::new(&test_db_config).with_uri(&uri));
+    let uri = if uri.contains('?') {
+        format!("{uri}&sslmode=disable")
+    } else {
+        format!("{uri}?sslmode=disable")
+    };
+
+    let config = Arc::new(DatabaseConfig { url: uri.clone() });
     (container, config, uri)
 }
 
 /// Run all SQL migration files from `sql/migrations` against the given URI.
-///
-/// Files are executed in lexicographic order (V1__, V2__, …).
 pub async fn run_migrations(uri: &str) {
     let migrations_dir = find_migrations_dir();
 
@@ -108,7 +104,7 @@ pub async fn run_migrations(uri: &str) {
 
         if let Err(e) = conn.execute(&sql).await {
             let msg = e.to_string();
-            if msg.contains("duplicate_database") || msg.contains("already exists") {
+            if msg.contains("duplicate") || msg.contains("already exists") {
                 continue;
             }
             panic!("Migration failed for {}: {e}", path.display());
@@ -117,8 +113,6 @@ pub async fn run_migrations(uri: &str) {
 }
 
 /// Convenience helper: start Postgres, run migrations, and return the config.
-///
-/// The returned `PostgresContainer` must be kept alive for the duration of the test.
 pub async fn setup_test_db() -> (PostgresContainer, Arc<DatabaseConfig>) {
     let (container, config, uri) = start_postgres().await;
     run_migrations(&uri).await;

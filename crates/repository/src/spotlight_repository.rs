@@ -87,7 +87,7 @@ impl ISpotlightRepository for SpotlightRepository {
 
                 let spotlight = Self::map_row_to_spotlight(&row).map_err(|e| {
                     wasi_pg_client::PgError::TypeConversion(
-                        wasi_pg_client::pg_types::Error::Conversion(e.to_string()),
+                        wasi_pg_client::types::Error::Conversion(e.to_string()),
                     )
                 })?;
                 Ok(SpotlightDto::from(spotlight))

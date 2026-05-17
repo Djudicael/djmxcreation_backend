@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::{error::wasi_error::ApiResult, service::service_register::ServiceRegister};
+use crate::{error::error::ApiResult, service::service_register::ServiceRegister};
 
 pub struct ContactRouter;
 

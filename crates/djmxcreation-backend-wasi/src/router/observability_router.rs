@@ -7,16 +7,11 @@ impl ObservabilityRouter {
     pub fn new_router() -> Router {
         Router::new()
             .route("/ping", get(ping))
-            .route("/metrics", get(metrics))
     }
 }
 
 async fn ping() -> Json<PingResponse> {
     Json(PingResponse::default())
-}
-
-async fn metrics() -> &'static str {
-    "# no metrics available in wasi build\n"
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]

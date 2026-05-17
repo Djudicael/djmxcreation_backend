@@ -1,9 +1,9 @@
 use app_core::storage::storage_repository::IStorageRepository;
-use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
 use aws_sdk_s3::Client;
+use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
 use repository::config::storage::StorageClient;
 use repository::storage_repository::StorageRepository;
-use std::sync::Arc;
+
 use test_util::rustfs::RustFS;
 use test_util::shared_harness::shared_rustfs;
 
@@ -21,13 +21,7 @@ impl TestContext {
 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        let credentials = Credentials::new(
-            "rustfsadmin",
-            "rustfsadmin",
-            None,
-            None,
-            "Static",
-        );
+        let credentials = Credentials::new("rustfsadmin", "rustfsadmin", None, None, "Static");
 
         let config = S3ConfigBuilder::new()
             .credentials_provider(credentials)

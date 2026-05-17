@@ -1,19 +1,20 @@
 [workspace]
 members = [
     "crates/app-error",
-    "crates/djmxcreation-backend-axum",
     "crates/djmxcreation-backend-wasi",
     "crates/repository",
     "crates/app-service",
     "crates/test-util",
     "crates/app_core",
     "crates/app_config",
+    "crates/migration",
+    "crates/dev-server",
 ]
 
 resolver = "3"
 default-members = [
     "crates/app-error",
-    "crates/djmxcreation-backend-axum",
+    "crates/djmxcreation-backend-wasi",
     "crates/repository",
     "crates/app-service",
     "crates/app_core",
@@ -26,12 +27,13 @@ app_config = { path = "crates/app_config" }
 app_core = { path = "crates/app_core" }
 app-service = { path = "crates/app-service" }
 dotenv = "0.15.0"
+dotenvy = "0.15"
 repository = { path = "crates/repository" }
 test-util = { path = "crates/test-util" }
 
 anyhow = "1.0.95"
 async-trait = "0.1.84"
-axum = { version = "0.8.4", features = ["multipart", "macros"] }
+axum = { version = "0.8.4", default-features = false, features = ["json", "matched-path", "original-uri", "query", "tower-log", "tracing", "multipart", "macros"] }
 chrono = { version = "0.4.39", features = ["serde"] }
 futures = "0.3.31"
 hyper = "1.5.2"
@@ -47,5 +49,9 @@ tower-http = { version = "0.6.6", features = ["trace", "cors", "fs"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "=1.11.0", features = ["v4", "fast-rng", "serde"] }
-wasi-pg-client = { git = "https://github.com/Djudicael/pg_client", features = ["uuid", "serde-json", "chrono"] }
+wasi-pg-client = { version = "0.1.1", features = ["uuid", "serde-json", "chrono"] }
 axum-test = "17.2"
+rustainers = "0.15"
+portpicker = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+getrandom = "0.4"
