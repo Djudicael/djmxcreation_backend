@@ -16,7 +16,6 @@ async-trait = { workspace = true }
 app_core = { workspace = true }
 app_config = { workspace = true }
 tracing = { workspace = true }
-tokio = { workspace = true }
 uuid = { workspace = true }
 url = "2.5"
 
@@ -29,18 +28,17 @@ wasi-pg-client = { workspace = true }
 getrandom = { version = "0.4" }
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-aws-config = { version = "1.10", features = ["behavior-version-latest"] }
 aws-sdk-s3 = { version = "1.141", features = ["behavior-version-latest"] }
 
 [target.'cfg(target_os = "wasi")'.dependencies]
-aws-config = { version = "1.10", default-features = false, features = ["behavior-version-latest"] }
-aws-sdk-s3 = { version = "1.141", default-features = false, features = ["rt-tokio"] }
+aws-sdk-s3 = { version = "1.141", default-features = false }
 aws-smithy-runtime-api = { version = "1.14", features = ["client"] }
 wasi = "0.14"
 
-[dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 testcontainers = "0.28.0"
 test-util = { workspace = true }
+tokio = { workspace = true }
 
 [lib]
 name = "repository"

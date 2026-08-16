@@ -46,7 +46,7 @@ metrics-exporter-prometheus = { workspace = true }
 metrics = { workspace = true }
 wasi-pg-client = { workspace = true, features = ["tokio-transport", "uuid", "chrono", "serde-json"] }
 
-[dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 test-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "net", "signal", "macros"] }
 axum-test = { workspace = true }
