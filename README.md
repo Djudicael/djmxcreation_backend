@@ -198,7 +198,7 @@ Copy `.env.template` to `.env` and fill in the values.
 
 ### Prerequisites
 
-- Rust (stable, 1.80+)
+- Rust 1.97.1 (installed automatically by rustup from `rust-toolchain.toml`)
 - PostgreSQL 12+
 - A running [RustFS](https://github.com/rustfs/rustfs) instance
 
@@ -214,7 +214,7 @@ cp .env.template .env
 # Edit .env with your values
 
 # 3. Build and run
-cargo run --bin djmxcreation-backend-axum
+cargo run --bin djmxcreation-backend-wasi
 ```
 
 Database migrations are applied automatically on startup.
@@ -253,16 +253,16 @@ Use these commands from the repository root.
 
 ```bash
 # Debug build
-cargo build --bin djmxcreation-backend-axum
+cargo build --bin djmxcreation-backend-wasi
 
 # Release build
-cargo build --release --bin djmxcreation-backend-axum
+cargo build --release --bin djmxcreation-backend-wasi
 ```
 
 Backend binary outputs:
 
-- Debug: `target/debug/djmxcreation-backend-axum`
-- Release: `target/release/djmxcreation-backend-axum`
+- Debug: `target/debug/djmxcreation-backend-wasi`
+- Release: `target/release/djmxcreation-backend-wasi`
 
 ### Build all workspace crates
 
@@ -273,7 +273,7 @@ cargo build --workspace
 ### Build each backend component crate
 
 ```bash
-cargo build -p djmxcreation-backend-axum
+cargo build -p djmxcreation-backend-wasi
 cargo build -p app-service
 cargo build -p repository
 cargo build -p app_core
@@ -283,7 +283,7 @@ cargo build -p test-util
 cargo build -p dev-server
 ```
 
-The `migration` crate is not currently part of the workspace members, so build it with:
+Build the migration crate separately when needed:
 
 ```bash
 cargo build --manifest-path crates/migration/Cargo.toml
@@ -292,23 +292,16 @@ cargo build --manifest-path crates/migration/Cargo.toml
 ### Build backend for Wasmer (WASI)
 
 ```bash
-# Install WASI target (if not installed)
-rustup target add wasm32-wasi
+# Install the WASI Preview 2 target (also declared in rust-toolchain.toml)
+rustup target add wasm32-wasip2
 
 # Build backend as a WASM module
-cargo build --release --target wasm32-wasi -p djmxcreation-backend-axum
+cargo build --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi --lib
 ```
 
 WASI artifact:
 
-- `target/wasm32-wasi/release/djmxcreation-backend-axum.wasm`
-
-If your Rust toolchain does not provide `wasm32-wasi`, use the newer target name:
-
-```bash
-rustup target add wasm32-wasip1
-cargo build --release --target wasm32-wasip1 -p djmxcreation-backend-axum
-```
+- `target/wasm32-wasip2/wasi-release/djmxcreation_backend_wasi.wasm`
 
 ---
 

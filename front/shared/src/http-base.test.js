@@ -38,6 +38,9 @@ test("doGet uses json headers and returns parsed payload", async () => {
     global.fetch = async (url, options) => {
         calls.push({ url, options });
         return {
+            ok: true,
+            status: 200,
+            statusText: "OK",
             json: async () => ({ ok: true }),
         };
     };

@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
 use app_core::{
-    about_me::about_me_service::DynIAboutMeService,
-    contact::contact_service::DynIContactService,
+    about_me::about_me_service::DynIAboutMeService, contact::contact_service::DynIContactService,
     project::project_service::DynIProjectService,
 };
 use app_service::{
-    about_me_service::AboutMeService,
-    contact_service::ContactService,
+    about_me_service::AboutMeService, contact_service::ContactService,
     project_service::ProjectService,
 };
 use repository::{

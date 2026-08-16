@@ -1,4 +1,4 @@
-﻿//! Dev Orchestrator — manages PostgreSQL container, RustFS container, migrations,
+//! Dev Orchestrator — manages PostgreSQL container, RustFS container, migrations,
 //! and backend server for local development.
 //!
 //! Usage:
@@ -61,7 +61,9 @@ async fn main() -> Result<()> {
         "build-wasm" => cmd_build_wasm().await,
         "logs" => cmd_logs().await,
         _ => {
-            eprintln!("Usage: dev-server {{start|stop|status|db-only|migrate|wasm|build-wasm|logs}}");
+            eprintln!(
+                "Usage: dev-server {{start|stop|status|db-only|migrate|wasm|build-wasm|logs}}"
+            );
             std::process::exit(1);
         }
     }
@@ -130,8 +132,9 @@ async fn cmd_db_only() -> Result<()> {
 // ─── Migrate Command ────────────────────────────────────────────────────────
 
 async fn cmd_migrate() -> Result<()> {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5432/portfolio?sslmode=prefer".into());
+    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgresql://postgres:postgres@localhost:5432/portfolio?sslmode=prefer".into()
+    });
     info!("Running migrations against {}", database_url);
     migration::run_migrations(&database_url).await?;
     info!("Migrations complete.");
@@ -163,7 +166,11 @@ async fn cmd_status() -> Result<()> {
     println!(
         "Backend (port {}):  {}",
         backend_port,
-        if backend_running { "Running" } else { "Not running" }
+        if backend_running {
+            "Running"
+        } else {
+            "Not running"
+        }
     );
     println!(
         "Database:           {}",
@@ -171,7 +178,11 @@ async fn cmd_status() -> Result<()> {
     );
     println!(
         "RustFS:             {}",
-        if rustfs_running { "Running" } else { "Not running" }
+        if rustfs_running {
+            "Running"
+        } else {
+            "Not running"
+        }
     );
     println!();
 
@@ -289,7 +300,9 @@ async fn check_tools(need_wasmtime: bool) -> Result<()> {
             .status()
             .await;
         if wt.is_err() || !wt.unwrap().success() {
-            anyhow::bail!("wasmtime is required. Install: curl https://wasmtime.dev/install.sh -sSf | bash");
+            anyhow::bail!(
+                "wasmtime is required. Install: curl https://wasmtime.dev/install.sh -sSf | bash"
+            );
         }
     }
 
@@ -302,8 +315,9 @@ async fn start_database() -> Result<String> {
     let exists = check_container_running(DB_CONTAINER_NAME).await;
     if exists {
         info!("Database container already running");
-        return Ok(std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| format!("postgresql://{DB_USER}:{DB_PASSWORD}@localhost:5432/{DB_NAME}?sslmode=prefer")));
+        return Ok(std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            format!("postgresql://{DB_USER}:{DB_PASSWORD}@localhost:5432/{DB_NAME}?sslmode=prefer")
+        }));
     }
 
     info!("Starting PostgreSQL container via rustainers...");
@@ -378,9 +392,7 @@ async fn start_rustfs() -> Result<String> {
 
     let runner = Runner::podman().context("Failed to create Podman runner")?;
 
-    let mut image = rustainers::images::GenericImage::new(
-        ImageName::new(RUSTFS_IMAGE),
-    );
+    let mut image = rustainers::images::GenericImage::new(ImageName::new(RUSTFS_IMAGE));
     image.add_port_mapping(RUSTFS_INTERNAL_PORT);
     image.set_container_name(RUSTFS_CONTAINER_NAME);
 
@@ -406,7 +418,13 @@ async fn start_rustfs() -> Result<String> {
 
 async fn check_container_running(container_name: &str) -> bool {
     let output = Command::new("podman")
-        .args(["ps", "--filter", &format!("name={container_name}"), "--format", "{{.Names}}"])
+        .args([
+            "ps",
+            "--filter",
+            &format!("name={container_name}"),
+            "--format",
+            "{{.Names}}",
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()
@@ -435,10 +453,7 @@ async fn build_backend() -> Result<()> {
         .await?;
 
     if !status.success() {
-        anyhow::bail!(
-            "backend build failed (exit code: {:?})",
-            status.code()
-        );
+        anyhow::bail!("backend build failed (exit code: {:?})", status.code());
     }
     info!("Backend built.");
     Ok(())
@@ -466,7 +481,10 @@ async fn start_backend(db_url: &str, rustfs_endpoint: &str, port: u16) -> Result
         .env("STORAGE_SECRET_KEY", RUSTFS_SECRET_KEY)
         .env("STORAGE_REGION", RUSTFS_REGION)
         .env("STORAGE_BUCKET", "portfolio")
-        .env("CORS_ORIGINS", format!("http://localhost:{port},http://127.0.0.1:{port}"))
+        .env(
+            "CORS_ORIGINS",
+            format!("http://localhost:{port},http://127.0.0.1:{port}"),
+        )
         .env("RUST_LOG", "info")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -492,7 +510,10 @@ async fn start_wasmtime(db_url: &str, rustfs_endpoint: &str, port: u16) -> Resul
     let db_url_env = format!("DATABASE_URL={db_url}");
     let rustfs_env = format!("STORAGE_ENDPOINT={rustfs_endpoint}");
 
-    let wasm_path = format!("target/wasm32-wasip2/release/{}", BACKEND_PKG.replace('-', "_"));
+    let wasm_path = format!(
+        "target/wasm32-wasip2/release/{}",
+        BACKEND_PKG.replace('-', "_")
+    );
     let wasm_path = format!("{wasm_path}.wasm");
 
     info!("Starting WASM component via wasmtime serve on port {port}...");
@@ -597,12 +618,18 @@ async fn wait_for_http(url: &str, timeout_secs: u64) -> Result<()> {
 
     loop {
         if start.elapsed() > timeout {
-            anyhow::bail!("HTTP service did not become ready within {}s at {url}", timeout_secs);
+            anyhow::bail!(
+                "HTTP service did not become ready within {}s at {url}",
+                timeout_secs
+            );
         }
         match client.get(url).send().await {
             Ok(resp) if resp.status().is_success() => return Ok(()),
             Ok(resp) => {
-                debug!("health check returned {} for {url}, retrying...", resp.status());
+                debug!(
+                    "health check returned {} for {url}, retrying...",
+                    resp.status()
+                );
                 tokio::time::sleep(Duration::from_millis(500)).await;
             }
             Err(e) => {

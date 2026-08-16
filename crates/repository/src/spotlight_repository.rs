@@ -119,7 +119,7 @@ impl ISpotlightRepository for SpotlightRepository {
 
         let spotlights = result
             .iter()
-            .map(|row| Self::map_row_to_spotlight(row))
+            .map(Self::map_row_to_spotlight)
             .map(|spotlight| spotlight.map(SpotlightDto::from))
             .collect::<Result<Vec<SpotlightDto>, Error>>()?;
 

@@ -1,4 +1,7 @@
-use crate::{error::error::ApiResult, service::service_register::ServiceRegister, validation::validate_file_name};
+use crate::{
+    error::error::ApiResult, service::service_register::ServiceRegister,
+    validation::validate_file_name,
+};
 use app_core::{
     about_me::about_me_service::DynIAboutMeService,
     dto::about_me_dto::AboutMeDto,

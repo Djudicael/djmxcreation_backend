@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      rust-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /front
+    schedule:
+      interval: weekly
+    groups:
+      frontend-root:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /front/admin
+    schedule:
+      interval: weekly
+    groups:
+      frontend-admin:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /front/portfolio
+    schedule:
+      interval: weekly
+    groups:
+      frontend-portfolio:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]

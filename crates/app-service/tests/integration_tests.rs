@@ -1,8 +1,6 @@
 use app_core::about_me::about_me_service::IAboutMeService;
 use app_core::contact::contact_service::IContactService;
-use app_core::dto::{
-    about_me_dto::AboutMeDto, contact_dto::ContactDto, metadata_dto::MetadataDto,
-};
+use app_core::dto::{about_me_dto::AboutMeDto, contact_dto::ContactDto, metadata_dto::MetadataDto};
 use app_core::project::project_service::IProjectService;
 use app_service::{
     about_me_service::AboutMeService, contact_service::ContactService,
@@ -41,7 +39,11 @@ impl ServiceTestContext {
         let contact_id = about_me_id;
 
         Self {
-            about_me: AboutMeService::new(about_me_repo, storage_repo.clone(), "test-bucket".to_string()),
+            about_me: AboutMeService::new(
+                about_me_repo,
+                storage_repo.clone(),
+                "test-bucket".to_string(),
+            ),
             contact: ContactService::new(contact_repo),
             project: ProjectService::new(
                 project_repo,
@@ -58,8 +60,8 @@ impl ServiceTestContext {
 fn fake_storage_client() -> repository::config::storage::StorageClient {
     // For service integration tests we focus on DB logic; storage interactions
     // are covered by unit tests with fakes and by repository storage tests.
-    use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
     use aws_sdk_s3::Client;
+    use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
 
     let credentials = Credentials::new("x", "x", None, None, "Static");
     let config = S3ConfigBuilder::new()
@@ -172,13 +174,14 @@ async fn project_service_lifecycle() {
         .expect("should list portfolio");
     assert!(!portfolio.is_empty());
 
-    // Filtered list
+    // Public filtered lists require at least one content row, so a newly
+    // created metadata-only project must not be returned yet.
     let filtered = ctx
         .project
         .get_projects_with_filter(1, 10, None, true)
         .await
         .expect("should filter projects");
-    assert!(!filtered.projects.is_empty());
+    assert!(filtered.projects.is_empty());
 
     // Delete
     ctx.project

@@ -2,7 +2,6 @@ use app_core::about_me::about_me_repository::IAboutMeRepository;
 use app_core::dto::about_me_dto::AboutMeDto;
 use app_core::dto::content_dto::ContentDto;
 use repository::about_me_repository::AboutMeRepository;
-use std::sync::Arc;
 use test_util::shared_harness::shared_postgres;
 use uuid::Uuid;
 

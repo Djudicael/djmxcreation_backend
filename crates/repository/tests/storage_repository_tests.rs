@@ -4,11 +4,11 @@ use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Credentials, Region};
 use repository::config::storage::StorageClient;
 use repository::storage_repository::StorageRepository;
 
-use test_util::rustfs::RustFS;
 use test_util::shared_harness::shared_rustfs;
 
 struct TestContext {
     repository: StorageRepository,
+    client: Client,
     bucket_name: &'static str,
     file_name: &'static str,
     file_content: &'static [u8],
@@ -35,10 +35,13 @@ impl TestContext {
         // Ensure bucket exists
         let _ = client.create_bucket().bucket(bucket_name).send().await;
 
-        let storage_client = StorageClient { inner: client };
+        let storage_client = StorageClient {
+            inner: client.clone(),
+        };
         let repository = StorageRepository::new(storage_client);
         Self {
             repository,
+            client,
             bucket_name,
             file_name: "test.txt",
             file_content: b"Hello, RustFS!",
@@ -77,13 +80,16 @@ async fn test_storage_repository_crud() {
         .await;
     assert!(remove_result.is_ok(), "Remove failed: {:?}", remove_result);
 
-    // Ensure object is gone
-    let url_after_removal = ctx
-        .repository
-        .get_object_url(ctx.bucket_name, ctx.file_name)
+    // Presigning does not check object existence, so verify deletion directly.
+    let object_after_removal = ctx
+        .client
+        .head_object()
+        .bucket(ctx.bucket_name)
+        .key(ctx.file_name)
+        .send()
         .await;
     assert!(
-        url_after_removal.is_err(),
-        "Object URL should not be available after removal"
+        object_after_removal.is_err(),
+        "Object should not exist after removal"
     );
 }

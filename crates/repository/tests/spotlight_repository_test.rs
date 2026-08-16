@@ -5,7 +5,6 @@ use app_core::spotlight::spotlight_repository::ISpotlightRepository;
 use app_error::Error;
 use repository::project_repository::ProjectRepository;
 use repository::spotlight_repository::SpotlightRepository;
-use std::sync::Arc;
 use test_util::shared_harness::shared_postgres;
 use uuid::Uuid;
 

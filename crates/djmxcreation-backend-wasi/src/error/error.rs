@@ -1,7 +1,7 @@
+use axum::Json;
 use axum::extract::multipart::MultipartError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -46,9 +46,15 @@ impl IntoResponse for Error {
                     (StatusCode::NOT_FOUND, msg.clone())
                 }
                 app_error::Error::InvalidInput(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                ),
             },
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string()),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal server error".to_string(),
+            ),
         };
 
         (status, Json(ApiError::new(message))).into_response()

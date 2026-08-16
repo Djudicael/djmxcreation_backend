@@ -19,7 +19,7 @@ fn init_tracing() {
 
 async fn test_app() -> TestServer {
     init_tracing();
-    let (db_cfg, uri) = test_util::shared_harness::shared_postgres().await;
+    let (_db_cfg, uri) = test_util::shared_harness::shared_postgres().await;
 
     unsafe {
         env::set_var("DATABASE_URL", &uri);
@@ -31,7 +31,7 @@ async fn test_app() -> TestServer {
     }
 
     let router: Router = app_router();
-    TestServer::new(router).expect("should create test server")
+    TestServer::new(router)
 }
 
 #[tokio::test]
@@ -155,12 +155,16 @@ async fn wasi_e2e_spotlight_flow() {
     response.assert_status_ok();
 
     let response = server
-        .get(&format!("/api/portfolio/v1/projects/spotlights/{spotlight_id}"))
+        .get(&format!(
+            "/api/portfolio/v1/projects/spotlights/{spotlight_id}"
+        ))
         .await;
     response.assert_status_ok();
 
     let response = server
-        .delete(&format!("/api/portfolio/v1/projects/spotlights/{spotlight_id}"))
+        .delete(&format!(
+            "/api/portfolio/v1/projects/spotlights/{spotlight_id}"
+        ))
         .await;
     response.assert_status_ok();
 

@@ -9,27 +9,27 @@ use crate::{
 };
 use app_config::config::Config;
 use axum::Router;
-use repository::config::{
-    db::DatabaseConfig,
-    storage::get_storage_client,
-};
+use repository::config::{db::DatabaseConfig, storage::get_storage_client};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     trace::TraceLayer,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::{future::ready, net::SocketAddr, time::Duration};
-#[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context;
 #[cfg(not(target_arch = "wasm32"))]
-use axum::{BoxError, Json, extract::Request, middleware::Next, response::Response, routing::get, error_handling::HandleErrorLayer, extract::MatchedPath};
+use axum::{
+    BoxError, Json, error_handling::HandleErrorLayer, extract::MatchedPath, extract::Request,
+    middleware::Next, response::Response, routing::get,
+};
 #[cfg(not(target_arch = "wasm32"))]
 use hyper::StatusCode;
 #[cfg(not(target_arch = "wasm32"))]
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 #[cfg(not(target_arch = "wasm32"))]
 use serde_json::json;
+#[cfg(not(target_arch = "wasm32"))]
+use std::{future::ready, net::SocketAddr, time::Duration};
 #[cfg(not(target_arch = "wasm32"))]
 use tower::ServiceBuilder;
 #[cfg(not(target_arch = "wasm32"))]
@@ -106,8 +106,7 @@ pub fn build_router() -> Router {
     let storage_cfg = config.get_storage();
     let bucket_name = storage_cfg.bucket.clone();
 
-    let storage_client =
-        get_storage_client(storage_cfg).expect("failed to create storage client");
+    let storage_client = get_storage_client(storage_cfg).expect("failed to create storage client");
 
     let service_register = ServiceRegister::new(Arc::new(client_db), storage_client, bucket_name);
 
@@ -154,7 +153,10 @@ pub fn build_router() -> Router {
 
     #[cfg(target_arch = "wasm32")]
     {
-        router = router.route("/metrics", axum::routing::get(|| async { "# no metrics available in wasi build\n" }));
+        router = router.route(
+            "/metrics",
+            axum::routing::get(|| async { "# no metrics available in wasi build\n" }),
+        );
     }
 
     router

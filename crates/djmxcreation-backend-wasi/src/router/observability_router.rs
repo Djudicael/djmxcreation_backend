@@ -1,12 +1,11 @@
-use axum::{routing::get, Json, Router};
+use axum::{Json, Router, routing::get};
 use serde::{Deserialize, Serialize};
 
 pub struct ObservabilityRouter;
 
 impl ObservabilityRouter {
     pub fn new_router() -> Router {
-        Router::new()
-            .route("/ping", get(ping))
+        Router::new().route("/ping", get(ping))
     }
 }
 

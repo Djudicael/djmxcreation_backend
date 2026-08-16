@@ -80,7 +80,6 @@ impl ProjectView {
         self.thumbnail = thumbnail;
         self
     }
-
 }
 
 impl From<ProjectDto> for ProjectView {

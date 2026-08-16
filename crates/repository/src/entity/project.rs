@@ -77,7 +77,6 @@ impl Project {
         self.thumbnail_content = thumbnail_content;
         self
     }
-
 }
 
 impl From<Project> for ProjectDto {
@@ -100,4 +99,3 @@ impl From<Project> for ProjectDto {
             .thumbnail(val.thumbnail_content.and_then(value_to_content))
     }
 }
-

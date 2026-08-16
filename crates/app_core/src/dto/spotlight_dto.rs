@@ -54,5 +54,4 @@ impl SpotlightDto {
         self.thumbnail = thumbnail;
         self
     }
-
 }

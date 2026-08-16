@@ -342,7 +342,7 @@ impl IProjectRepository for ProjectRepository {
 
         let projects = result
             .iter()
-            .map(|row| ProjectRepository::map_row_to_project_with_thumbnail(row))
+            .map(ProjectRepository::map_row_to_project_with_thumbnail)
             .map(|r| r.map(ProjectWithThumbnailDto::from))
             .collect::<Result<Vec<ProjectWithThumbnailDto>, Error>>()?;
 
@@ -397,7 +397,7 @@ impl IProjectRepository for ProjectRepository {
 
         result
             .iter()
-            .map(|r| ProjectRepository::map_row_to_project_content(r))
+            .map(ProjectRepository::map_row_to_project_content)
             .map(|r| r.map(ProjectContentDto::from))
             .collect()
     }

@@ -78,5 +78,4 @@ impl ProjectDto {
         self.thumbnail = thumbnail;
         self
     }
-
 }

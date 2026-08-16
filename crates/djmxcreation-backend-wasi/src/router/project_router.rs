@@ -8,15 +8,19 @@ use app_core::{
 };
 
 use axum::{
+    Extension, Json, Router,
     extract::{DefaultBodyLimit, Multipart, Path, Query},
     routing::{delete, get, patch, post, put},
-    Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, warn};
 use uuid::Uuid;
 
-use crate::{error::error::ApiResult, service::service_register::ServiceRegister, validation::{validate_file_name, validate_pagination}};
+use crate::{
+    error::error::ApiResult,
+    service::service_register::ServiceRegister,
+    validation::{validate_file_name, validate_pagination},
+};
 
 /// Maximum allowed size for multipart file uploads (50 MB).
 const MAX_UPLOAD_BYTES: usize = 50 * 1024 * 1024;
@@ -146,9 +150,7 @@ impl ProjectRouter {
                 e
             })?;
 
-            let content_view = project_service
-                .add_project(id, file_name, &bytes)
-                .await?;
+            let content_view = project_service.add_project(id, file_name, &bytes).await?;
             contents.push(content_view);
         }
 

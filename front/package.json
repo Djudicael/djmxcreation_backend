@@ -12,6 +12,6 @@
         "test:http": "node --test shared/src/http-base.test.js"
     },
     "dependencies": {
-        "lit-html": "^2.7.0"
+        "lit-html": "^3.3.3"
     }
 }

@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            front/package-lock.json
+            front/admin/package-lock.json
+            front/portfolio/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm --prefix front ci
+          npm --prefix front/admin ci
+          npm --prefix front/portfolio ci
+      - name: Audit dependencies
+        run: |
+          npm --prefix front audit --audit-level=high
+          npm --prefix front/admin audit --audit-level=high
+          npm --prefix front/portfolio audit --audit-level=high
+      - run: npm test
+      - run: npm run build
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - name: Install integration-test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes podman podman-compose
+          podman info
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo check --target wasm32-wasip2 -p djmxcreation-backend-wasi --lib
+      - run: cargo test --workspace

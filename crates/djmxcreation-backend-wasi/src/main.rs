@@ -12,10 +12,8 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    djmxcreation_backend_wasi::server::starter::run_tcp(
-        djmxcreation_backend_wasi::app_router(),
-    )
-    .await
+    djmxcreation_backend_wasi::server::starter::run_tcp(djmxcreation_backend_wasi::app_router())
+        .await
 }
 
 #[cfg(target_arch = "wasm32")]

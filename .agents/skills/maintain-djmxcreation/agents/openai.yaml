@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintain DJMXCreation"
+  short_description: "Upgrade, build, test, and maintain DJMXCreation"
+  default_prompt: "Use $maintain-djmxcreation to update dependencies and verify the repository."

@@ -31,27 +31,33 @@ dotenvy = "0.15"
 repository = { path = "crates/repository" }
 test-util = { path = "crates/test-util" }
 
-anyhow = "1.0.95"
-async-trait = "0.1.84"
-axum = { version = "0.8.4", default-features = false, features = ["json", "matched-path", "original-uri", "query", "tower-log", "tracing", "multipart", "macros"] }
-chrono = { version = "0.4.39", features = ["serde"] }
-futures = "0.3.31"
-hyper = "1.5.2"
-metrics = "0.24.1"
-metrics-exporter-prometheus = { version = "0.16.0", default-features = false, features = ["http-listener", "tracing"] }
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.134"
-thiserror = "2.0.9"
-tokio = { version = "1.45.1", features = ["full"] }
-tokio-util = "0.7.13"
-tower = { version = "0.5.2", features = ["timeout"] }
-tower-http = { version = "0.6.6", features = ["trace", "cors", "fs"] }
-tracing = "0.1.41"
+anyhow = "1.0.104"
+async-trait = "0.1.92"
+axum = { version = "0.8.9", default-features = false, features = ["json", "matched-path", "original-uri", "query", "tower-log", "tracing", "multipart", "macros"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+futures = "0.3.34"
+hyper = "1.11.0"
+metrics = "0.24.6"
+metrics-exporter-prometheus = { version = "0.18.3", default-features = false, features = ["http-listener", "tracing"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-util = "0.7.19"
+tower = { version = "0.5.3", features = ["timeout"] }
+tower-http = { version = "0.7.0", features = ["trace", "cors", "fs"] }
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "=1.11.0", features = ["v4", "fast-rng", "serde"] }
-wasi-pg-client = { version = "0.1.1", features = ["uuid", "serde-json", "chrono"] }
-axum-test = "17.2"
+uuid = { version = "=1.24.1", features = ["v4", "fast-rng", "serde"] }
+wasi-pg-client = { version = "0.2.0", features = ["uuid", "serde-json", "chrono"] }
+axum-test = "21.0"
 rustainers = "0.15"
 portpicker = "0.1"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
 getrandom = "0.4"
+
+# Rust 1.97's wasm-component-ld crashes at linker optimization level O3 for
+# crc-fast. Keep native release settings unchanged and use O2 for WASI builds.
+[profile.wasi-release]
+inherits = "release"
+opt-level = 2

@@ -1,7 +1,7 @@
 use repository::config::db::DatabaseConfig;
+use rustainers::ExposedPort;
 use rustainers::images::Postgres;
 use rustainers::runner::Runner;
-use rustainers::ExposedPort;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
@@ -16,7 +16,11 @@ const TEST_DB_PORT: u16 = 5432;
 fn find_migrations_dir() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let candidates = [
-        manifest_dir.join("..").join("..").join("sql").join("migrations"),
+        manifest_dir
+            .join("..")
+            .join("..")
+            .join("sql")
+            .join("migrations"),
         manifest_dir.join("..").join("sql").join("migrations"),
         manifest_dir.join("sql").join("migrations"),
     ];
@@ -35,7 +39,10 @@ fn find_migrations_dir() -> PathBuf {
             break;
         }
     }
-    panic!("Could not find sql/migrations directory. Searched from {:?}", std::env::current_dir());
+    panic!(
+        "Could not find sql/migrations directory. Searched from {:?}",
+        std::env::current_dir()
+    );
 }
 
 /// Start a PostgreSQL container via Podman and return it together with a
@@ -75,9 +82,12 @@ pub async fn start_postgres() -> (PostgresContainer, Arc<DatabaseConfig>, String
 pub async fn run_migrations(uri: &str) {
     let migrations_dir = find_migrations_dir();
 
-    let mut entries = fs::read_dir(&migrations_dir)
-        .await
-        .unwrap_or_else(|e| panic!("Failed to read migrations directory {}: {e}", migrations_dir.display()));
+    let mut entries = fs::read_dir(&migrations_dir).await.unwrap_or_else(|e| {
+        panic!(
+            "Failed to read migrations directory {}: {e}",
+            migrations_dir.display()
+        )
+    });
 
     let mut files = Vec::new();
     while let Ok(Some(entry)) = entries.next_entry().await {

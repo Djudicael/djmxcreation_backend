@@ -206,15 +206,14 @@ impl IProjectService for ProjectService {
         self.project_repository.delete_project_by_id(id).await?;
 
         for content_dto in project_contents {
-            if let Some(content) = content_dto.content {
-                if let Err(e) = self
+            if let Some(content) = content_dto.content
+                && let Err(e) = self
                     .storage_repository
                     .remove_object(&self.bucket, &content.file_name)
                     .await
-                {
-                    // Log but don't fail — DB row is already deleted.
-                    warn!(file = %content.file_name, error = ?e, "failed to delete orphaned storage object");
-                }
+            {
+                // Log but don't fail — DB row is already deleted.
+                warn!(file = %content.file_name, error = ?e, "failed to delete orphaned storage object");
             }
         }
 

@@ -2,7 +2,6 @@ use app_core::dto::{content_dto::ContentDto, metadata_dto::MetadataDto, project_
 use app_core::project::project_repository::IProjectRepository;
 use repository::project_repository::ProjectRepository;
 use serde_json::json;
-use std::sync::Arc;
 use test_util::shared_harness::shared_postgres;
 use uuid::Uuid;
 
@@ -178,13 +177,25 @@ async fn test_project_complete_lifecycle() {
         ))
         .await
         .expect("Failed to create second project");
+    let project2_id = project2.id.expect("Second project should have an id");
 
     let all_projects = ctx
         .repo
         .get_projects()
         .await
         .expect("Failed to get all projects");
-    assert_eq!(all_projects.len(), 2, "Should have two projects");
+    assert!(
+        all_projects
+            .iter()
+            .any(|project| project.id == Some(ctx.id)),
+        "Should contain the first project"
+    );
+    assert!(
+        all_projects
+            .iter()
+            .any(|project| project.id == Some(project2_id)),
+        "Should contain the second project"
+    );
 
     let content = ContentDto {
         id: None,
@@ -251,7 +262,7 @@ async fn test_project_complete_lifecycle() {
         .expect("Failed to delete first project");
 
     ctx.repo
-        .delete_project_by_id(project2.id.unwrap())
+        .delete_project_by_id(project2_id)
         .await
         .expect("Failed to delete second project");
 }

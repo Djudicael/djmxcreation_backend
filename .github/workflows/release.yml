@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            front/package-lock.json
+            front/admin/package-lock.json
+            front/portfolio/package-lock.json
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build frontend
+        run: |
+          npm --prefix front ci
+          npm --prefix front/admin ci
+          npm --prefix front/portfolio ci
+          npm run build
+          tar -czf djmxcreation-frontend.tar.gz front/admin/dist front/portfolio/dist
+      - name: Build backend artifacts
+        run: |
+          cargo build --locked --release -p djmxcreation-backend-wasi --bin djmxcreation-backend-wasi
+          cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi --lib
+          cp target/release/djmxcreation-backend-wasi djmxcreation-backend-linux-x86_64
+          cp target/wasm32-wasip2/wasi-release/djmxcreation_backend_wasi.wasm djmxcreation-backend-wasip2.wasm
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          djmxcreation-frontend.tar.gz
+          djmxcreation-backend-linux-x86_64
+          djmxcreation-backend-wasip2.wasm
+          --generate-notes
+          --verify-tag

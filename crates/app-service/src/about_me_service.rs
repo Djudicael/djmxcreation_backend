@@ -86,14 +86,13 @@ impl IAboutMeService for AboutMeService {
         self.about_me_repository.update_photo(id, &content).await?;
 
         // Delete the old photo after successfully saving the new one.
-        if let Some(old) = previous_content {
-            if let Err(e) = self
+        if let Some(old) = previous_content
+            && let Err(e) = self
                 .storage_repository
                 .remove_object(&self.bucket, &old.file_name)
                 .await
-            {
-                warn!(file = %old.file_name, error = ?e, "failed to delete old profile photo");
-            }
+        {
+            warn!(file = %old.file_name, error = ?e, "failed to delete old profile photo");
         }
 
         Ok(())
@@ -104,14 +103,13 @@ impl IAboutMeService for AboutMeService {
         let previous_content = me.photo;
         self.about_me_repository.delete_about_me_photo(id).await?;
 
-        if let Some(old) = previous_content {
-            if let Err(e) = self
+        if let Some(old) = previous_content
+            && let Err(e) = self
                 .storage_repository
                 .remove_object(&self.bucket, &old.file_name)
                 .await
-            {
-                warn!(file = %old.file_name, error = ?e, "failed to delete profile photo from storage");
-            }
+        {
+            warn!(file = %old.file_name, error = ?e, "failed to delete profile photo from storage");
         }
 
         Ok(())

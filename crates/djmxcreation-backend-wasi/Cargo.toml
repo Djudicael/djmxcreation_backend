@@ -33,7 +33,7 @@ uuid = { workspace = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wstd = "0.6"
 wstd-axum = "0.6"
-wasi = { version = "0.13", features = ["std"] }
+wasi = { version = "0.14", features = ["std"] }
 getrandom = { version = "0.4" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

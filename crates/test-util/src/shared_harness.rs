@@ -2,14 +2,15 @@ use std::sync::Arc;
 use tokio::sync::OnceCell;
 
 use repository::config::db::DatabaseConfig;
+use rustainers::ExposedPort;
 use rustainers::images::Postgres;
 use rustainers::runner::Runner;
-use rustainers::ExposedPort;
 
 use crate::rustfs::rustfs_endpoint;
 use crate::test_db::run_migrations;
 
 pub type PostgresContainer = rustainers::Container<Postgres>;
+pub type RustFsContainer = rustainers::Container<rustainers::images::GenericImage>;
 
 const TEST_DB_USER: &str = "postgres";
 const TEST_DB_PASSWORD: &str = "postgres";
@@ -18,7 +19,7 @@ const TEST_DB_NAME: &str = "portfolio";
 static POSTGRES: OnceCell<(PostgresContainer, Arc<DatabaseConfig>, String)> = OnceCell::const_new();
 
 /// Shared RustFS endpoint — started once per test process.
-static RUSTFS: OnceCell<String> = OnceCell::const_new();
+static RUSTFS: OnceCell<(RustFsContainer, String)> = OnceCell::const_new();
 
 pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
     let (_, config, uri) = POSTGRES
@@ -61,11 +62,11 @@ pub async fn shared_postgres() -> (Arc<DatabaseConfig>, String) {
 }
 
 pub async fn shared_rustfs() -> String {
-    RUSTFS
+    let (_, endpoint) = RUSTFS
         .get_or_init(|| async {
-            let mut image = rustainers::images::GenericImage::new(
-                rustainers::ImageName::new("docker.io/rustfs/rustfs"),
-            );
+            let mut image = rustainers::images::GenericImage::new(rustainers::ImageName::new(
+                "docker.io/rustfs/rustfs",
+            ));
             image.add_port_mapping(9000);
             let podman = Runner::podman().expect("Failed to create Podman runner");
             let container = podman
@@ -80,8 +81,9 @@ pub async fn shared_rustfs() -> String {
                 .await
                 .expect("Failed to get RustFS port");
 
-            rustfs_endpoint(port.into())
+            (container, rustfs_endpoint(port.into()))
         })
-        .await
-        .clone()
+        .await;
+
+    endpoint.clone()
 }

@@ -1,7 +1,6 @@
 use app_core::contact::contact_repository::IContactRepository;
 use app_core::dto::contact_dto::ContactDto;
 use repository::contact_repository::ContactRepository;
-use std::sync::Arc;
 use test_util::shared_harness::shared_postgres;
 use uuid::Uuid;
 
