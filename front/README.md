@@ -23,6 +23,11 @@ Opening an adult project requires choosing **View project**; **Hide adult conten
 hides its description and media again. This is a presentation preference, not
 access control: published media remain publicly addressable.
 
+Project galleries preserve media order and image proportions. The first image
+opens the gallery on its own; subsequent adjacent portrait/square images pair
+on desktop, wide images span the gallery, and unpaired portraits are centered.
+The layout adapts as image dimensions become available. Mobile uses one column.
+
 Project images open in a modal viewer with previous/next buttons, arrow-key
 navigation, Escape to close, and focus returned to the original image button.
 The menu supports Escape and keyboard focus containment. Touch devices use the

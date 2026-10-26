@@ -31,10 +31,10 @@ export default class WorkComponent extends TemplateRenderer {
                     ${this.adult ? html`<button class="text-link hide-adult" @click=${() => this.setRevealed(false)}>Hide adult content</button>` : ""}
                     <div class="project-gallery">${this.contents.map((content, index) => {
                         const kind = mediaKind(content);
-                        if (kind === "video") return html`<figure><video src=${content.url} controls preload="metadata" aria-label=${`${this.projectTitle} — video ${index + 1}`}></video></figure>`;
-                        if (kind === "file") return html`<a class="action-link file-link" href=${content.url}>Open project file <span aria-hidden="true">↗</span></a>`;
+                        if (kind === "video") return html`<figure class="project-media"><video src=${content.url} controls preload="metadata" aria-label=${`${this.projectTitle} — video ${index + 1}`}></video></figure>`;
+                        if (kind === "file") return html`<a class="action-link file-link project-file" href=${content.url}>Open project file <span aria-hidden="true">↗</span></a>`;
                         const imageIndex = this.images.indexOf(content);
-                        return html`<figure><button class="gallery-image" aria-label=${`Enlarge ${this.projectTitle} — image ${imageIndex + 1}`} @click=${event => this.openImage(imageIndex, event.currentTarget)}><img class="pro-image" src=${content.url} alt=${`${this.projectTitle} — image ${imageIndex + 1}`} loading="lazy"><span class="image-open" aria-hidden="true">↗</span></button><figcaption class="eyebrow">Plate ${String(imageIndex + 1).padStart(2, "0")}</figcaption></figure>`;
+                        return html`<figure class="project-media project-photo" data-image-index=${imageIndex}><button class="gallery-image" aria-label=${`Enlarge ${this.projectTitle} — image ${imageIndex + 1}`} @click=${event => this.openImage(imageIndex, event.currentTarget)}><img class="pro-image" src=${content.url} alt=${`${this.projectTitle} — image ${imageIndex + 1}`} loading=${imageIndex === 0 ? "eager" : "lazy"} fetchpriority=${imageIndex === 0 ? "high" : "auto"} @load=${() => this.arrangeGallery()}><span class="image-open" aria-hidden="true">↗</span></button><figcaption class="eyebrow">${String(imageIndex + 1).padStart(2, "0")}</figcaption></figure>`;
                     })}</div>
                 `}
                 <footer class="project-footer"><a class="text-link" href="/works">← Back to works</a><a class="action-link" href="/contact">Contact <span aria-hidden="true">↗</span></a></footer>
@@ -47,6 +47,27 @@ export default class WorkComponent extends TemplateRenderer {
                 </dialog>
             </article>
         `;
+    }
+
+    arrangeGallery() {
+        // Only inspect rendered images: adult media are never preloaded before consent.
+        // Keep the DOM order and focused button intact when adjacent portraits pair up.
+        const items = [...this.querySelectorAll(".project-gallery > *")];
+        const isPortrait = item => {
+            const image = item?.querySelector(".pro-image");
+            return image?.naturalWidth > 0 && image.naturalWidth / image.naturalHeight <= 1.1;
+        };
+        for (const item of items) item.dataset.layout = "full";
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index];
+            if (!isPortrait(item)) continue;
+            if (item.dataset.imageIndex !== "0" && isPortrait(items[index + 1])) {
+                item.dataset.layout = "pair-left";
+                items[++index].dataset.layout = "pair-right";
+            } else {
+                item.dataset.layout = "portrait";
+            }
+        }
     }
 
     setRevealed(value) {

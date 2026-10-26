@@ -18,11 +18,24 @@ export async function runPortfolioWorkflows({ browser, state }) {
         description: { ops: [{ insert: "An exploration of light, space and the shapes in between.\n" }] },
         contents: [0, 1].map(number => ({ url: `${root}/portfolio-test/image-${index}-${number}.svg`, mimeType: "image/svg+xml" })),
     }));
+    const gallerySizes = [[1600, 900], [800, 1000], [1000, 1000], [1600, 1000], [700, 1000], [800, 1100]];
+    projects[1].contents = gallerySizes.map((_, index) => ({ url: `${root}/portfolio-test/gallery-${index}.svg`, mimeType: "image/svg+xml" }));
+    projects[1].contents.splice(5, 0, { url: "https://example.com/project.pdf", mimeType: "application/pdf" });
+    projects[2].contents = [projects[1].contents[1]];
+    projects[3].contents = [];
     let empty = false, unavailable = false, failNextPage = false;
-    await context.route("**/portfolio-test/*.svg", route => route.fulfill({
+    await context.route("**/portfolio-test/*.svg", route => {
+        const match = route.request().url().match(/gallery-(\d+)\.svg/);
+        if (match) {
+            const index = Number(match[1]);
+            const [width, height] = gallerySizes[index];
+            return route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 1000 1000" preserveAspectRatio="none"><rect width="1000" height="1000" fill="${index % 2 ? "#d4c9b5" : "#bac8b5"}"/><path d="M0 800L1000 100V1000H0Z" fill="#e9e5d3"/><circle cx="500" cy="400" r="230" fill="${index % 2 ? "#86745c" : "#465f49"}"/><rect x="24" y="24" width="952" height="952" fill="none" stroke="#202822" stroke-width="4"/></svg>` });
+        }
+        return route.fulfill({
         contentType: "image/svg+xml",
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900"><rect width="720" height="900" fill="#bcc7b5"/><circle cx="380" cy="430" r="240" fill="#718969"/><path d="M0 850L720 100V900H0Z" fill="#e9e5d3"/><circle cx="220" cy="230" r="100" fill="#465f49"/></svg>',
-    }));
+        });
+    });
     await context.route("**/api/portfolio/**", route => {
         const url = new URL(route.request().url());
         if (unavailable) return route.fulfill({ status: 503, json: {} });
@@ -106,7 +119,57 @@ export async function runPortfolioWorkflows({ browser, state }) {
         await page.goto(`${root}/works/2`);
         console.log("Portfolio workflow: adult gate and keyboard gallery passed");
         await page.locator(".pro-image").first().waitFor();
+        for (const image of await page.locator(".pro-image").all()) {
+            await image.scrollIntoViewIfNeeded();
+            await image.evaluate(image => image.decode());
+        }
+        const geometry = () => page.locator(".project-gallery").evaluate(gallery => {
+            const box = element => {
+                const { x, y, width, height } = element.getBoundingClientRect();
+                return { x, y, width, height };
+            };
+            return {
+                gallery: box(gallery),
+                photos: [...gallery.querySelectorAll(".pro-image")].map(image => ({ ...box(image), ratio: image.naturalWidth / image.naturalHeight })),
+            };
+        });
+        const desktop = await geometry();
+        assert.equal(desktop.photos.length, 6);
+        for (const image of desktop.photos) assert.ok(Math.abs(image.width / image.height - image.ratio) < .01, "An image was cropped or stretched");
+        assert.ok(Math.abs(desktop.photos[1].y - desktop.photos[2].y) < 1, "Adjacent portraits should share a row");
+        assert.ok(desktop.photos[2].x > desktop.photos[1].x + desktop.photos[1].width, "The pair needs a gutter");
+        for (const index of [0, 3]) assert.ok(Math.abs(desktop.photos[index].width - desktop.gallery.width) < 1, "Wide images should span the gallery");
+        for (const index of [4, 5]) {
+            const photo = desktop.photos[index];
+            assert.ok(Math.abs(photo.x + photo.width / 2 - desktop.gallery.x - desktop.gallery.width / 2) < 1, "An unpaired portrait should be centered");
+        }
+        await page.locator(".gallery-image").nth(2).click();
+        assert.equal(await page.locator(".lightbox-count").innerText(), "3 / 6");
+        await page.keyboard.press("ArrowRight");
+        assert.equal(await page.locator(".lightbox-count").innerText(), "4 / 6", "Viewer order must match the gallery");
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator(".gallery-image").nth(2).evaluate(element => element === document.activeElement), true);
+        await page.evaluate(() => scrollTo(0, 0));
         await page.screenshot({ path: path.join(stateDir, "portfolio-project-desktop.png"), fullPage: true });
+        await page.setViewportSize({ width: 390, height: 844 });
+        const mobile = await geometry();
+        for (let index = 0; index < mobile.photos.length; index++) {
+            assert.ok(Math.abs(mobile.photos[index].width - mobile.gallery.width) < 1, "Mobile images should fill one column");
+            if (index) assert.ok(mobile.photos[index].y >= mobile.photos[index - 1].y + mobile.photos[index - 1].height, "Mobile images must follow reading order");
+        }
+        await fits();
+        await page.screenshot({ path: path.join(stateDir, "portfolio-project-mobile.png"), fullPage: true });
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        await page.goto(`${root}/works/3`);
+        await page.locator(".pro-image").evaluate(image => image.decode());
+        assert.equal(await page.locator(".gallery-image").count(), 1);
+        await page.locator(".gallery-image").click();
+        assert.equal(await page.locator(".lightbox-navigation").isVisible(), false);
+        await page.keyboard.press("Escape");
+        await page.goto(`${root}/works/4`);
+        await page.locator(".project-heading h1").waitFor();
+        assert.equal(await page.locator(".gallery-image").count(), 0);
+        console.log("Portfolio workflow: mixed image ratios, pairs, unpaired portraits, files, single/empty galleries, viewer order and mobile layout passed");
         for (const route of ["/about", "/contact"]) {
             await page.goto(`${root}${route}`);
             await page.locator(".page-shell h1").waitFor();
