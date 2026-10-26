@@ -7,7 +7,6 @@ export default class WorksComponent extends TemplateRenderer {
         super();
         const menu = document.querySelector('c-header');
         menu?.hideMenu?.();
-        this.routerOutlet = document.querySelector('router-outlet');
         this.noShadow = true;
         this.api = portfolioApi;
         this.projects = [];
@@ -42,7 +41,7 @@ export default class WorksComponent extends TemplateRenderer {
 
     nsfwFragment(adult) {
         if (adult) {
-            return '<span class="nsfw">|NSFW🔞</span>';
+            return '<span class="nsfw">| NSFW · 18+</span>';
         }
         return '';
     }
@@ -51,7 +50,7 @@ export default class WorksComponent extends TemplateRenderer {
         if (this.isLoading && !this.projects.length) return this.loadingTemplate;
         if (this.hasError && !this.projects.length) return this.errorTemplate;
 
-        const projects = this.projects ? html`${this.projects.map(({ id, metadata, adult }) => html`<li class="project" role="button" tabindex="0" project-id=${id}>${metadata.title} ${safeHTML(this.nsfwFragment(adult))} </li>`)}` : html``;
+        const projects = this.projects ? html`${this.projects.map(({ id, metadata, adult }) => html`<li class="project" project-id=${id}><a href=${`/works/${id}`}>${metadata.title} ${safeHTML(this.nsfwFragment(adult))}</a></li>`)}` : html``;
         const loadMore = this.page < this.totalPages ? html`<div class="load-more-container">
         <button class="load-more" aria-label="Load more projects">
             <span class="button-text">Load More</span>
@@ -59,23 +58,26 @@ export default class WorksComponent extends TemplateRenderer {
         </button>
     </div>` : html``;
         return html`
-        <canvas></canvas>
+        <canvas class="works-preview" aria-hidden="true"></canvas>
 
         <section class="projects-section">
+            <h1 class="eyebrow works-heading">02 / Works</h1>
             <div class="projects">
                 <ul>
                     ${projects}
                 </ul>
+               ${!this.projects.length ? html`<p class="empty-works">No published projects yet. <a class="text-link" href="/contact">Contact ↗</a></p>` : ""}
+               ${this.hasError ? html`<p role="status">More works could not be loaded. Please try again.</p>` : ""}
                ${loadMore}
             </div>
         </section>
         `;
     }
 
-    async getProjects() {
+    async getProjects(requestedPage = this.page) {
         this.setLoadState(LoadState.LOADING);
         try {
-            const { totalPages, page, size, projects } = await this.api.getProjects({ page: this.page, pageSize: this.pageSize });
+            const { totalPages, page, size, projects } = await this.api.getProjects({ page: requestedPage, pageSize: this.pageSize });
             if (!this.isConnected) return;
             this.totalPages = totalPages;
             this.page = page;
@@ -92,7 +94,7 @@ export default class WorksComponent extends TemplateRenderer {
 
     drawImage(idx) {
         const imageEntry = this._imgMap.get(String(idx));
-        if (!imageEntry || !this.canvas || !this.ctx) {
+        if (!imageEntry || !this.canvas || !this.ctx || !imageEntry.elImage.complete || !imageEntry.elImage.naturalWidth) {
             return;
         }
 
@@ -124,10 +126,15 @@ export default class WorksComponent extends TemplateRenderer {
             }
         }
 
-        let scaledWidth = width * this.percent;
-        let scaledHeight = height * this.percent;
+        this.percent = Math.max(0, Math.min(1, this.percent));
+        // Keep adult previews censored throughout the pixelation animation.
+        const resolution = imageEntry.adult ? Math.min(this.percent, 0.025) : this.percent;
+        this.canvas.dataset.censored = String(imageEntry.adult);
+        this.canvas.style.opacity = String(this.percent > 0 ? 1 : 0);
+        let scaledWidth = Math.max(1, width * resolution);
+        let scaledHeight = Math.max(1, height * resolution);
 
-        if (this.percent >= 1) {
+        if (resolution >= 1) {
             this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             this.ctx.drawImage(imageEntry.elImage, 0, 0, width, height);
         } else {
@@ -150,8 +157,6 @@ export default class WorksComponent extends TemplateRenderer {
             link.removeEventListener('mouseleave', handlers.onMouseLeaveOpacity);
             link.removeEventListener('mouseenter', handlers.onMouseEnter);
             link.removeEventListener('mouseleave', handlers.onMouseLeaveTarget);
-            link.removeEventListener('click', handlers.onClick);
-            link.removeEventListener('keydown', handlers.onKeydown);
         });
         this._linkHandlers = [];
 
@@ -172,11 +177,9 @@ export default class WorksComponent extends TemplateRenderer {
     }
 
     init() {
-        if (!this.projects.length) {
-            return;
-        }
-
         this.cleanupDynamicResources();
+        this.nextPage();
+        if (!this.projects.length || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
 
         this.imgIndex = this.projects[0].id;
 
@@ -197,7 +200,9 @@ export default class WorksComponent extends TemplateRenderer {
             elImage.src = image;
             elImage.classList.add('project-image');
             document.body.append(elImage);
-            const entry = { projectId: String(projectId), elImage };
+            elImage.alt = "";
+            elImage.setAttribute("aria-hidden", "true");
+            const entry = { projectId: String(projectId), elImage, adult: Boolean(this.projects.find(project => String(project.id) === String(projectId))?.adult) };
             this.imgArr.push(entry)
             this._imgMap.set(String(projectId), entry);
         }
@@ -233,6 +238,7 @@ export default class WorksComponent extends TemplateRenderer {
             };
 
             const onMouseEnter = () => {
+                this.percent = 0;
                 this.imgIndex = projectId;
                 this.target = 1
             };
@@ -241,23 +247,10 @@ export default class WorksComponent extends TemplateRenderer {
                 this.target = 0;
             };
 
-            const onClick = () => {
-                this.routerOutlet?.navigateTo?.(`/works/${projectId}`);
-            };
-
-            const onKeydown = (e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onClick();
-                }
-            };
-
             link.addEventListener('mouseover', onMouseOver);
             link.addEventListener('mouseleave', onMouseLeaveOpacity);
             link.addEventListener('mouseenter', onMouseEnter);
             link.addEventListener('mouseleave', onMouseLeaveTarget);
-            link.addEventListener('click', onClick);
-            link.addEventListener('keydown', onKeydown);
 
             this._linkHandlers.push({
                 link,
@@ -266,8 +259,6 @@ export default class WorksComponent extends TemplateRenderer {
                     onMouseLeaveOpacity,
                     onMouseEnter,
                     onMouseLeaveTarget,
-                    onClick,
-                    onKeydown,
                 },
             });
 
@@ -277,7 +268,7 @@ export default class WorksComponent extends TemplateRenderer {
 
     getThumbnailImage(imgIndex) {
         const project = this.projects.find((item) => item.id == imgIndex);
-        return project?.thumbnail?.url || '/ressource/icon/boy.svg';
+        return project?.thumbnail?.url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="360"%3E%3Crect width="300" height="360" fill="%23d4d6cb"/%3E%3C/svg%3E';
     }
 
     animate() {
@@ -285,8 +276,10 @@ export default class WorksComponent extends TemplateRenderer {
             return;
         }
 
-        this.currentX = lerp(this.currentX, this.targetX, 0.075);
-        this.currentY = lerp(this.currentY, this.targetY, 0.075);
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        this.currentX = reducedMotion ? this.targetX : lerp(this.currentX, this.targetX, 0.075);
+        this.currentY = reducedMotion ? this.targetY : lerp(this.currentY, this.targetY, 0.075);
+        if (reducedMotion) this.percent = this.target;
         const imageEntry = this._imgMap.get(String(this.imgIndex));
         if (!imageEntry) {
             return;
@@ -307,11 +300,12 @@ export default class WorksComponent extends TemplateRenderer {
         if (!this._loadMoreButton) {
             return;
         }
+        this._loadMoreButton.disabled = false;
 
         this._onLoadMoreClick = async () => {
-            if (this.page < this.totalPages) {
-                this.page++;
-                await this.getProjects();
+            if (this.page < this.totalPages && !this.isLoading) {
+                this._loadMoreButton.disabled = true;
+                await this.getProjects(this.page + 1);
                 if (!this.isConnected) {
                     return;
                 }

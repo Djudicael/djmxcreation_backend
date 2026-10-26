@@ -8,10 +8,12 @@ export default class NotFoundComponent extends TemplateRenderer {
 
     get template() {
         return html`
-      <section class="content-page">
-        <div class="container">
-          <h2>404</h2>
-          <p>Page not found.</p>
+      <section class="page-shell">
+        <p class="eyebrow">404 / A wrong turn</p>
+        <h1>Page not found.</h1>
+        <div class="page-actions">
+          <a class="action-link action-primary" href="/">Back to home ↗</a>
+          <a class="text-link" href="/works">Explore the works</a>
         </div>
       </section>
     `;

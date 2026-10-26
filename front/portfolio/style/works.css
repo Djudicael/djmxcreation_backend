@@ -1,127 +1,97 @@
-canvas {
-    position: fixed;
-    z-index: 2;
-    pointer-events: none;
+.works-preview {
+  position: fixed;
+  z-index: 2;
+  pointer-events: none;
 }
-
-.projects-section, .content-page, .content-page {
-    position: relative;
-    min-height: 100vh;
-    width: 100vw;
-    overflow-y: auto;
-    padding: 86px 24px 28px;
-    overflow: auto;
+.projects-section {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  padding: 86px 24px 28px;
 }
-
 .projects {
-    position: relative;
-    width: 100%;
-    min-height: 100%;
+  position: relative;
+  width: 100%;
+  min-height: 100%;
 }
-
 .projects ul {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    justify-content: space-between;
-    gap: 8px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  justify-content: space-between;
+  gap: 8px;
 }
-
 .projects li {
-    position: relative;
-    border-bottom: 1px solid var(--line-color);
-    cursor: pointer;
-    font-size: clamp(1.8rem, 5.8vw, 4.7rem);
-    font-weight: 400;
-    line-height: 1.05;
-    transition: color 0.22s ease;
+  position: relative;
+  border-bottom: 1px solid var(--line-color);
+  cursor: pointer;
+  font-size: clamp(1.8rem, 5.8vw, 4.7rem);
+  font-weight: 400;
+  line-height: 1.05;
+  transition: color 0.22s ease;
 }
-
 .projects li:hover {
-    color: var(--accent-strong);
+  color: var(--accent-strong);
 }
-
 .project-image {
-    opacity: 0%;
-    position: absolute;
-    top: -100%;
-    pointer-events: none;
-    user-select: none;
+  opacity: 0%;
+  position: absolute;
+  top: -100%;
+  pointer-events: none;
+  user-select: none;
 }
-
 .load-more {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 220px;
-    height: 64px;
-    margin: 0 auto;
-    background-color: var(--accent-strong);
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    text-transform: uppercase;
-    border: none;
-    border-radius: 999px;
-    box-shadow: var(--shadow-soft);
-    cursor: pointer;
-    position: relative;
-
+  display: block;
+  min-height: 48px;
+  margin: 35px auto;
+  padding: 12px 28px;
+  border: 1px solid var(--main-dark-color);
+  border-radius: 30px;
+  background: transparent;
+  color: var(--main-dark-color);
+  font: 12px var(--sans);
 }
-
-.load-more:hover .button-arrow:before {
-    transform: translateY(5px);
+.load-more:hover {
+  background: #e1e6da;
 }
-
-.button-text {
-    position: relative;
-    z-index: 2;
-}
-
 .button-arrow {
-    position: absolute;
-    bottom: -18px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: white;
-    border: 2px solid var(--main-dark-color);
-    transition: transform 0.3s ease-out;
-    /* mix-blend-mode: difference; */
+  display: none;
 }
-
-
-.button-arrow:before {
-    content: "";
-    display: block;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    width: 20px;
-    height: 20px;
-    border-bottom: 3px solid var(--main-dark-color);
-    border-right: 3px solid var(--main-dark-color);
-    transition: transform 0.3s ease-out;
-    /* mix-blend-mode: difference; */
+.works-heading {
+  margin-bottom: 24px;
 }
-
+.projects li a {
+  display: block;
+  min-height: 48px;
+  padding: 6px 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.works-preview[data-censored=true] {
+  filter: blur(16px);
+}
+.empty-works {
+  font-size: 1.5rem;
+  margin-top: 45px;
+}
+@media (hover: none), (pointer: coarse) {
+  .works-preview {
+    display: none;
+  }
+}
 .nsfw {
-    height: 50%;
-    font-size: 0.4em;
-    margin-left: 5px;
+  vertical-align: middle;
+  font: 10px var(--sans);
+  margin-left: 5px;
 }
-
 @media only screen and (max-width: 640px) {
-    .projects-section, .content-page, .content-page {
-        padding: 72px 14px 18px;
-    }
-
-    .load-more {
-        width: 190px;
-        height: 56px;
-        font-size: 18px;
-    }
+  .projects-section {
+    padding: 72px 14px 18px;
+  }
+  .load-more {
+    width: 190px;
+    height: 56px;
+    font-size: 18px;
+  }
 }

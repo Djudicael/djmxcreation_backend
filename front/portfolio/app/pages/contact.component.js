@@ -20,12 +20,15 @@ export default class ContactComponent extends TemplateRenderer {
         const description = html`${safeHTML(htmlDescription(this.description))}`;
 
         return html`
-        <section class="content-page">
-        ${description}
+        <section class="contact-page page-shell">
+        <p class="eyebrow">04 / Contact</p>
+        <h1>Contact.</h1>
+        <div class="contact-intro rich-text">${description}</div>
         <div class="portfolio-contact-links">${(Array.isArray(this.description?.contacts) ? this.description.contacts : []).map(contact => {
             const href = contactHref(contact);
-            return href ? html`<a class="portfolio-contact-link" href=${href}><strong>${contact.label}</strong><span>${contact.value}</span></a>` : "";
+            return href ? html`<a class="portfolio-contact-link" href=${href}><strong>${contact.label}</strong><span>${contact.value}</span><span aria-hidden="true">↗</span></a>` : "";
         })}</div>
+        <div class="page-endnote"><a class="text-link" href="/works">View works ↗</a></div>
         </section>
         `;
     }

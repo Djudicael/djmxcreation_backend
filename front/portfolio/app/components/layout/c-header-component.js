@@ -4,128 +4,98 @@ export default class HeaderComponent extends TemplateRenderer {
     constructor() {
         super();
         this.noShadow = true;
-        this.menu = null;
-        this.menuTog = null;
-        this.menuWraps = null;
-        this.wraps = null;
-        this.toggleMenu = this.toggleMenu.bind(this);
-        this.hideMenu = this.hideMenu.bind(this);
-        this._timeouts = [];
+        this.isOpen = false;
     }
 
     get template() {
         return html`
-
-        <button class="menu-tog" aria-label="Toggle navigation menu" aria-expanded="false">
-            <span></span>
-            <span></span>
-        </button>
-
-        <nav class="menu" role="navigation" aria-label="Main navigation">
-            <div class="links">
-                <ul class="menu-list" role="menubar">
-                    <li class="menu-wrap" role="none"><a href="/" role="menuitem">Home/<span aria-hidden="true">01</span></a></li>
-                    <li class="menu-wrap" role="none"><a href="/works" role="menuitem">Works/<span aria-hidden="true">02</span></a></li>
-                    <li class="menu-wrap" role="none"><a href="/about" role="menuitem">About/<span aria-hidden="true">03</span></a></li>
-                    <li class="menu-wrap" role="none"><a href="/contact" role="menuitem">Contact/<span aria-hidden="true">04</span></a></li>
-                </ul>
-            </div>
-        </nav>
-
-        <div class="header">
-            <span class="wrap">
-                <h1>Studio</h1>
-            </span>
-        </div>
+            <a class="wordmark" href="/" aria-label="DJMXCreation home">DJMX<span>Creation</span><span class="brand-dot" aria-hidden="true"></span></a>
+            <button class="menu-tog" type="button" aria-controls="portfolio-menu" aria-expanded="false">
+                <span class="menu-label">Menu</span><span class="menu-icon" aria-hidden="true"><i></i><i></i></span>
+            </button>
+            <nav id="portfolio-menu" class="menu" aria-label="Main navigation" aria-hidden="true" inert>
+                <div class="links"><ul class="menu-list">
+                    ${[["/", "Home", "01"], ["/works", "Works", "02"], ["/about", "About", "03"], ["/contact", "Contact", "04"]].map(([href, label, index]) => html`
+                        <li class="menu-wrap"><a href=${href}>${label}/<span aria-hidden="true">${index}</span></a></li>
+                    `)}
+                </ul></div>
+                <span class="menu-signature">DJMXCreation — Portfolio</span>
+            </nav>
         `;
-    }
-
-    disconnectedCallback() {
-        this.menuTog?.removeEventListener('click', this.toggleMenu);
-        this._timeouts.forEach((timerId) => clearTimeout(timerId));
-        this._timeouts = [];
-    }
-
-    displayWraps() {
-        this.wraps.forEach((wrap, idx) => {
-            const timerId = setTimeout(() => {
-                wrap.classList.add('active');
-            }, (idx + 1) * 50);
-            this._timeouts.push(timerId);
-        })
-    }
-
-    hideMenu() {
-        if (this.menu?.classList.contains('active')) {
-            this.toggleMenu();
-        }
-    }
-
-    toggleMenu() {
-        if (!this.menu || !this.menuTog) {
-            return;
-        }
-
-        if (this.menu.classList.contains('active')) {
-            this.menuTog.classList.remove('active');
-            this.menuTog.setAttribute('aria-expanded', 'false');
-            this.toggleMenuWraps(false);
-            const hideMenuTimer = setTimeout(() => {
-                this.menu.classList.remove('active')
-            }, 300);
-            const showWrapsTimer = setTimeout(() => {
-                this.toggleWraps(true);
-            }, 300);
-            this._timeouts.push(hideMenuTimer, showWrapsTimer);
-        } else {
-            this.menuTog.classList.add('active');
-            this.menuTog.setAttribute('aria-expanded', 'true');
-            this.toggleWraps(false);
-            const showMenuTimer = setTimeout(() => {
-                this.menu.classList.add('active')
-            }, 300);
-            const showMenuWrapsTimer = setTimeout(() => {
-                this.toggleMenuWraps(true);
-            }, 300);
-            this._timeouts.push(showMenuTimer, showMenuWrapsTimer);
-        }
-    }
-
-    toggleWraps(active) {
-        this.wraps.forEach(wrap => {
-            this.toggleWrap(wrap, active);
-        })
-    }
-
-    toggleMenuWraps(active) {
-        this.menuWraps.forEach(wrap => {
-            this.toggleWrap(wrap, active);
-        })
-    }
-
-    toggleWrap(wrap, active) {
-        const timerId = setTimeout(() => {
-            if (active) {
-                wrap.classList.add('active');
-            } else {
-                wrap.classList.remove('active');
-            }
-        });
-        this._timeouts.push(timerId);
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this.wraps = [...document.querySelectorAll('.wrap')];
-        this.menuTog = document.querySelector('.menu-tog');
-        this.menu = document.querySelector('.menu');
-        this.menuWraps = [...document.querySelectorAll('.menu-wrap')];
+        const options = { signal: this.signal };
+        this.button = this.querySelector(".menu-tog");
+        this.menu = this.querySelector(".menu");
+        this.button.addEventListener("click", () => this.setOpen(!this.isOpen), options);
+        this.addEventListener("keydown", event => {
+            if (!this.isOpen) return;
+            if (event.key === "Escape") {
+                event.preventDefault();
+                this.setOpen(false, true);
+            }
+            if (event.key === "Tab") {
+                const stops = [this.button, ...this.menu.querySelectorAll("a")];
+                const first = stops[0], last = stops.at(-1);
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
+        }, options);
+        document.addEventListener("click", event => {
+            const anchor = event.target.closest("a[href]");
+            if (!anchor || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const url = new URL(anchor.href);
+            if (url.origin !== location.origin || anchor.target || anchor.hasAttribute("download") || url.pathname === location.pathname && url.hash) return;
+            this.hideMenu();
+            requestAnimationFrame(() => {
+                window.scrollTo(0, 0);
+                this.updateCurrent();
+                document.querySelector("main")?.focus({ preventScroll: true });
+            });
+        }, { ...options, capture: true });
+        window.addEventListener("popstate", () => { this.hideMenu(); this.updateCurrent(); }, options);
+        this.updateCurrent();
+    }
 
-        if (!this.menuTog || !this.menu) {
-            return;
-        }
+    updateCurrent() {
+        const pathname = location.pathname;
+        this.menu.querySelectorAll("a").forEach(anchor => {
+            const active = anchor.pathname === "/" ? pathname === "/" : pathname.startsWith(anchor.pathname);
+            if (active) anchor.setAttribute("aria-current", "page");
+            else anchor.removeAttribute("aria-current");
+        });
+        const section = pathname.split("/")[1];
+        document.title = `${({ works: "Works", about: "About", contact: "Contact" })[section] || "Home"} — DJMXCreation`;
+    }
 
-        this.menuTog.addEventListener('click', this.toggleMenu)
+    setOpen(open, restoreFocus = false) {
+        this.isOpen = open;
+        this.menu.inert = !open;
+        this.menu.classList.toggle("active", open);
+        this.menu.setAttribute("aria-hidden", String(!open));
+        this.button.classList.toggle("active", open);
+        this.button.setAttribute("aria-expanded", String(open));
+        this.button.querySelector(".menu-label").textContent = open ? "Close" : "Menu";
+        this.menu.querySelectorAll(".menu-wrap").forEach(item => item.classList.toggle("active", open));
+        document.querySelector("main").inert = open;
+        this.querySelector(".wordmark").inert = open;
+        document.body.classList.toggle("menu-open", open);
+        this.updateCurrent();
+        if (open) this.menu.querySelector("a[aria-current], a").focus({ preventScroll: true });
+        else if (restoreFocus) this.button.focus();
+    }
 
+    hideMenu() { if (this.isOpen) this.setOpen(false); }
+
+    disconnectedCallback() {
+        this.hideMenu();
+        super.disconnectedCallback();
     }
 }

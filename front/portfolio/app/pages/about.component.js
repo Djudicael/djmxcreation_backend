@@ -21,14 +21,14 @@ export default class AboutComponent extends TemplateRenderer {
         const description = html`${safeHTML(htmlDescription(this.description))}`;
 
         return html`
-        <section class="content-page">
-        <div class="container">
-        ${this.profileImage ? html`<img src=${this.profileImage} alt="Profile photo" loading="lazy">` : ""}
-        <div class="info">
-        <h1>${this.displayName}</h1>
-        ${description}
-        </div>
-    </div>
+        <section class="about-page page-shell">
+            <p class="eyebrow">03 / About</p>
+            <div class="about-layout ${this.profileImage ? "" : "without-portrait"}">
+                ${this.profileImage ? html`<figure class="about-portrait"><img src=${this.profileImage} alt=${this.displayName ? `Portrait of ${this.displayName}` : "Profile portrait"} loading="lazy"></figure>` : ""}
+                <div class="about-copy"><h1>${this.displayName || "About me."}</h1><div class="rich-text">${description}</div>
+                    <div class="page-actions"><a class="action-link action-primary" href="/works">View works <span aria-hidden="true">↗</span></a><a class="text-link" href="/contact">Contact ↗</a></div>
+                </div>
+            </div>
         </section>
         `;
     }

@@ -12,6 +12,27 @@ Default dev URLs:
 - admin: http://localhost:3008
 - portfolio: http://localhost:3009
 
+## Public portfolio
+
+The portfolio keeps its full-screen indexed menu and animated Works list.
+Home features published, non-adult project covers, with an abstract visual when
+no suitable cover is available. About and Contact use the content saved in admin.
+
+Adult Works previews remain pixelated and blurred throughout the hover animation.
+Opening an adult project requires choosing **View project**; **Hide adult content**
+hides its description and media again. This is a presentation preference, not
+access control: published media remain publicly addressable.
+
+Project images open in a modal viewer with previous/next buttons, arrow-key
+navigation, Escape to close, and focus returned to the original image button.
+The menu supports Escape and keyboard focus containment. Touch devices use the
+same project links without the mouse-following preview; reduced-motion preferences
+disable the animated tracking.
+
+The browser suite includes deterministic public-page fixtures for pagination,
+adult previews, the image viewer, empty/error states, and narrow-screen navigation,
+alongside the admin's real API/persistence checks.
+
 ## Admin workflows
 
 - **Projects**: choose **New project**, enter a title, and create the draft.
