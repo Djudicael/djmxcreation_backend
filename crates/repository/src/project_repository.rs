@@ -75,7 +75,13 @@ impl ProjectRepository {
             description: json_opt(row, "description")?,
             visible: col(row, "visible")?,
             adult: col(row, "adult")?,
-            contents: vec![],
+            contents: if with_thumbnail {
+                json_opt(row, "contents")?
+                    .and_then(|value| value.as_array().cloned())
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            },
             thumbnail_content,
         })
     }
@@ -120,7 +126,7 @@ impl IProjectRepository for ProjectRepository {
         let project = conn
             .with_transaction(async |txn| {
                 let row = txn
-                    .query_params(sql, &[&metadata_json, &now_utc, &true, &false])
+                    .query_params(sql, &[&metadata_json, &now_utc, &false, &false])
                     .await?
                     .into_rows()
                     .into_iter()
@@ -225,7 +231,7 @@ impl IProjectRepository for ProjectRepository {
         p.visible,
         p.adult,
         c.content AS thumbnail_content,
-        array_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) AS contents
+        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
     FROM
         project p
     LEFT JOIN
@@ -267,7 +273,7 @@ impl IProjectRepository for ProjectRepository {
         p.visible,
         p.adult,
         c.content AS thumbnail_content,
-        array_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) AS contents
+        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
     FROM
         project p
     LEFT JOIN
@@ -454,7 +460,7 @@ impl IProjectRepository for ProjectRepository {
         &self,
         project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
-        let sql = "SELECT * FROM project_content where project_id = $1 FETCH FIRST ROW ONLY";
+        let sql = "SELECT * FROM project_content_thumbnail where project_id = $1";
 
         let mut conn = self.config.connect().await.map_err(|e| to_error(e, None))?;
         let result = conn

@@ -1,6 +1,7 @@
 import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-renderer";
 import portfolioApi from "../api/portfolio.api.js";
 import { htmlDescription } from "../utils/helper.js";
+import { contactHref } from "../../../shared/src/contact-links.js";
 
 export default class ContactComponent extends TemplateRenderer {
     constructor() {
@@ -21,6 +22,10 @@ export default class ContactComponent extends TemplateRenderer {
         return html`
         <section class="content-page">
         ${description}
+        <div class="portfolio-contact-links">${(Array.isArray(this.description?.contacts) ? this.description.contacts : []).map(contact => {
+            const href = contactHref(contact);
+            return href ? html`<a class="portfolio-contact-link" href=${href}><strong>${contact.label}</strong><span>${contact.value}</span></a>` : "";
+        })}</div>
         </section>
         `;
     }

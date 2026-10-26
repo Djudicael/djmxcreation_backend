@@ -12,6 +12,59 @@ Default dev URLs:
 - admin: http://localhost:3008
 - portfolio: http://localhost:3009
 
+## Admin workflows
+
+- **Projects**: choose **New project**, enter a title, and create the draft.
+  Edit its description and metadata, import media, choose a cover, then save.
+  **Publish on portfolio** controls public visibility; new projects are private.
+  Removing a project or a media file asks for confirmation.
+- **About me**: edit the name and biography, save, and import or remove the
+  profile photo separately. Media actions preserve text being edited.
+- **Contacts**: add email, phone, and website/social-link rows, edit the introductory
+  text, and choose **Save contacts**. Removing a row is applied when
+  saving. Saved links appear on the public Contact page. Older description-only
+  contact content remains supported; no database migration is needed.
+- Uploads support files up to 32 MiB each. Project multipart requests allow 50 MiB;
+  the general API request limit is 64 MiB. The admin sends project files separately.
+  Save buttons show progress and success/error feedback; failed actions can be retried.
+
+`cargo run -p dev-server -- test --browser` tests creation, validation, error recovery,
+publishing, media, profile, contacts, deep links, reloads, and mobile navigation on
+the local stack. It removes its test projects and restores the profile/contact data.
+
+## Sign in with OpenID Connect WASI Hub
+
+Copy `front/.env.template` to `front/.env` and configure `OIDC_HUB_URL`,
+`OIDC_REALM`, and `OIDC_CLIENT_ID` before building or starting the admin UI.
+For deployment, set the public provider URL, realm, and client; no provider
+checkout is required. The local-development defaults target
+`http://localhost:3000/realms/portfolio` and the public `portfolio` client.
+`keycloak-js` remains the browser adapter, using the Hub's
+Keycloak-compatible realm endpoints, Authorization Code with S256 PKCE, and
+the `openid profile roles` scopes. The Keycloak session iframe is disabled
+because the Hub does not provide that endpoint.
+
+Register the admin origin's root URL (for example `https://admin.example.com/`) as
+the exact redirect URI. Sign-in always returns there; the app restores the
+requested page, query, and fragment from tab-local session storage before starting
+its router. This also supports direct links and page reloads on nested routes.
+The Hub does not treat `/*` as a redirect wildcard.
+
+The esbuild plugin `build/keycloak-hub-plugin.js` adapts Keycloak JS 26's
+refresh-token metadata parsing to the Hub's opaque refresh tokens. It preserves
+the original refresh token and access/ID-token parsing and nonce checks. The
+build fails if the upstream code changes, so dependency upgrades require reviewing
+this compatibility patch. Both build and watch use the same plugin.
+
+Every admin API request obtains a current access token and sends it as
+`Authorization: Bearer ...`, including multipart uploads and reads. The public
+portfolio uses anonymous requests. Existing `KEYCLOAK_URL`, `KEYCLOAK_REALM`,
+and `KEYCLOAK_CLIENT_ID` build variables remain fallback aliases; the `OIDC_*`
+variables take priority. Never put a client secret in the frontend.
+
+See the repository README's **Security** section for realm, audience, role,
+callback, CORS, and backend setup. Restart dev builds after changing the variables.
+
 ## API Base URL Configuration
 
 The frontend no longer hardcodes a backend host. API requests use relative paths by default (for example `/api/...`).

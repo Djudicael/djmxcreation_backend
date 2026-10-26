@@ -9,6 +9,19 @@ pub struct StorageClient {
     pub inner: Client,
 }
 
+#[cfg(target_os = "wasi")]
+#[derive(Debug)]
+struct WasiSleep;
+
+#[cfg(target_os = "wasi")]
+impl aws_sdk_s3::config::AsyncSleep for WasiSleep {
+    fn sleep(&self, duration: std::time::Duration) -> aws_sdk_s3::config::Sleep {
+        aws_sdk_s3::config::Sleep::new(async move {
+            wstd::task::sleep(duration.into()).await;
+        })
+    }
+}
+
 pub fn get_storage_client(cfg: StorageConfiguration) -> Result<StorageClient, Error> {
     let credentials = Credentials::new(&cfg.access_key, &cfg.secret_key, None, None, "Static");
 
@@ -19,6 +32,8 @@ pub fn get_storage_client(cfg: StorageConfiguration) -> Result<StorageClient, Er
     {
         use crate::config::wasi_http_client::WasiHttpClient;
         let builder = S3ConfigBuilder::new()
+            .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
+            .sleep_impl(WasiSleep)
             .credentials_provider(credentials)
             .region(region)
             .endpoint_url(endpoint)

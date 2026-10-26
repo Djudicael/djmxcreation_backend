@@ -80,16 +80,7 @@ impl HttpConnector for WasiHttpClient {
                 None => parsed_uri.path().to_string(),
             };
 
-            // 5. Construct WASI Outgoing Request
-            let wasi_request = wasi::http::types::OutgoingRequest::new(headers);
-            wasi_request.set_method(&wasi_method).unwrap();
-            wasi_request.set_scheme(scheme.as_ref()).unwrap();
-            wasi_request.set_authority(authority.as_deref()).unwrap();
-            wasi_request
-                .set_path_with_query(Some(&path_and_query))
-                .unwrap();
-
-            // 6. Write Body
+            // 5. Collect Body
             // Extract the bytes from SdkBody (For AWS S3, payload is usually converted to bytes)
             // Note: In a fully streaming production setup, this would incrementally pipe chunks.
             // For AWS SDK on Wasm, resolving to memory first is standard to avoid async blocking issues.
@@ -104,27 +95,36 @@ impl HttpConnector for WasiHttpClient {
                 })?
                 .into_bytes();
 
-            if !req_body_bytes.is_empty() {
-                let outgoing_body = wasi_request.body().unwrap();
-                let body_stream = outgoing_body.write().unwrap();
-                body_stream
-                    .blocking_write_and_flush(&req_body_bytes)
-                    .map_err(|e| {
-                        ConnectorError::other(
-                            format!("Failed to write WASI body: {:?}", e).into(),
-                            None,
-                        )
-                    })?;
-                drop(body_stream);
-                wasi::http::types::OutgoingBody::finish(outgoing_body, None).map_err(|e| {
-                    ConnectorError::other(
-                        format!("Failed to finish WASI body: {:?}", e).into(),
-                        None,
-                    )
+            // RustFS requires an explicit zero length for empty mutating calls.
+            // Without it the host can send chunked framing and DELETE gets 411.
+            if req_body_bytes.is_empty()
+                && matches!(method, "POST" | "PUT" | "PATCH" | "DELETE")
+                && !headers_map
+                    .iter()
+                    .any(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+            {
+                headers.append("content-length", b"0").map_err(|e| {
+                    ConnectorError::other(format!("Failed to set body length: {e:?}").into(), None)
                 })?;
             }
 
-            // 7. Dispatch Request via WASI Host
+            let wasi_request = wasi::http::types::OutgoingRequest::new(headers);
+            wasi_request.set_method(&wasi_method).unwrap();
+            wasi_request.set_scheme(scheme.as_ref()).unwrap();
+            wasi_request.set_authority(authority.as_deref()).unwrap();
+            wasi_request
+                .set_path_with_query(Some(&path_and_query))
+                .unwrap();
+
+            let outgoing_body = wasi_request
+                .body()
+                .map_err(|_| ConnectorError::other("WASI request body unavailable".into(), None))?;
+            let body_stream = outgoing_body.write().map_err(|_| {
+                ConnectorError::other("WASI request stream unavailable".into(), None)
+            })?;
+
+            // Dispatch before writing so the host can drain the body. Writing
+            // an entire upload before dispatch can fill the host pipe and stall.
             let future_response = wasi::http::outgoing_handler::handle(wasi_request, None)
                 .map_err(|e| {
                     ConnectorError::other(
@@ -132,6 +132,20 @@ impl HttpConnector for WasiHttpClient {
                         None,
                     )
                 })?;
+
+            // WASI blocking-write-and-flush accepts at most 4096 bytes per call.
+            for chunk in req_body_bytes.chunks(4096) {
+                body_stream.blocking_write_and_flush(chunk).map_err(|e| {
+                    ConnectorError::other(
+                        format!("Failed to write WASI body: {:?}", e).into(),
+                        None,
+                    )
+                })?;
+            }
+            drop(body_stream);
+            wasi::http::types::OutgoingBody::finish(outgoing_body, None).map_err(|e| {
+                ConnectorError::other(format!("Failed to finish WASI body: {:?}", e).into(), None)
+            })?;
 
             // 8. Poll for Response
             let pollable = future_response.subscribe();

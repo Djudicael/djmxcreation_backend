@@ -44,6 +44,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            front/package-lock.json
+            front/admin/package-lock.json
+            front/portfolio/package-lock.json
+      - name: Build assets embedded by the frontend component
+        run: |
+          npm --prefix front ci
+          npm --prefix front/admin ci
+          npm --prefix front/portfolio ci
+          npm run build
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - name: Install integration-test runtime
@@ -54,4 +68,6 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo check --target wasm32-wasip2 -p djmxcreation-backend-wasi --lib
+      - run: cargo check --target wasm32-wasip2 -p djmxcreation-frontend-wasi --lib
+      - run: cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi -p djmxcreation-frontend-wasi --lib
       - run: cargo test --workspace

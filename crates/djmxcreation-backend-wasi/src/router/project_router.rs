@@ -103,8 +103,12 @@ impl ProjectRouter {
 
     pub async fn get_projects_with_filter(
         Extension(project_service): Extension<DynIProjectService>,
+        admin: Option<Extension<crate::auth::AdminIdentity>>,
         Query(pagination): Query<PaginationQueryParams>,
     ) -> ApiResult<Json<ProjectsView>> {
+        if !pagination.visible && admin.is_none() {
+            return Err(crate::error::error::Error::Forbidden);
+        }
         validate_pagination(pagination.page, pagination.size)?;
         let projects = project_service
             .get_projects_with_filter(
@@ -171,8 +175,14 @@ impl ProjectRouter {
     pub async fn find_project(
         Path(id): Path<Uuid>,
         Extension(project_service): Extension<DynIProjectService>,
+        admin: Option<Extension<crate::auth::AdminIdentity>>,
     ) -> ApiResult<Json<ProjectView>> {
         let project = project_service.find_project(id).await?;
+        if !project.visible && admin.is_none() {
+            return Err(crate::error::error::Error::NotFound(
+                "project not found".into(),
+            ));
+        }
         Ok(Json(project))
     }
 

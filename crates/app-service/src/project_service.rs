@@ -236,34 +236,35 @@ impl IProjectService for ProjectService {
             .await?
             .ok_or_else(|| Error::EntityNotFound(format!("content {content_id} not found")))?;
 
-        self.project_repository
-            .delete_project_content_by_id(project_id, content_id)
-            .await?;
-
-        if let Some(content) = content_dto.content {
+        if let Some(ref content) = content_dto.content {
             self.storage_repository
                 .remove_object(&self.bucket, &content.file_name)
                 .await?;
         }
 
-        // If this content was the project thumbnail, remove that entry too.
-        match self
+        // The thumbnail association has its own ID, distinct from the media ID.
+        // Match its stored source file instead of querying by the association ID.
+        for thumbnail in self
             .project_repository
-            .get_thumbnail_by_id(project_id, content_id)
-            .await
+            .get_projects_content_thumbnail(project_id)
+            .await?
         {
-            Ok(Some(thumbnail)) => {
-                if let Some(thumb_id) = thumbnail.id {
-                    self.project_repository
-                        .delete_thumbnail_by_id(project_id, thumb_id)
-                        .await?;
-                }
-            }
-            Ok(None) => {}
-            Err(e) => {
-                warn!(content_id = %content_id, error = ?e, "error checking thumbnail during content deletion");
+            if thumbnail
+                .content
+                .as_ref()
+                .zip(content_dto.content.as_ref())
+                .is_some_and(|(cover, content)| cover.file_name == content.file_name)
+                && let Some(thumb_id) = thumbnail.id
+            {
+                self.project_repository
+                    .delete_thumbnail_by_id(project_id, thumb_id)
+                    .await?;
             }
         }
+
+        self.project_repository
+            .delete_project_content_by_id(project_id, content_id)
+            .await?;
 
         Ok(())
     }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run DJMXCreation Stack"
+  short_description: "Launch and test the complete WASI or native stack"
+  default_prompt: "Use $run-djmx-stack to launch the complete local WASI stack and report the admin, portfolio, Hub, and API URLs."

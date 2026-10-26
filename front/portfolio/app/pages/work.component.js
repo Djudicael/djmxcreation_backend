@@ -2,6 +2,7 @@ import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-r
 import { EventBinder } from "../../../shared/src/event-binder.js";
 import portfolioApi from "../api/portfolio.api.js";
 import { htmlDescription } from "../utils/helper.js";
+import { mediaKind } from "../../../shared/src/media-kind.js";
 
 export default class WorkComponent extends TemplateRenderer {
     constructor() {
@@ -12,7 +13,7 @@ export default class WorkComponent extends TemplateRenderer {
         this.routerOutlet = document.querySelector('router-outlet');
         this.doc = document.documentElement;
         this.api = portfolioApi;
-        this.title = null;
+        this.projectTitle = null;
         this.subTitle = null;
         this.client = null;
         this.contents = null;
@@ -60,7 +61,7 @@ export default class WorkComponent extends TemplateRenderer {
         const description = html`${safeHTML(htmlDescription(this.description))}`;
         const projectHeader = html`
         <div class="project_header">	
-            ${this.getTitleFragment(this.title)}
+            ${this.getTitleFragment(this.projectTitle)}
             ${this.getFragmentSubtitle(this.subTitle)}
             ${this.getFragmentClient(this.client)}
         </div>`;
@@ -72,12 +73,12 @@ export default class WorkComponent extends TemplateRenderer {
         </div>`;
 
         const images = this.contents
-            ? html`${this.contents.map(({ url }, index) => html`
+            ? html`${this.contents.map((content, index) => mediaKind(content) === "video" ? html`<video src=${content.url} controls preload="metadata" style="max-width:100%"></video>` : mediaKind(content) === "file" ? html`<a href=${content.url}>Open file</a>` : html`
             <img
-            src="${url}"
-            data-hi-res="${url}"
+            src="${content.url}"
+            data-hi-res="${content.url}"
             class="pro-image"
-            alt="${this.title ? `${this.title} - image ${index + 1}` : `Project image ${index + 1}`}"
+            alt="${this.projectTitle ? `${this.projectTitle} - image ${index + 1}` : `Project image ${index + 1}`}"
             loading="lazy"
             role="button"
             tabindex="0"
@@ -104,7 +105,7 @@ export default class WorkComponent extends TemplateRenderer {
         try {
             const { metadata, description, contents } = await this.api.getProject(id);
             if (!this.isConnected) return;
-            this.title = metadata.title;
+            this.projectTitle = metadata.title;
             this.subTitle = metadata.subTitle;
             this.client = metadata.client;
             this.description = description;

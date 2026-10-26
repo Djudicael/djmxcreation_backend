@@ -61,8 +61,9 @@ export class BaseHttp {
      * @param {object} config
      * @param {string} config.rest_url - Base URL for all requests.
      */
-    constructor(config) {
+    constructor(config, { tokenProvider } = {}) {
         this.config = config;
+        this._tokenProvider = tokenProvider;
         /** @type {AbortController | null} */
         this._controller = null;
         this._cache = new ResponseCache();
@@ -124,6 +125,19 @@ export class BaseHttp {
         return this.config.rest_url + path;
     }
 
+    /** Obtain a fresh access token before sending an authenticated request. */
+    async fetch(path, options) {
+        const headers = new Headers(options.headers);
+        if (this._tokenProvider) {
+            const token = await this._tokenProvider();
+            if (!token) {
+                throw new Error("Authentication required");
+            }
+            headers.set("Authorization", `Bearer ${token}`);
+        }
+        return fetch(this.buildUrl(path), { ...options, headers });
+    }
+
     /**
      * @param {Response} response
      * @throws {Error} on non-2xx status.
@@ -142,7 +156,7 @@ export class BaseHttp {
      * @returns {Promise<*>}
      */
     async doPost({ path, body, authToken }) {
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(authToken),
             method: "POST",
             body: JSON.stringify(body),
@@ -166,7 +180,7 @@ export class BaseHttp {
             throw new Error("Invalid request body");
         }
 
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createMultipartHeaders(authToken),
             method: "PATCH",
             body,
@@ -190,7 +204,7 @@ export class BaseHttp {
             throw new Error("Invalid request body");
         }
 
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createMultipartHeaders(authToken),
             method: "POST",
             body,
@@ -210,7 +224,7 @@ export class BaseHttp {
      * @returns {Promise<*>}
      */
     async doPutJson({ path, body, authToken }) {
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(authToken),
             method: "PUT",
             body: JSON.stringify(body),
@@ -230,7 +244,7 @@ export class BaseHttp {
      * @returns {Promise<Response>}
      */
     async doPutRaw({ path, body, authToken }) {
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(authToken),
             method: "PUT",
             body: JSON.stringify(body),
@@ -249,7 +263,7 @@ export class BaseHttp {
      * @returns {Promise<*>}
      */
     async doDeleteJson({ path, authToken }) {
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(authToken),
             method: "DELETE",
             signal: this._signal,
@@ -267,7 +281,7 @@ export class BaseHttp {
      * @returns {Promise<Response>}
      */
     async doDeleteRaw({ path, authToken }) {
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(authToken),
             method: "DELETE",
             signal: this._signal,
@@ -289,7 +303,7 @@ export class BaseHttp {
             return cached;
         }
 
-        const response = await fetch(this.buildUrl(path), {
+        const response = await this.fetch(path, {
             headers: this.createJsonHeaders(),
             signal: this._signal,
         });

@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 import * as fs from "fs";
 import * as path from "path";
+import { keycloakHubPlugin } from "./keycloak-hub-plugin.js";
 
 const require = createRequire(path.join(process.cwd(), "package.json"));
 const esbuild = require("esbuild");
@@ -86,6 +87,7 @@ function getBuildOptions({
 }) {
     return {
         js: {
+            plugins: [keycloakHubPlugin],
             entryPoints: [entryPoint],
             bundle: true,
             minify,
@@ -125,6 +127,9 @@ export async function buildApp({
     const define = {
         "import.meta.env": JSON.stringify({
             BACKEND_API_URL: env.BACKEND_API_URL || "",
+            OIDC_HUB_URL: env.OIDC_HUB_URL || "",
+            OIDC_REALM: env.OIDC_REALM || "",
+            OIDC_CLIENT_ID: env.OIDC_CLIENT_ID || "",
             KEYCLOAK_URL: env.KEYCLOAK_URL || "",
             KEYCLOAK_REALM: env.KEYCLOAK_REALM || "",
             KEYCLOAK_CLIENT_ID: env.KEYCLOAK_CLIENT_ID || "",
@@ -165,6 +170,9 @@ export async function watchApp({
     const define = {
         "import.meta.env": JSON.stringify({
             BACKEND_API_URL: env.BACKEND_API_URL || "",
+            OIDC_HUB_URL: env.OIDC_HUB_URL || "",
+            OIDC_REALM: env.OIDC_REALM || "",
+            OIDC_CLIENT_ID: env.OIDC_CLIENT_ID || "",
             KEYCLOAK_URL: env.KEYCLOAK_URL || "",
             KEYCLOAK_REALM: env.KEYCLOAK_REALM || "",
             KEYCLOAK_CLIENT_ID: env.KEYCLOAK_CLIENT_ID || "",

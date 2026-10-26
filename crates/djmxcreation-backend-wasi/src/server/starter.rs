@@ -8,7 +8,7 @@ use crate::{
     service::service_register::ServiceRegister,
 };
 use app_config::config::Config;
-use axum::Router;
+use axum::{Router, extract::DefaultBodyLimit};
 use repository::config::{db::DatabaseConfig, storage::get_storage_client};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
@@ -101,7 +101,15 @@ async fn track_metrics(request: Request, next: Next) -> Response {
 /// Build the application router (shared between native and WASI).
 pub fn build_router() -> Router {
     let config = Config::from_env().expect("failed to load configuration");
+    let auth = crate::auth::OidcVerifier::new(
+        crate::auth::OidcConfig::from_env().expect("failed to load OIDC configuration"),
+    )
+    .expect("failed to initialize OIDC verifier");
+    build_router_with_auth(config, auth)
+}
 
+/// Construct the same protected router with explicit configuration (also used by tests).
+pub fn build_router_with_auth(config: Config, auth: crate::auth::OidcVerifier) -> Router {
     let client_db = DatabaseConfig::new(&config.database);
     let storage_cfg = config.get_storage();
     let bucket_name = storage_cfg.bucket.clone();
@@ -112,7 +120,6 @@ pub fn build_router() -> Router {
 
     #[allow(unused_mut)]
     let mut router = Router::new()
-        .merge(ObservabilityRouter::new_router())
         .nest(
             "/api/about",
             AboutMeRouter::new_router(service_register.clone()),
@@ -125,6 +132,12 @@ pub fn build_router() -> Router {
             "/api/contact",
             ContactRouter::new_router(service_register.clone()),
         )
+        .route_layer(axum::middleware::from_fn_with_state(
+            auth,
+            crate::auth::authenticate,
+        ))
+        .merge(ObservabilityRouter::new_router())
+        .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .layer(if config.cors_origins.is_empty() {
             CorsLayer::new()
@@ -173,7 +186,8 @@ pub async fn run_tcp(app: Router) -> anyhow::Result<()> {
     let storage_client = get_storage_client(storage_cfg).context("storage client")?;
     let _ = ensure_bucket(&bucket_name, &storage_client).await;
 
-    let addr = format!("0.0.0.0:{}", config.port);
+    let bind_address = std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let addr = format!("{bind_address}:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .with_context(|| format!("failed to bind to {addr}"))?;

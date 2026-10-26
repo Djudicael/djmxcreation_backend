@@ -23,6 +23,8 @@ pub type ApiResult<T> = Result<T, Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
+    #[error("administrator role required")]
+    Forbidden,
     #[error("{0}")]
     NotFound(String),
     #[error("{0}")]
@@ -38,6 +40,7 @@ pub enum Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let (status, message) = match self {
+            Self::Forbidden => (StatusCode::FORBIDDEN, "administrator role required".into()),
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             Self::ServiceError(ref err) => match err {

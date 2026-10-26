@@ -22,13 +22,13 @@ export class RouterOutlet extends TemplateRenderer {
     if (!this.router) {
       return null;
     }
-    const location = await this.router.resolve(pathname);
-    return location;
+    return this.router.location;
   }
 
   connectedCallback() {
     super.connectedCallback();
     const router = new Router(this);
+    this.router = router;
 
     router.setRoutes([
       { path: "/", component: "p-home" },

@@ -1,9 +1,10 @@
 import { config } from "../config/api.config.js";
 import { BaseHttp } from "../../../shared/src/http-base.js";
+import { getAccessToken } from "../auth/security.js";
 
 class Http extends BaseHttp {
     constructor() {
-        super(config);
+        super(config, { tokenProvider: getAccessToken });
     }
 
     async doPut({ path, body, authToken }) {
@@ -15,7 +16,16 @@ class Http extends BaseHttp {
     }
 
     async doDelete({ path, authToken }) {
-        return this.doDeleteJson({ path, authToken });
+        return this.doDeleteRaw({ path, authToken });
+    }
+
+    async fetch(path, options) {
+        const response = await super.fetch(path, options);
+        if (response.ok && !["GET", "HEAD"].includes(options.method)) {
+            // Media and thumbnail writes also change their parent project/list.
+            this._cache.clear();
+        }
+        return response;
     }
 }
 

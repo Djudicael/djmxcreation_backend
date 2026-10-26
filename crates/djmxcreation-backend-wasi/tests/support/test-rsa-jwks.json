@@ -1,0 +1,12 @@
+{
+    "keys":  [
+                 {
+                     "kid":  "hub-rsa",
+                     "n":  "6EqhPI_cZpBE7tLv1SDxWRAGtUh2zPhWjdF8EaSfBvqvMDXXefwNsPTRaRgECf2jq7pWvLaEUr2Ls385qoHEsJMGMF3SlzpetTd2i4JJk21XvJzmr0jjlSDRXRuK3rg4ZvJIJITElNWbItcNCay1x-ovx7s7hiM7GPdILY7p8MgAFluecS1TDChiL8aWUzvx3m4BcRR5CewEJws3CpFSEfES1Q9aE3eRa8j6MLWG0EVHOpnjKei6rIO69bsuG5-Zrlts2aTYcGWxh6D3yjSBAEosfRPYQzlPXWeU2zC8DqfiaC2wd4q9J1ACAKx05xdtHp6No-0GbbQdgKiVwrz8sw",
+                     "alg":  "RS256",
+                     "e":  "AQAB",
+                     "kty":  "RSA",
+                     "use":  "sig"
+                 }
+             ]
+}

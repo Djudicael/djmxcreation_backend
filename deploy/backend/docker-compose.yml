@@ -44,8 +44,11 @@ services:
       STORAGE_SECRET_KEY: "rustfsadmin"
       STORAGE_REGION: "us-east-1"
       STORAGE_BUCKET: "portfolio"
-      USERNAME_APP: "tata"
-      PASSWORD_APP: "yoyo"
+      OIDC_ISSUER: "${OIDC_ISSUER:?Set the public HTTPS Hub realm issuer}"
+      OIDC_AUDIENCE: "${OIDC_AUDIENCE:-portfolio-api}"
+      OIDC_ADMIN_CLIENT_ID: "${OIDC_ADMIN_CLIENT_ID:-portfolio}"
+      OIDC_ADMIN_ROLE: "${OIDC_ADMIN_ROLE:-admin}"
+      CORS_ORIGINS: "${CORS_ORIGINS:?Set the frontend origin}"
     depends_on:
       - backend_postgres
       - backend_rustfs

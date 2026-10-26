@@ -3,6 +3,23 @@ import test from "node:test";
 
 import { Router } from "./router.js";
 
+test("route parameters are available when a child component connects", async () => {
+    const env = createMockBrowserEnvironment("/projects/project-42");
+    globalThis.window = env.windowMock;
+    globalThis.document = env.documentMock;
+    const router = new Router(env.outlet);
+    let renders = 0;
+    env.outlet.replaceChildren = () => {
+        renders += 1;
+        assert.equal(router.location.params.id, "project-42");
+        assert.equal(router.location.pathname, "/projects/project-42");
+    };
+    await router.setRoutes([{ path: "/projects/:id", component: "p-project" }]);
+    assert.equal(renders, 1);
+    router.dispose();
+    Router.activeRouter = null;
+});
+
 function createMockBrowserEnvironment(startPath = "/") {
     const listeners = {
         window: new Map(),

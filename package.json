@@ -2,6 +2,10 @@
     "name": "djmxcreation-backend-workspace",
     "private": true,
     "scripts": {
+        "stack:start": "cargo run -p dev-server -- start",
+        "stack:stop": "cargo run -p dev-server -- stop",
+        "stack:status": "cargo run -p dev-server -- status",
+        "stack:test": "cargo run -p dev-server -- test",
         "dev": "npm --prefix front run dev",
         "build": "npm --prefix front run build",
         "test": "npm --prefix front run test",

@@ -11,6 +11,7 @@ export default class AboutComponent extends TemplateRenderer {
         this.api = portfolioApi;
         this.description = null;
         this.profileImage = null;
+        this.displayName = "";
     }
 
     get template() {
@@ -22,8 +23,9 @@ export default class AboutComponent extends TemplateRenderer {
         return html`
         <section class="content-page">
         <div class="container">
-        <img src=${this.profileImage} alt="Profile photo" loading="lazy">
+        ${this.profileImage ? html`<img src=${this.profileImage} alt="Profile photo" loading="lazy">` : ""}
         <div class="info">
+        <h1>${this.displayName}</h1>
         ${description}
         </div>
     </div>
@@ -37,6 +39,7 @@ export default class AboutComponent extends TemplateRenderer {
         this.render();
         try {
             const data = await this.api.getAboutMe();
+            this.displayName = [data.firstName, data.lastName].filter(Boolean).join(" ");
             if (!this.isConnected) return;
             this.description = data.description;
             this.profileImage = data.photoUrl;

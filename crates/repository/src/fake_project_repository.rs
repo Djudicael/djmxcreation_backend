@@ -146,7 +146,7 @@ impl IProjectRepository for FakeProjectRepository {
         &self,
         _project_id: Uuid,
     ) -> Result<Vec<ProjectContentDto>, Error> {
-        unreachable!("get_projects_content_thumbnail is not used in these service tests")
+        Ok(self.state.thumbnail_by_id.clone().into_iter().collect())
     }
 
     async fn delete_thumbnail_by_id(&self, project_id: Uuid, id: Uuid) -> Result<(), Error> {

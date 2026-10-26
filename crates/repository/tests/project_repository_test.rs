@@ -120,6 +120,24 @@ async fn test_project_crud_operations() {
         .expect("Failed to add content");
     assert!(content_result.content.is_some());
 
+    let loaded = ctx.repo.get_project_by_id(ctx.id).await.unwrap().unwrap();
+    assert_eq!(loaded.contents.len(), 1);
+    assert_eq!(loaded.contents[0].id, content_result.id);
+    assert_eq!(
+        loaded.contents[0].content.as_ref().unwrap().file_name,
+        "test_file.jpg"
+    );
+    let listed = ctx.repo.get_projects().await.unwrap();
+    assert_eq!(
+        listed
+            .iter()
+            .find(|project| project.id == Some(ctx.id))
+            .unwrap()
+            .contents
+            .len(),
+        1
+    );
+
     // Test 4: Add thumbnail
     let thumbnail = ContentDto {
         id: None,
@@ -238,6 +256,10 @@ async fn test_project_complete_lifecycle() {
         .await
         .expect("Failed to get thumbnail");
     assert!(!thumbnails.is_empty());
+    assert_eq!(
+        thumbnails[0].id, thumbnail_result.id,
+        "Query the thumbnail association, not the media row"
+    );
 
     ctx.repo
         .delete_thumbnail_by_id(ctx.id, thumbnail_result.id.unwrap())

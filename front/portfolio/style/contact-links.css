@@ -1,0 +1,5 @@
+.portfolio-contact-links { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:18px; margin-block:32px; }
+.portfolio-contact-links .portfolio-contact-link { display:flex; flex-direction:column; gap:8px; padding:24px; border:1px solid var(--line-color,#d5ddd8); border-radius:12px; color:inherit; background:var(--surface-color,#fff); overflow-wrap:anywhere; }
+.portfolio-contact-link strong { font-size:18px; }
+.portfolio-contact-link span { font-size:15px; color:var(--accent-color,#0f766e); }
+.portfolio-contact-link:hover { border-color:var(--accent-color,#0f766e); }

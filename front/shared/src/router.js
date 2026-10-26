@@ -185,7 +185,7 @@ export class Router {
                     };
                 }
 
-                this._renderRoute(route.component);
+                this._renderRoute(route.component, { pathname: path, params, route });
                 return {
                     pathname: path,
                     params,
@@ -203,7 +203,7 @@ export class Router {
                 return this.navigate(guardResult.redirectTo);
             }
             if (!guardResult.blocked) {
-                this._renderRoute(wildcardRoute.component);
+                this._renderRoute(wildcardRoute.component, { pathname: path, params: {}, route: wildcardRoute });
             }
 
             return {
@@ -215,7 +215,7 @@ export class Router {
 
         const fallback = this.routes.find((route) => route.path === "/") || this.routes[0];
         if (fallback) {
-            this._renderRoute(fallback.component);
+            this._renderRoute(fallback.component, { pathname: path, params: {}, route: fallback });
             return {
                 pathname: path,
                 params: {},
@@ -230,7 +230,10 @@ export class Router {
         };
     }
 
-    _renderRoute(componentTag) {
+    _renderRoute(componentTag, location) {
+        // Child connectedCallback hooks can read parameters without navigating
+        // again and recursively replacing their own component.
+        this.location = location;
         if (!this.outlet || !componentTag) {
             return;
         }

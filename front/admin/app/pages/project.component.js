@@ -1,281 +1,128 @@
 import Quill from "quill";
+import { render } from "lit-html";
+import { html } from "../utils/template-renderer.js";
+import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
-import Metadata from "../models/metadata.js";
-import ProjectPayload from "../models/projectPayload.js";
 import { editorConfig } from "../utils/helper.js";
-import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
-import { EventBinder } from "../../../shared/src/event-binder.js";
+import { mediaKind } from "../../../shared/src/media-kind.js";
 
-export class ProjectComponent extends TemplateRenderer {
-  constructor() {
-    super();
-    this.projectId = null;
-    this.noShadow = true;
-    this.instance = portfolioApi;
-    this.title = null;
-    this.subTitle = null;
-    this.client = null;
-    this.visible = false;
-    this.adult = false;
-    this.contents = null;
-    this.thumbnail = null;
-    this.deleteImage = this.deleteImage.bind(this);
-    this.thumbImage = this.thumbImage.bind(this);
-    this._onUploadFile = (event) => this.sendFile(event);
-    this._onSaveClick = null;
-    this._removeImageBinder = new EventBinder();
-    this._thumbImageBinder = new EventBinder();
-    this._editor = null;
-  }
-
-  getFragmentWithVisibility(visible) {
-    if (visible) {
-      return html`<input type="checkbox" class="toggle" checked />`;
-    }
-    return html`<input type="checkbox" class="toggle" />`;
-  }
-  getFragmentWithAdult(adult) {
-    if (adult) {
-      return html`<input type="checkbox" class="adult" checked />`;
-    }
-    return html`<input type="checkbox" class="adult" />`;
-  }
-
-  get template() {
-    if (this.isLoading) return this.loadingTemplate;
-    if (this.hasError) return this.errorTemplate;
-
-    const checkVisibility = this.getFragmentWithVisibility(this.visible);
-    const checkAdult = this.getFragmentWithAdult(this.adult);
-
-    const contents = this.contents
-      ? html`${this.contents.map(
-        ({ id, url }) => html`
-            <div id="area-${id}" class="image-area">
-              <img src=${url} alt="Project content" loading="lazy" />
-              <button class="thumb-image" data-image-id=${id} aria-label="Set as thumbnail">thumb</button>
-              <button class="remove-image" data-image-id=${id} aria-label="Delete image">delete</button>
-            </div>
-          `
-      )}`
-      : html``;
-
-    const thumbnail = this.thumbnail
-      ? html`
-          <div id="thumbnail-area" class="image-area">
-            <img src=${this.thumbnail} alt="Project thumbnail" loading="lazy" />
-          </div>
-        `
-      : html``;
-
-    return html`
-      <section class="content-page">
-        <main class="flex-y">
-          <div class="form__group field">
-            <div>
-              <label for="title" class="form__label">Title</label>
-              <input
-                type="input"
-                class="form__field"
-                placeholder="Title"
-                name="title"
-                id="title"
-                value=${this.title}
-              />
-            </div>
-            <div>
-              <label for="subtitle" class="form__label">Subtitle</label>
-              <input
-                type="input"
-                class="form__field"
-                placeholder="Subtitle"
-                name="subtitle"
-                id="subtitle"
-                value=${this.subTitle ? this.subTitle : ""}
-              />
-            </div>
-            <div>
-              <label for="client" class="form__label">Client</label>
-              <input
-                type="input"
-                class="form__field"
-                placeholder="Client"
-                name="client"
-                id="client"
-                value=${this.client ? this.client : ""}
-              />
-            </div>
-          </div>
-
-          <h2>Thumbnail</h2>
-          ${thumbnail}
-
-          <h1>Project descriptions</h1>
-          <div id="editorjs"></div>
-          <div class="flex-y">
-            <div>${checkVisibility} <span>Make project visible</span></div>
-            <div>${checkAdult} <span>This project is for adult</span></div>
-            <div id="saveButton" class="cta">
-              <span>Save project</span>
-              <svg width="13px" height="10px" viewBox="0 0 13 10">
-                <path d="M1,5 L11,5"></path>
-                <polyline points="8 1 12 5 8 9"></polyline>
-              </svg>
-            </div>
-            <c-drag-drop></c-drag-drop>
-            <section class="flex-x">${contents}</section>
-          </div>
-        </main>
-      </section>
-    `;
-  }
-
-  async getProject() {
-    this.setLoadState(LoadState.LOADING);
-    this.render();
-    try {
-      const { metadata, visible, description, contents, thumbnail, adult } =
-        await this.instance.getProject(this.projectId);
-      if (!this.isConnected) return;
-      this.title = metadata.title;
-      this.subTitle = metadata.subTitle;
-      this.client = metadata.client;
-      this.visible = visible;
-      this.adult = adult;
-      this.description = description;
-      this.contents = contents;
-
-      if (thumbnail) {
-        this.thumbnail = thumbnail.url;
-      }
-
-      this.setLoadState(LoadState.DONE);
-      super.render();
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      this.setLoadState(LoadState.ERROR, "Failed to load project.");
-      if (this.isConnected) this.render();
-    }
-  }
-
-  init() {
-    const saveButton = this.querySelector("#saveButton");
-    if (!saveButton) {
-      return;
+export class ProjectComponent extends AdminPage {
+    constructor() {
+        super();
+        this.project = null;
+        this.projectId = decodeURIComponent(window.location.pathname.split("/")[2] || "");
     }
 
-    this._editor = new Quill("#editorjs", editorConfig);
-
-    if (this.description) {
-      this._editor.setContents(this.description);
+    get template() {
+        if (!this.project) return html`<section class="content-page admin-page"><p role="status">Loading project…</p></section>`;
+        const p = this.project;
+        return html`<section class="content-page admin-page">
+            <header class="admin-page-header"><div><a class="admin-back" href="/projects">← All projects</a>
+                <h1 data-project-title>${p.metadata?.title}</h1><p>Save your changes before leaving this page.</p></div>
+            </header>${this.statusTemplate}
+            <form class="admin-panel" @submit=${event => this.save(event)}>
+                <h2>Project details</h2><div class="admin-fields">
+                    <label>Title<input name="title" required maxlength="200" .value=${p.metadata?.title || ""} /></label>
+                    <label>Subtitle<input name="subTitle" maxlength="200" .value=${p.metadata?.subTitle || ""} /></label>
+                    <label>Client<input name="client" maxlength="200" .value=${p.metadata?.client || ""} /></label>
+                </div>
+                <label class="admin-editor-label">Description</label><div data-editor></div>
+                <div class="admin-options">
+                    <label><input name="visible" type="checkbox" .checked=${p.visible} /> Publish on portfolio</label>
+                    <label><input name="adult" type="checkbox" .checked=${p.adult} /> Adult content</label>
+                </div>
+                <div class="admin-actions"><button class="admin-button" type="submit">Save project</button></div>
+            </form>
+            <section class="admin-panel"><h2>Media and cover</h2><p>Images or videos, up to 32 MiB per file. Choose an image as the cover. Your text edits are preserved during these operations.</p>
+                <form class="admin-upload" @submit=${event => this.upload(event)}>
+                    <label>Files to upload<input name="files" type="file" accept="image/*,video/*" multiple required /></label>
+                    <button class="admin-button secondary" type="submit">Upload files</button>
+                </form><div data-media></div>
+            </section>
+        </section>`;
     }
 
-    if (this._onSaveClick) {
-      saveButton.removeEventListener("click", this._onSaveClick);
+    renderMedia() {
+        const target = this.querySelector("[data-media]");
+        if (!target) return;
+        render(html`
+            ${this.project.thumbnail?.url ? html`<div class="admin-current-cover"><img src=${this.project.thumbnail.url} alt="Current cover" /><span>Current cover</span></div>` : html`<p class="admin-muted">No cover selected.</p>`}
+            <div class="admin-media-grid">${(this.project.contents || []).map(content => html`
+                <article class="admin-media-card" data-content-id=${content.id}>
+                    ${mediaKind(content) === "video" ? html`<video src=${content.url} controls preload="metadata"></video>` :
+                      mediaKind(content) === "image" ? html`<img src=${content.url} alt="Project media" />` :
+                      html`<a href=${content.url} target="_blank" rel="noopener noreferrer">Open file</a>`}
+                    <div class="admin-actions">
+                        ${mediaKind(content) === "image" ? html`<button class="admin-button secondary" @click=${() => this.cover(content)}>Set as cover</button>` : ""}
+                        <button class="admin-button danger" @click=${() => this.remove(content)}>Delete media</button>
+                    </div>
+                </article>`)}</div>
+        `, target);
     }
 
-    this._onSaveClick = async () => {
-      const blocks = this._editor.getContents();
-
-      const isVisible = this.querySelector(".toggle").checked;
-      const isAdult = this.querySelector(".adult").checked;
-      const title = this.querySelector("#title").value;
-      const subTitle = this.querySelector("#subtitle").value;
-      const client = this.querySelector("#client").value;
-
-      const metadata = new Metadata({ title, subTitle, client });
-
-      const project = new ProjectPayload({
-        metadata,
-        visible: isVisible,
-        adult: isAdult,
-        description: blocks,
-      });
-      await this.instance.updateProject(this.projectId, project);
-    };
-    saveButton.addEventListener("click", this._onSaveClick);
-  }
-
-  sendFile = async (e) => {
-    for (const file of e.detail.files) {
-      await this.instance.addContentToProject(this.projectId, { file });
+    async save(event) {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        const title = data.get("title").trim();
+        if (!title) { this.feedback("A title is required.", true); return; }
+        await this.perform("Project saved.", async () => {
+            await portfolioApi.updateProject(this.projectId, {
+                metadata: { title, subTitle: data.get("subTitle").trim(), client: data.get("client").trim() },
+                description: this.editor.getContents(),
+                visible: data.has("visible"),
+                adult: data.has("adult"),
+            });
+            this.querySelector("[data-project-title]").textContent = title;
+        });
     }
-    if (!this.isConnected) {
-      return;
+
+    async refreshMedia() {
+        this.project = await portfolioApi.getProject(this.projectId);
+        if (this.isConnected) this.renderMedia();
     }
-    await this.getProject();
-    this.initRemoveImageEvent();
-    this.initThumbImageEvent();
-  };
 
-  deleteImage = async (e) => {
-    const element = e.currentTarget;
-    const contentID = element.dataset.imageId;
-    await this.instance.deleteContent(this.projectId, contentID);
-    if (!this.isConnected) {
-      return;
+    async upload(event) {
+        event.preventDefault();
+        const input = event.currentTarget.querySelector("[name=files]");
+        const files = [...input.files];
+        if (!files.length) return;
+        await this.perform("Files uploaded.", async () => {
+            for (const file of files) {
+                if (file.size > 32 * 1024 * 1024) throw new Error(`${file.name} exceeds the 32 MiB limit.`);
+                await portfolioApi.addContentToProject(this.projectId, { file });
+            }
+            await this.refreshMedia();
+            input.value = "";
+        });
     }
-    const card = this.querySelector(`#area-${contentID}`);
-    card?.parentNode?.removeChild(card);
-    this.thumbnail = null;
-    super.render();
-    this.initRemoveImageEvent();
-    this.initThumbImageEvent();
-  };
 
-  thumbImage = async (e) => {
-    const element = e.currentTarget;
-    const contentID = element.dataset.imageId;
-    const thumbnail = await this.instance.addThumbnail(
-      this.projectId,
-      contentID
-    );
-    if (!this.isConnected) {
-      return;
+    async cover(content) {
+        await this.perform("Cover updated.", async () => {
+            await portfolioApi.addThumbnail(this.projectId, content.id);
+            await this.refreshMedia();
+        });
     }
-    const url = thumbnail.url;
-    this.thumbnail = url;
-    super.render();
-    this.initRemoveImageEvent();
-    this.initThumbImageEvent();
-  };
 
-  initRemoveImageEvent = () => {
-    this._removeImageBinder.bindAll(
-      this.querySelectorAll(".remove-image"), "click", (e) => this.deleteImage(e)
-    );
-  };
-
-  initThumbImageEvent = () => {
-    this._thumbImageBinder.bindAll(
-      this.querySelectorAll(".thumb-image"), "click", (e) => this.thumbImage(e)
-    );
-  };
-
-  getId = async () => {
-    const routerOutlet = document.querySelector("router-outlet");
-    const location = await routerOutlet.getLocation(window.location.pathname);
-    this.projectId = location.params.id;
-  };
-
-  async connectedCallback() {
-    super.connectedCallback();
-    this.addEventListener("upload-file", this._onUploadFile);
-    await this.getId();
-    await this.getProject();
-    this.init();
-    this.initRemoveImageEvent();
-    this.initThumbImageEvent();
-  }
-
-  disconnectedCallback() {
-    this.removeEventListener("upload-file", this._onUploadFile);
-    this._removeImageBinder.unbindAll();
-    this._thumbImageBinder.unbindAll();
-
-    const saveButton = this.querySelector("#saveButton");
-    if (saveButton && this._onSaveClick) {
-      saveButton.removeEventListener("click", this._onSaveClick);
+    async remove(content) {
+        if (!window.confirm("Permanently delete this media?")) return;
+        await this.perform("Media deleted.", async () => {
+            await portfolioApi.deleteContent(this.projectId, content.id);
+            await this.refreshMedia();
+        });
     }
-  }
+
+    async connectedCallback() {
+        super.connectedCallback();
+        await this.load(async () => { this.project = await portfolioApi.getProject(this.projectId); });
+        if (!this.isConnected || !this.project) return;
+        this.editor = new Quill(this.querySelector("[data-editor]"), editorConfig);
+        this.editor.root.setAttribute("aria-label", "Project description");
+        if (this.project.description?.ops) this.editor.setContents(this.project.description);
+        this.renderMedia();
+    }
+
+    disconnectedCallback() {
+        this.editor?.disable();
+        super.disconnectedCallback();
+    }
 }

@@ -1,48 +1,75 @@
 import Keycloak from "keycloak-js";
 
-const KEYCLOAK_URL = import.meta?.env?.KEYCLOAK_URL || "http://localhost:8080";
-const KEYCLOAK_REALM = import.meta?.env?.KEYCLOAK_REALM || "portfolio";
-const KEYCLOAK_CLIENT_ID = import.meta?.env?.KEYCLOAK_CLIENT_ID || "portfolio";
-
+// The Hub exposes realm endpoints compatible with the Keycloak browser adapter.
+const env = import.meta.env || {};
 const keycloak = new Keycloak({
-  url: KEYCLOAK_URL,
-  realm: KEYCLOAK_REALM,
-  clientId: KEYCLOAK_CLIENT_ID,
-  "public-client": true,
+    url: env.OIDC_HUB_URL || env.KEYCLOAK_URL || "http://localhost:3000",
+    realm: env.OIDC_REALM || env.KEYCLOAK_REALM || "portfolio",
+    clientId: env.OIDC_CLIENT_ID || env.KEYCLOAK_CLIENT_ID || "portfolio",
 });
 
-const initKeycloak = (onAuthenticatedCallback) => {
-  keycloak
-    .init({
-      // silentCheckSsoRedirectUri: window.location.origin,
-      //   silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-      pkceMethod: "S256",
-      onLoad: "login-required",
-      // onLoad: 'check-sso',
-      // checkLoginIframe: false
-    })
-    .then((authenticated) => {
-      if (!authenticated) {
-        console.log("user is not authenticated..!");
-      }
-      onAuthenticatedCallback();
-    })
-    .catch(console.error);
-};
+const returnPathKey = "djmx-admin:oidc-return-path";
 
-const doLogin = keycloak.login;
+function rememberRequestedPage() {
+    const url = new URL(window.location.href);
+    const callback = [url.search, url.hash.slice(1)].some(part => {
+        const params = new URLSearchParams(part);
+        return params.has("state") && (params.has("code") || params.has("error"));
+    });
+    if (!callback) {
+        sessionStorage.setItem(returnPathKey, `${url.pathname}${url.search}${url.hash}`);
+    }
+}
 
-const doLogout = keycloak.logout;
+function restoreRequestedPage() {
+    const path = sessionStorage.getItem(returnPathKey);
+    sessionStorage.removeItem(returnPathKey);
+    if (path) {
+        const url = new URL(path, window.location.origin);
+        if (url.origin === window.location.origin) {
+            window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+        }
+    }
+}
 
-const getToken = () => keycloak.token;
+export async function initKeycloak(onAuthenticatedCallback) {
+    try {
+        rememberRequestedPage();
+        const authenticated = await keycloak.init({
+            // The Hub requires an exact registered callback, including on reload.
+            redirectUri: `${window.location.origin}/`,
+            pkceMethod: "S256",
+            onLoad: "login-required",
+            checkLoginIframe: false,
+            scope: "openid profile roles",
+        });
+        if (authenticated) {
+            restoreRequestedPage();
+            onAuthenticatedCallback();
+        }
+    } catch (error) {
+        console.error("OpenID Connect sign-in failed", error);
+        document.body.textContent = "Unable to sign in. Please reload the page to try again.";
+    }
+}
 
-const isLoggedIn = () => !!keycloak.token;
+export async function getAccessToken() {
+    if (!keycloak.authenticated) {
+        throw new Error("Authentication required");
+    }
+    try {
+        await keycloak.updateToken(30);
+    } catch (error) {
+        keycloak.clearToken();
+        throw new Error("Session expired. Please sign in again.", { cause: error });
+    }
+    if (!keycloak.token) {
+        throw new Error("Authentication required");
+    }
+    return keycloak.token;
+}
 
-const updateToken = (successCallback) =>
-  keycloak.updateToken(5).then(successCallback).catch(doLogin);
-
-const getUsername = () => keycloak.tokenParsed?.preferred_username;
-
-const hasRole = (roles) => roles.some((role) => keycloak.hasRealmRole(role));
-
-export { initKeycloak };
+export function logout() {
+    sessionStorage.removeItem(returnPathKey);
+    return keycloak.logout({ redirectUri: `${window.location.origin}/` });
+}

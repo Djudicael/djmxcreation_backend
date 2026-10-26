@@ -4,7 +4,9 @@ use serde_json::json;
 use std::env;
 use std::sync::Once;
 
-use djmxcreation_backend_wasi::app_router;
+#[allow(dead_code)]
+mod support;
+use djmxcreation_backend_wasi::server::starter::build_router_with_auth;
 
 static INIT: Once = Once::new();
 
@@ -18,6 +20,10 @@ fn init_tracing() {
 }
 
 async fn test_app() -> TestServer {
+    test_app_with_identity().await.0
+}
+
+async fn test_app_with_identity() -> (TestServer, support::Hub) {
     init_tracing();
     let (_db_cfg, uri) = test_util::shared_harness::shared_postgres().await;
 
@@ -30,8 +36,69 @@ async fn test_app() -> TestServer {
         env::set_var("STORAGE_BUCKET", "portfolio");
     }
 
-    let router: Router = app_router();
-    TestServer::new(router)
+    let hub = support::Hub::start().await;
+    let router: Router = build_router_with_auth(
+        app_config::config::Config::from_env().unwrap(),
+        hub.verifier(),
+    );
+    let mut server = TestServer::new(router);
+    server.add_header("Authorization", format!("Bearer {}", hub.token()));
+    (server, hub)
+}
+
+#[tokio::test]
+async fn anonymous_requests_cannot_administer_or_read_hidden_projects() {
+    let (mut server, hub) = test_app_with_identity().await;
+    let response = server
+        .post("/api/portfolio/v1/projects")
+        .json(&json!({"title":"Private project", "subTitle":"", "client":""}))
+        .await;
+    response.assert_status_ok();
+    let id = response.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(response.json::<serde_json::Value>()["visible"], false);
+    // A newly created project stays private until explicitly published.
+    let response = server.put(&format!("/api/portfolio/v1/projects/{id}"))
+        .json(&json!({"metadata":{"title":"Private project", "subTitle":"", "client":""}, "visible":false, "adult":false})).await;
+    response.assert_status_ok();
+    server.clear_headers();
+    server
+        .post("/api/portfolio/v1/projects")
+        .json(&json!({"title":"Forbidden"}))
+        .await
+        .assert_status_unauthorized();
+    server
+        .get("/api/portfolio/v1/projects")
+        .await
+        .assert_status_unauthorized();
+    server
+        .get("/api/portfolio/v2/projects?page=1&size=10&visible=false")
+        .await
+        .assert_status_forbidden();
+    server
+        .get(&format!("/api/portfolio/v1/projects/{id}"))
+        .await
+        .assert_status_not_found();
+    server
+        .get("/api/portfolio/v2/projects?page=1&size=10&visible=true")
+        .await
+        .assert_status_ok();
+    server.get("/api/about/v1/me").await.assert_status_ok();
+    server
+        .get("/api/contact/v1/information")
+        .await
+        .assert_status_ok();
+    server.add_header("Authorization", format!("Bearer {}", hub.token()));
+    server
+        .get(&format!("/api/portfolio/v1/projects/{id}"))
+        .await
+        .assert_status_ok();
+    server
+        .delete(&format!("/api/portfolio/v1/projects/{id}"))
+        .await
+        .assert_status_ok();
 }
 
 #[tokio::test]

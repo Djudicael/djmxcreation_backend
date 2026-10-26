@@ -12,10 +12,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/', express.static(join(__dirname, 'dist')));
 app.use('/ressource', express.static(join(__dirname, 'dist/ressource')));
 
-app.get('/*', function (req, res) {
+app.get('/{*path}', function (req, res) {
     res.sendFile(join(__dirname, 'dist/index.html'));
 });
-app.get('/projects/*', function (req, res) {
+app.get('/projects/*path', function (req, res) {
     res.sendFile(join(__dirname, 'dist/index.html'));
 });
 

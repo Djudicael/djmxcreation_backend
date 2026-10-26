@@ -1,97 +1,79 @@
 import Quill from "quill";
+import { render } from "lit-html";
+import { html } from "../utils/template-renderer.js";
+import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
 import { editorConfig } from "../utils/helper.js";
-import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
+import { contactHref } from "../../../shared/src/contact-links.js";
 
-export class ContactComponent extends TemplateRenderer {
-  constructor() {
-    super();
-    this.noShadow = true;
-    this.instance = portfolioApi;
-    this.id = null;
-    this.description = null;
-    this._editor = null;
-    this.$saveButton = null;
-    this._onSaveClick = null;
-  }
+export class ContactComponent extends AdminPage {
+    constructor() { super(); this.contact = null; this.contacts = []; }
 
-  get template() {
-    if (this.isLoading) return this.loadingTemplate;
-    if (this.hasError) return this.errorTemplate;
-
-    return html`
-      <section class="content-page">
-        <div class="presentation">
-          <div id="editorjs"></div>
-        </div>
-        <div class="flex-y">
-          <div id="saveButton" class="cta">
-            <span>Save project</span>
-            <svg width="13px" height="10px" viewBox="0 0 13 10">
-              <path d="M1,5 L11,5"></path>
-              <polyline points="8 1 12 5 8 9"></polyline>
-            </svg>
-          </div>
-        </div>
-      </section>
-    `;
-  }
-
-  init() {
-    this._editor = new Quill("#editorjs", editorConfig);
-
-    if (this.description) {
-      this._editor.setContents(this.description);
+    get template() {
+        if (!this.contact) return html`<section class="content-page admin-page"><p role="status">Loading contacts…</p></section>`;
+        return html`<section class="content-page admin-page">
+            <header class="admin-page-header"><div><p class="admin-eyebrow">Get in touch</p><h1>Contacts</h1><p>Add the contact details and links to display on your portfolio.</p></div></header>
+            ${this.statusTemplate}
+            <form class="admin-panel" @submit=${event => this.save(event)}>
+                <h2>Contact details and links</h2><div data-contacts></div>
+                <button class="admin-button secondary" type="button" @click=${() => this.addContact()}>+ Add contact</button>
+                <h2 class="admin-section-title">Contact page text</h2><p>Describe your availability or the kinds of collaborations you are looking for.</p>
+                <div data-editor></div>
+                <div class="admin-actions"><button class="admin-button" type="submit">Save contacts</button></div>
+            </form>
+        </section>`;
     }
 
-    this.$saveButton = this.querySelector("#saveButton");
-    if (!this.$saveButton) {
-      return;
+    renderContacts() {
+        render(this.contacts.length ? html`<div class="admin-contact-list">${this.contacts.map((contact, index) => html`
+            <fieldset class="admin-contact-row"><legend>Contact ${index + 1}</legend>
+                <label>Label<input required maxlength="120" .value=${contact.label} @input=${event => { contact.label = event.target.value; }} /></label>
+                <label>Type<select .value=${contact.type} @change=${event => { contact.type = event.target.value; this.renderContacts(); }}>
+                    <option value="email">Email</option><option value="phone">Phone</option><option value="url">Website or social profile</option>
+                </select></label>
+                <label>Contact detail<input required type=${contact.type === "email" ? "email" : contact.type === "phone" ? "tel" : "url"} maxlength="500"
+                    .value=${contact.value} placeholder=${contact.type === "email" ? "hello@example.com" : contact.type === "phone" ? "+33 6 12 34 56 78" : "https://…"}
+                    @input=${event => { contact.value = event.target.value; }} /></label>
+                <button class="admin-button danger" type="button" aria-label=${`Remove contact ${index + 1}`} @click=${() => {
+                    this.contacts.splice(index, 1); this.renderContacts(); this.feedback("Save your changes to apply this removal.");
+                }}>Remove</button>
+            </fieldset>`)}</div>` : html`<p class="admin-empty-inline">No contact details yet. Add your first contact below.</p>`, this.querySelector("[data-contacts]"));
     }
 
-    if (this._onSaveClick) {
-      this.$saveButton.removeEventListener("click", this._onSaveClick);
+    addContact() {
+        this.contacts.push({ id: crypto.randomUUID(), type: "email", label: "Email", value: "" });
+        this.renderContacts();
+        const rows = this.querySelectorAll(".admin-contact-row");
+        rows[rows.length - 1]?.querySelector("input")?.focus();
     }
 
-    this._onSaveClick = async () => {
-      const blocks = this._editor.getContents();
-      await this.instance.updateContactDescription(this.id, {
-        description: blocks,
-      });
-    };
-
-    this.$saveButton.addEventListener("click", this._onSaveClick);
-  }
-
-  async getContact() {
-    this.setLoadState(LoadState.LOADING);
-    this.render();
-    try {
-      const { id, description } = await this.instance.getContacts();
-      if (!this.isConnected) return;
-      this.id = id;
-      this.description = description;
-      this.setLoadState(LoadState.DONE);
-      super.render();
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      this.setLoadState(LoadState.ERROR, "Failed to load contact information.");
-      if (this.isConnected) this.render();
+    async save(event) {
+        event.preventDefault();
+        const contacts = this.contacts.map(contact => ({ ...contact, label: contact.label.trim(), value: contact.value.trim() }));
+        if (contacts.some(contact => !contactHref(contact))) {
+            this.feedback("Check your contact details: use a valid email, phone number, or HTTP(S) link.", true);
+            return;
+        }
+        await this.perform("Contacts saved.", () => portfolioApi.updateContactDescription(this.contact.id, {
+            description: { ...this.contact.description, ...this.editor.getContents(), contacts },
+        }));
     }
-  }
 
-  async connectedCallback() {
-    super.connectedCallback();
-    await this.getContact();
-    if (!this.isConnected) {
-      return;
+    async connectedCallback() {
+        super.connectedCallback();
+        await this.load(async () => {
+            this.contact = await portfolioApi.getContacts();
+            this.contacts = Array.isArray(this.contact.description?.contacts) ? structuredClone(this.contact.description.contacts) : [];
+        });
+        if (!this.isConnected || !this.contact) return;
+        this.editor = new Quill(this.querySelector("[data-editor]"), editorConfig);
+        this.editor.root.setAttribute("aria-label", "Contact page text");
+        if (this.contact.description?.ops) this.editor.setContents(this.contact.description);
+        this.renderContacts();
     }
-    this.init();
-  }
 
-  disconnectedCallback() {
-    if (this.$saveButton && this._onSaveClick) {
-      this.$saveButton.removeEventListener("click", this._onSaveClick);
+    disconnectedCallback() {
+        this.editor?.disable();
+        super.disconnectedCallback();
     }
-  }
 }

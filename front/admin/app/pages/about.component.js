@@ -1,190 +1,86 @@
-import { TemplateRenderer, html, LoadState } from "../utils/template-renderer.js";
-import { EventBinder } from "../../../shared/src/event-binder.js";
 import Quill from "quill";
+import { render } from "lit-html";
+import { html } from "../utils/template-renderer.js";
+import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
 import { editorConfig } from "../utils/helper.js";
 
-export class AboutComponent extends TemplateRenderer {
-  constructor() {
-    super();
-    this.noShadow = true;
-    this.instance = portfolioApi;
-    this.description = null;
-    this.profilePicture = null;
-    this.$fileInput = null;
-    this.$fileCatcher = null;
-    this.$fileListDisplay = null;
-    this.fileList = [];
-    this.sendFile = this.sendFile.bind(this);
-    this.deleteImage = this.deleteImage.bind(this);
-    this._removeImageBinder = new EventBinder();
-    this._handleFileInputChange = null;
-    this._handleSaveClick = null;
-    this._handleUploadClick = null;
-    this._editor = null;
-    this.$saveButton = null;
-  }
+export class AboutComponent extends AdminPage {
+    constructor() { super(); this.about = null; }
 
-  get template() {
-    if (this.isLoading) return this.loadingTemplate;
-    if (this.hasError) return this.errorTemplate;
-
-    const profilePicture = this.profilePicture
-      ? html`<div class="image-area">
-          <img src=${this.profilePicture} alt="Preview" loading="lazy" />
-          <button class="remove-image" data-image-id=${this.profilePicture.id}>
-            delete
-          </button>
-        </div>`
-      : "";
-
-    return html`
-      <section class="content-page">
-        <main class="flex-y">
-          <div class="presentation">
-            <div id="editorjs"></div>
-          </div>
-          <div class="profile">
-            <form id="file-catcher">
-              <input id="file-input" type="file" multiple />
-              <button class="upload">Submit</button>
-              <section class="flex-x">${profilePicture}</section>
+    get template() {
+        if (!this.about) return html`<section class="content-page admin-page"><p role="status">Loading about me…</p></section>`;
+        return html`<section class="content-page admin-page">
+            <header class="admin-page-header"><div><p class="admin-eyebrow">Your profile</p><h1>About me</h1><p>This information appears on the About page of your portfolio.</p></div></header>
+            ${this.statusTemplate}
+            <form class="admin-panel" @submit=${event => this.save(event)}>
+                <h2>Identity and biography</h2><div class="admin-fields">
+                    <label>First name<input name="firstName" required maxlength="200" .value=${this.about.firstName || ""} /></label>
+                    <label>Last name<input name="lastName" required maxlength="200" .value=${this.about.lastName || ""} /></label>
+                </div>
+                <label class="admin-editor-label">About me</label><div data-editor></div>
+                <div class="admin-actions"><button class="admin-button" type="submit">Save about me</button></div>
             </form>
-
-            <div id="file-list-display"></div>
-          </div>
-          <div class="flex-y">
-            <div id="saveButton" class="cta">
-              <span>Save project</span>
-              <svg width="13px" height="10px" viewBox="0 0 13 10">
-                <path d="M1,5 L11,5"></path>
-                <polyline points="8 1 12 5 8 9"></polyline>
-              </svg>
-            </div>
-          </div>
-        </main>
-      </section>
-    `;
-  }
-
-  renderFileList = () => {
-    this.$fileListDisplay.innerHTML = "";
-    this.fileList.forEach((file, index) => {
-      const fileDisplayEl = document.createElement("p");
-      fileDisplayEl.textContent = `${index + 1}: ${file.name}`;
-      this.$fileListDisplay.appendChild(fileDisplayEl);
-    });
-  };
-
-  init() {
-    this.$fileCatcher = this.querySelector("#file-catcher");
-    this.$fileInput = this.querySelector("#file-input");
-    this.$fileListDisplay = this.querySelector("#file-list-display");
-    this.$saveButton = this.querySelector("#saveButton");
-
-    if (!this.$fileInput || !this.$fileListDisplay || !this.$saveButton) {
-      return;
+            <section class="admin-panel"><h2>Profile photo</h2><div data-photo></div>
+                <form class="admin-upload" @submit=${event => this.upload(event)}>
+                    <label>New photo<input name="photo" type="file" accept="image/*" required /></label>
+                    <button class="admin-button secondary" type="submit">Upload photo</button>
+                </form>
+            </section>
+        </section>`;
     }
 
-    if (this._handleFileInputChange) {
-      this.$fileInput.removeEventListener("change", this._handleFileInputChange);
+    renderPhoto() {
+        render(this.about.photoUrl ? html`<div class="admin-profile-photo"><img src=${this.about.photoUrl} alt="Current profile photo" />
+            <button class="admin-button danger" @click=${() => this.removePhoto()}>Delete photo</button></div>` : html`<p class="admin-muted">No profile photo.</p>`, this.querySelector("[data-photo]"));
     }
 
-    this._handleFileInputChange = () => {
-      for (const file of this.$fileInput.files) {
-        this.fileList.push(file);
-      }
-      this.renderFileList();
-    };
-    this.$fileInput.addEventListener("change", this._handleFileInputChange);
-
-    this._editor = new Quill("#editorjs", editorConfig);
-    if (this.description) {
-      this._editor.setContents(this.description);
+    async save(event) {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        await this.perform("About me saved.", () => portfolioApi.updateAboutMeDescription(this.about.id, {
+            firstName: data.get("firstName").trim(), lastName: data.get("lastName").trim(), description: this.editor.getContents(),
+        }));
     }
 
-    if (this._handleSaveClick) {
-      this.$saveButton.removeEventListener("click", this._handleSaveClick);
+    async refreshPhoto() {
+        this.about = await portfolioApi.getAboutMe();
+        if (this.isConnected) this.renderPhoto();
     }
-    this._handleSaveClick = async () => {
-      const blocks = this._editor.getContents();
-      await this.instance.updateAboutMeDescription(this.id, {
-        lastName: this.lastName,
-        firstName: this.firstName,
-        description: blocks,
-      });
-    };
-    this.$saveButton.addEventListener("click", this._handleSaveClick);
-  }
 
-  async getAboutMe() {
-    this.setLoadState(LoadState.LOADING);
-    this.render();
-    try {
-      const { id, firstName, lastName, description, photoUrl } =
-        await this.instance.getAboutMe();
-      if (!this.isConnected) return;
-      this.id = id;
-      this.firstName = firstName;
-      this.lastName = lastName;
-      this.description = description;
-      this.profilePicture = photoUrl;
-      this.setLoadState(LoadState.DONE);
-      super.render();
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      this.setLoadState(LoadState.ERROR, "Failed to load about section.");
-      if (this.isConnected) this.render();
+    async upload(event) {
+        event.preventDefault();
+        const input = event.currentTarget.querySelector("[name=photo]");
+        const file = input.files[0];
+        if (!file) return;
+        await this.perform("Photo uploaded.", async () => {
+            if (file.size > 32 * 1024 * 1024) throw new Error("The photo exceeds the 32 MiB limit.");
+            await portfolioApi.updateAboutMePicture(this.about.id, { file });
+            await this.refreshPhoto();
+            input.value = "";
+        });
     }
-  }
 
-  sendFile = async (e) => {
-    e.preventDefault();
-    for (const file of this.fileList) {
-      await this.instance.updateAboutMePicture(this.id, { file });
+    async removePhoto() {
+        if (!window.confirm("Delete the profile photo?")) return;
+        await this.perform("Photo deleted.", async () => {
+            await portfolioApi.deleteProfileImage(this.about.id);
+            await this.refreshPhoto();
+        });
     }
-    if (!this.isConnected) {
-      return;
-    }
-    await this.getAboutMe();
-    this.initRemoveImageEvent();
-  };
 
-  deleteImage = async (e) => {
-    e.preventDefault();
-    await this.instance.deleteProfileImage(this.id);
-    if (!this.isConnected) {
-      return;
+    async connectedCallback() {
+        super.connectedCallback();
+        await this.load(async () => { this.about = await portfolioApi.getAboutMe(); });
+        if (!this.isConnected || !this.about) return;
+        this.editor = new Quill(this.querySelector("[data-editor]"), editorConfig);
+        this.editor.root.setAttribute("aria-label", "About me");
+        if (this.about.description?.ops) this.editor.setContents(this.about.description);
+        this.renderPhoto();
     }
-    await this.getAboutMe();
-  };
 
-  initRemoveImageEvent = () => {
-    this._removeImageBinder.bindAll(
-      this.querySelectorAll(".remove-image"), "click", (e) => this.deleteImage(e)
-    );
-  };
-
-  disconnectedCallback() {
-    if (this.$uploadButton && this._handleUploadClick) {
-      this.$uploadButton.removeEventListener("click", this._handleUploadClick);
+    disconnectedCallback() {
+        this.editor?.disable();
+        super.disconnectedCallback();
     }
-    if (this.$fileInput && this._handleFileInputChange) {
-      this.$fileInput.removeEventListener("change", this._handleFileInputChange);
-    }
-    if (this.$saveButton && this._handleSaveClick) {
-      this.$saveButton.removeEventListener("click", this._handleSaveClick);
-    }
-    this._removeImageBinder.unbindAll();
-  }
-
-  async connectedCallback() {
-    super.connectedCallback();
-    await this.getAboutMe();
-    this.$uploadButton = this.querySelector(".upload");
-    this._handleUploadClick = this.sendFile;
-    this.$uploadButton?.addEventListener("click", this._handleUploadClick);
-    this.init();
-    this.initRemoveImageEvent();
-  }
 }

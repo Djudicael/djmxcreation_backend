@@ -11,6 +11,7 @@
 @import "module.css";
 @import "mobile.css";
 @import "../../shared/style/components.css";
+@import "admin-workspace.css";
 /*===== VARIABLES CSS =====*/
 
 :root {

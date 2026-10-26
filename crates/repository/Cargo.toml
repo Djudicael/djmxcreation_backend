@@ -24,6 +24,7 @@ url = "2.5"
 wasi-pg-client = { workspace = true, features = ["tokio-transport"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wstd = { workspace = true }
 wasi-pg-client = { workspace = true }
 getrandom = { version = "0.4" }
 
