@@ -49,7 +49,7 @@ tower = { version = "0.5.3", features = ["timeout"] }
 tower-http = { version = "0.7.1", features = ["trace", "cors"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-uuid = { version = "=1.26.1", features = ["v4", "fast-rng", "serde"] }
+uuid = { version = "=1.29.0", features = ["v4", "fast-rng", "serde"] }
 wasi-pg-client = { version = "0.2.1", features = ["uuid", "serde-json", "chrono"] }
 axum-test = "21.1"
 rustainers = "0.15.1"
