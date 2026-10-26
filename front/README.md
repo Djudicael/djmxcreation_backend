@@ -51,3 +51,9 @@ Build/watch commands inject this value at bundle time through esbuild. The loade
 5. process environment (`BACKEND_API_URL`)
 
 If none of these are set, the app keeps using relative API paths.
+
+## Dependency pins
+
+Admin intentionally pins Quill to `2.0.2`: version `2.0.3` is affected by
+[GHSA-v3m3-f69x-jf25](https://github.com/advisories/GHSA-v3m3-f69x-jf25)
+(XSS in HTML export). Recheck the advisory and `npm audit` before updating this pin.

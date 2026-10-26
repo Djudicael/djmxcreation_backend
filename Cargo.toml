@@ -33,25 +33,26 @@ test-util = { path = "crates/test-util" }
 
 anyhow = "1.0.104"
 async-trait = "0.1.92"
+aws-sdk-s3 = { version = "1.155", default-features = false }
 axum = { version = "0.8.9", default-features = false, features = ["json", "matched-path", "original-uri", "query", "tower-log", "tracing", "multipart", "macros"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 futures = "0.3.34"
-hyper = "1.11.0"
+hyper = "1.12.0"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false, features = ["http-listener", "tracing"] }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
-thiserror = "2.0.20"
-tokio = { version = "1.53.1", features = ["full"] }
-tokio-util = "0.7.19"
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-util = "0.7.20"
 tower = { version = "0.5.3", features = ["timeout"] }
-tower-http = { version = "0.7.0", features = ["trace", "cors"] }
+tower-http = { version = "0.7.1", features = ["trace", "cors"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "=1.26.1", features = ["v4", "fast-rng", "serde"] }
-wasi-pg-client = { version = "0.2.0", features = ["uuid", "serde-json", "chrono"] }
-axum-test = "21.0"
-rustainers = "0.15"
+wasi-pg-client = { version = "0.2.1", features = ["uuid", "serde-json", "chrono"] }
+axum-test = "21.1"
+rustainers = "0.15.1"
 portpicker = "0.1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
 getrandom = "0.4"
