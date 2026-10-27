@@ -7,6 +7,7 @@ import portfolioApi from "../api/portfolio.api.js";
 import { editorConfig } from "../utils/helper.js";
 import { mediaKind } from "../../../shared/src/media-kind.js";
 import { DirectUpload } from "../utils/direct-upload.js";
+import { imageUrl } from "../../../shared/src/responsive-image.js";
 
 export class ProjectComponent extends AdminPage {
     constructor() {
@@ -53,9 +54,11 @@ export class ProjectComponent extends AdminPage {
         const target = this.querySelector("[data-media]");
         if (!target) return;
         render(html`
-            ${this.project.thumbnail?.url ? html`<div class="admin-current-cover"><img src=${this.project.thumbnail.url} alt="Current cover" /><span>Current cover</span></div>` : html`<p class="admin-muted">No cover selected.</p>`}
+            ${this.project.thumbnail?.url ? html`<div class="admin-current-cover"><img src=${imageUrl(this.project.thumbnail,400)} alt="Current cover" /><span>Current cover</span></div>` : html`<p class="admin-muted">No cover selected.</p>`}
             <p class="admin-muted">Drag a media handle or use Move up / Move down to arrange its saved section. Moves are saved immediately. Save captions and section changes with Save media details.</p>
             <button type="button" class="admin-button secondary" @click=${() => this.perform("Media reloaded.", () => this.refreshMedia())}>Reload media</button>
+            <button type="button" class="admin-button secondary" @click=${() => this.optimizeImages(true)}>Optimize images</button>
+            <p class="admin-muted">Optimization is optional. Originals remain available while images are processing, unsupported or unavailable.</p>
             <div class="admin-media-grid">${repeat(this.project.contents || [], content => content.id, (content, index) => html`
                 <article class="admin-media-card" data-content-id=${content.id} @dragover=${event => this.dragOver(event, content)} @dragleave=${event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.classList.remove("is-drop-target"); }} @drop=${event => this.dropMedia(event, content)}>
                     <div class="admin-media-reorder"><span>${content.behindScenes ? "Behind the scenes" : "Main gallery"}</span>
@@ -64,9 +67,10 @@ export class ProjectComponent extends AdminPage {
                         <button type="button" class="admin-move-button" data-move="down" aria-label=${`Move down media ${index + 1}`} @click=${() => this.moveMedia(content.id, 1)}>↓</button>
                     </div>
                     ${mediaKind(content) === "video" ? html`<video src=${content.url} poster=${content.posterUrl || ""} controls playsinline preload="none"></video>` :
-                      mediaKind(content) === "image" ? html`<img src=${content.url} alt="Project media" />` :
+                      mediaKind(content) === "image" ? html`<img src=${imageUrl(content,400)} alt="Project media" />` :
                       html`<a href=${content.url} target="_blank" rel="noopener noreferrer">Open file</a>`}
                     <form class="admin-media-details" @submit=${event => this.saveMedia(event, content)}>
+                        ${content.optimization ? html`<p class="admin-muted">Optimization: ${content.optimization.status}${content.optimization.reason ? ` — ${content.optimization.reason}` : ""}</p>` : ""}
                         <label>Caption<textarea name="caption" rows="2" maxlength="2000">${content.caption || ""}</textarea></label>
                         ${mediaKind(content) === "image" ? html`<label>Alternative text<input name="alt" maxlength="1000" .value=${content.alt || ""}></label>` : ""}
                         <label for=${`media-section-${content.id}`}>Section</label><select id=${`media-section-${content.id}`} name="section"><option value="main" ?selected=${!content.behindScenes}>Main gallery</option><option value="scenes" ?selected=${content.behindScenes}>Behind the scenes</option></select>
@@ -175,7 +179,7 @@ export class ProjectComponent extends AdminPage {
         if (!this.uploadQueue.length) this.uploadQueue = [...input.files].map(file => new DirectUpload(portfolioApi, this.projectId, file));
         if (!this.uploadQueue.length) return;
         input.disabled = true;
-        await this.perform("Files uploaded.", async () => {
+        const uploaded=await this.perform("Files uploaded.", async () => {
             try {
                 while (this.uploadQueue.length) {
                     this.currentUpload = this.uploadQueue[0];
@@ -194,6 +198,26 @@ export class ProjectComponent extends AdminPage {
             }
         });
         if (this.currentUpload?.cancelled && this.isConnected) this.feedback("Upload cancelled.");
+        else if (uploaded && this.isConnected && this.project.contents.some(content=>content.optimization?.status === "pending")) this.optimizeImages(false);
+    }
+
+    async optimizeImages(backfill) {
+        if (this.optimizing) return;
+        this.optimizing=true;
+        try {
+            if (backfill) await portfolioApi.enqueueProjectImages(this.projectId);
+            for (let step=0;step<8 && this.isConnected;step++) {
+                const result=await portfolioApi.processImages();
+                if (!result.enabled || !result.started) {
+                    if (backfill) this.feedback("Optimization is unavailable or disabled. Originals remain available.");
+                    return;
+                }
+                await this.refreshMedia();
+                if (!this.project.contents.some(content=>["pending","processing"].includes(content.optimization?.status))) break;
+            }
+            if (backfill && this.isConnected) this.feedback("Image processing requested. Reload media to check progress.");
+        } catch { if (backfill && this.isConnected) this.feedback("Optimization is unavailable. Originals remain available."); }
+        finally {this.optimizing=false;}
     }
 
     renderUploadProgress(loaded, total, failed = false) {

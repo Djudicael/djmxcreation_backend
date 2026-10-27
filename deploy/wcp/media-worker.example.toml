@@ -1,0 +1,35 @@
+# Copy and configure for the target namespace, storage, networks, and secret store.
+[app]
+name = "media-worker"
+version = "v1"
+namespace = "portfolio"
+wasm_artifact = "./target/wasm32-wasip2/wasi-release/djmxcreation_media_worker.wasm"
+wasm_bind_port = 8080
+
+[fuel]
+quota = 10_000_000_000
+memory_pages = 8192
+max_instances = 1
+idle_timeout_secs = 60
+
+[placement]
+policy = "every_node"
+
+[policy.network]
+allow_inbound = true
+allow_outbound_tcp = true
+allow_dns = true
+# Replace with the actual database/object-storage network ranges.
+allowed_cidrs = ["10.0.0.0/8", "127.0.0.0/8"]
+
+[env]
+MEDIA_OPTIMIZATION_ENABLED = "true"
+STORAGE_ENDPOINT = "https://storage.example.com"
+STORAGE_BUCKET = "portfolio"
+STORAGE_REGION = "us-east-1"
+
+[secrets]
+DATABASE_URL = { ref = "portfolio-database-url" }
+STORAGE_ACCESS_KEY = { ref = "portfolio-storage-access-key" }
+STORAGE_SECRET_KEY = { ref = "portfolio-storage-secret-key" }
+MEDIA_PROCESSING_TOKEN = { ref = "portfolio-media-processing-token" }

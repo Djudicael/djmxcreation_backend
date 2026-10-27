@@ -97,7 +97,16 @@ pub async fn run_migrations(uri: &str) {
         }
     }
 
-    files.sort();
+    // Match the production migration runner: V10 must follow V9, not precede V1.
+    files.sort_by_key(|path| {
+        path.file_name()
+            .unwrap()
+            .to_string_lossy()
+            .split_once('_')
+            .and_then(|(prefix, _)| prefix.strip_prefix('V'))
+            .and_then(|version| version.parse::<u32>().ok())
+            .expect("versioned migration filename")
+    });
 
     let mut conn = DatabaseConfig::connect_str(uri)
         .await

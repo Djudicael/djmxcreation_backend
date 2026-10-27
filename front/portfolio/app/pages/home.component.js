@@ -1,6 +1,7 @@
 import { TemplateRenderer, html, LoadState } from "../utils/template-renderer";
 import portfolioApi from "../api/portfolio.api.js";
 import { mediaKind } from "../../../shared/src/media-kind.js";
+import { responsiveImage } from "../../../shared/src/responsive-image.js";
 
 const hasSafeCover = project => project && !project.adult && project.thumbnail?.url && mediaKind(project.thumbnail) === "image";
 
@@ -28,7 +29,7 @@ export default class HomeComponent extends TemplateRenderer {
                 <div class="home-feature">
                     ${featured ? html`
                         <a class="featured-image" href=${`/works/${featured.id}`} aria-label=${`View ${featured.metadata?.title || "featured project"}`}>
-                            <img src=${featured.thumbnail.url} alt=${featured.metadata?.title || "Featured project"} fetchpriority="high">
+                            ${responsiveImage(featured.thumbnail,{alt:featured.metadata?.title || "Featured project",loading:"eager",priority:"high",sizes:"(max-width: 760px) 100vw, 50vw"})}
                             <span class="image-open" aria-hidden="true">↗</span>
                         </a>
                         <div class="feature-caption"><span class="eyebrow">Featured work</span><a href=${`/works/${featured.id}`}>${featured.metadata?.title} <span aria-hidden="true">↗</span></a></div>
@@ -41,7 +42,7 @@ export default class HomeComponent extends TemplateRenderer {
                     `}
                 </div>
                 ${safeProjects.length ? html`<div class="home-selection"><div class="section-heading"><h2>Selected works</h2><a class="text-link" href="/works">View all works ↗</a></div><div class="selection-grid">
-                    ${safeProjects.slice(0, 2).map((project, index) => html`<a class="selection-item" href=${`/works/${project.id}`}><img src=${project.thumbnail.url} alt="" loading="lazy"><span><span class="eyebrow">0${index + 1}</span>${project.metadata?.title}<span aria-hidden="true">↗</span></span></a>`)}
+                    ${safeProjects.slice(0, 2).map((project, index) => html`<a class="selection-item" href=${`/works/${project.id}`}>${responsiveImage(project.thumbnail,{sizes:"(max-width: 760px) 100vw, 40vw"})}<span><span class="eyebrow">0${index + 1}</span>${project.metadata?.title}<span aria-hidden="true">↗</span></span></a>`)}
                 </div></div>` : ""}
                 <div class="home-bottom"><p>DJMXCreation</p><a class="text-link" href="/contact">Contact <span aria-hidden="true">↗</span></a></div>
                 ${this.hasError ? html`<p class="quiet-status" role="status">Some home content could not be loaded. <button class="text-link" @click=${() => this.loadProjects()}>Try again</button></p>` : ""}

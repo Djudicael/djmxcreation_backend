@@ -1,3 +1,4 @@
+import { imageUrl } from "../../../shared/src/responsive-image.js";
 import { html } from "../utils/template-renderer.js";
 import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
@@ -30,7 +31,7 @@ export class ProjectManagementComponent extends AdminPage {
             ${this.projects === null ? html`<p role="status">Loading projects…</p>` : this.projects.length ? html`
                 <div class="admin-project-grid">${this.projects.map(project => html`
                     <article class="admin-project-card" data-project-id=${project.id}>
-                        ${project.thumbnail?.url ? html`<img class="admin-cover" src=${project.thumbnail.url} alt="" />` : html`<div class="admin-cover placeholder" aria-hidden="true">DJMX</div>`}
+                        ${project.thumbnail?.url ? html`<img class="admin-cover" src=${imageUrl(project.thumbnail,400)} alt="" />` : html`<div class="admin-cover placeholder" aria-hidden="true">DJMX</div>`}
                         <div class="admin-card-body"><span class="admin-badge">${project.visible ? "Published" : "Draft"}</span>
                             <h2>${project.metadata?.title || "Untitled"}</h2><p>${project.metadata?.subTitle || ""}</p>
                             <p class="admin-muted">${project.metadata?.client || "No client specified"}</p>

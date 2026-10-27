@@ -5,6 +5,7 @@ pub mod entity;
 pub mod error;
 pub mod home_repository;
 pub mod media_repository;
+pub mod optimization_repository;
 pub mod project_repository;
 pub mod spotlight_repository;
 pub mod storage_repository;

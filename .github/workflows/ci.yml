@@ -69,5 +69,5 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo check --target wasm32-wasip2 -p djmxcreation-backend-wasi --lib
       - run: cargo check --target wasm32-wasip2 -p djmxcreation-frontend-wasi --lib
-      - run: cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi -p djmxcreation-frontend-wasi --lib
+      - run: cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi -p djmxcreation-frontend-wasi -p djmxcreation-media-worker --lib
       - run: cargo test --workspace

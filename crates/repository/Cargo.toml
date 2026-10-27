@@ -21,6 +21,7 @@ url = "2.5"
 
 # pg_client: tokio-transport for native, wstd auto-detected on wasm32-wasip2
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { workspace = true }
 wasi-pg-client = { workspace = true, features = ["tokio-transport"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

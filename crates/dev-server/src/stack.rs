@@ -25,10 +25,14 @@ pub struct Credentials {
     storage_secret: String,
     encryption_key: String,
     pairwise_salt: String,
+    #[serde(default)]
+    media_processing_token: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Runtime {
+    #[serde(default)]
+    pub optimize_images: bool,
     pid: u32,
     start_time: String,
     pub phase: String,
@@ -49,6 +53,7 @@ pub struct Options {
     offset: u16,
     json: bool,
     browser: bool,
+    optimize_images: bool,
 }
 
 impl Options {
@@ -66,6 +71,7 @@ impl Options {
             offset: 0,
             json: false,
             browser: false,
+            optimize_images: false,
         };
         if let Ok(hub) = std::env::var("OIDC_HUB_DIR") {
             options.hub = normalize_path(&hub);
@@ -86,6 +92,7 @@ impl Options {
                 }
                 "--json" => options.json = true,
                 "--browser" => options.browser = true,
+                "--with-media-worker" => options.optimize_images = true,
                 _ => bail!("Unknown option {arg}"),
             }
         }
@@ -191,7 +198,12 @@ fn random() -> String {
 fn credentials(dir: &Path) -> Result<Credentials> {
     let path = dir.join("credentials.json");
     if path.exists() {
-        return load(&path);
+        let mut existing: Credentials = load(&path)?;
+        if existing.media_processing_token.is_empty() {
+            existing.media_processing_token = random();
+            save(&path, &existing)?;
+        }
+        return Ok(existing);
     }
     let credentials = Credentials {
         email: "admin@portfolio.local".into(),
@@ -201,6 +213,7 @@ fn credentials(dir: &Path) -> Result<Credentials> {
         storage_secret: random(),
         encryption_key: random(),
         pairwise_salt: random(),
+        media_processing_token: random(),
     };
     save(&path, &credentials)?;
     Ok(credentials)
@@ -498,6 +511,32 @@ impl Runner {
             )
             .await?;
         }
+        if self.state.optimize_images {
+            let args = if self.state.mode == "wasi" {
+                strings(&[
+                    "cargo",
+                    "build",
+                    "--locked",
+                    "--profile",
+                    "wasi-release",
+                    "--target",
+                    "wasm32-wasip2",
+                    "-p",
+                    "djmxcreation-media-worker",
+                    "--lib",
+                ])
+            } else {
+                strings(&[
+                    "cargo",
+                    "build",
+                    "--locked",
+                    "-p",
+                    "djmxcreation-media-worker",
+                ])
+            };
+            self.run("build-media-worker", &args, &root, &BTreeMap::new())
+                .await?;
+        }
         save(&config, &env)?;
         Ok(())
     }
@@ -618,7 +657,7 @@ impl Runner {
                 "-S",
                 "allow-ip-name-lookup=y",
                 "--max-instance-reuse-count",
-                "1000",
+                if label == "media-worker" { "1" } else { "1000" },
             ]);
             args.push(artifact.to_string_lossy().into());
             (artifact, args)
@@ -658,7 +697,9 @@ impl Runner {
             "Hub checkout missing: {}",
             hub.display()
         );
-        Self::output(&strings(&["podman", "info", "--format", "json"]), None).await?;
+        // Global inventory collection can stall on a busy shared Podman store.
+        // The actual containers are validated by their readiness checks below.
+        Self::output(&strings(&["podman", "version", "--format", "json"]), None).await?;
         for port in self.state.ports.values() {
             std::net::TcpListener::bind(("127.0.0.1", *port))
                 .with_context(|| format!("port {port} is in use"))?;
@@ -894,7 +935,7 @@ impl Runner {
         )
         .await?;
         let port = self.state.ports["api"];
-        let backend_env = BTreeMap::from([
+        let mut backend_env = BTreeMap::from([
             (
                 "DATABASE_URL".into(),
                 format!("{db_base}/portfolio?sslmode=disable"),
@@ -925,6 +966,35 @@ impl Runner {
             ),
             ("RUST_LOG".into(), "warn".into()),
         ]);
+        backend_env.insert(
+            "MEDIA_OPTIMIZATION_ENABLED".into(),
+            self.state.optimize_images.to_string(),
+        );
+        backend_env.insert(
+            "MEDIA_PROCESSING_TOKEN".into(),
+            credentials.media_processing_token.clone(),
+        );
+        if self.state.optimize_images {
+            let media_port = self.state.ports["media-worker"];
+            backend_env.insert(
+                "MEDIA_WORKER_URL".into(),
+                format!("http://127.0.0.1:{media_port}"),
+            );
+            let mut media_env = backend_env.clone();
+            media_env.insert("PORT".into(), media_port.to_string());
+            media_env.remove("MEDIA_WORKER_URL");
+            let process = self.application(
+                "media-worker",
+                "djmxcreation-media-worker",
+                media_port,
+                &media_env,
+            )?;
+            self.wait(
+                &format!("http://127.0.0.1:{media_port}/health"),
+                Some(process),
+            )
+            .await?;
+        }
         self.phase("Starting DJMX API, admin and portfolio")?;
         let worker =
             self.application("backend", "djmxcreation-backend-wasi", port, &backend_env)?;
@@ -1041,7 +1111,16 @@ pub async fn execute(root: PathBuf, options: Options) -> Result<()> {
                         .context("invalid port offset")?,
                 );
             }
+            if options.optimize_images {
+                ports.insert(
+                    "media-worker".into(),
+                    3010u16
+                        .checked_add(options.offset)
+                        .context("invalid port offset")?,
+                );
+            }
             let mut state = Runtime {
+                optimize_images: options.optimize_images,
                 mode: options.mode,
                 hub_dir: options.hub.canonicalize().context("Hub checkout path")?,
                 urls: ports
@@ -1200,7 +1279,7 @@ pub async fn execute(root: PathBuf, options: Options) -> Result<()> {
             Ok(())
         }
         _ => bail!(
-            "Usage: cargo run -p dev-server -- {{start|wasm|native|stop|status|logs|test|smoke}} [--mode wasi|native] [--detach] [--hub-dir PATH] [--skip-build] [--browser]"
+            "Usage: cargo run -p dev-server -- {{start|wasm|native|stop|status|logs|test|smoke}} [--mode wasi|native] [--detach] [--hub-dir PATH] [--skip-build] [--browser] [--with-media-worker]"
         ),
     }
 }

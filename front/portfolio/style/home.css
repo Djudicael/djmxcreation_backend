@@ -41,6 +41,8 @@
   object-fit: cover;
   transition: transform .7s;
 }
+.featured-image picture { display:block; width:100%; height:100%; }
+.selection-item picture { display:block; }
 .featured-image:hover img {
   transform: scale(1.025);
 }

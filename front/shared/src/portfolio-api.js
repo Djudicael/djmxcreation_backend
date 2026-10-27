@@ -36,6 +36,9 @@ export class PortfolioApiBase {
  * Admin API — full CRUD operations.
  */
 export class AdminPortfolioApi extends PortfolioApiBase {
+    processImages() {return this.instance.doPost({path:"/api/portfolio/v1/media/optimization/process"});}
+    enqueueImages() {return this.instance.doPost({path:"/api/portfolio/v1/media/optimization/enqueue-existing"});}
+    enqueueProjectImages(project) {return this.instance.doPost({path:`${API_ROUTES.PROJECT_BY_ID(project)}/optimization/enqueue`});}
     reorderMedia(project, ids, previous) {
         return this.instance.doPutVoid({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/media-order`, body: { ids, previous } });
     }

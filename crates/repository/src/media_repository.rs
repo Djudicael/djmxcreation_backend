@@ -360,6 +360,7 @@ impl MediaRepository {
         let mut conn = self.db.connect().await.map_err(|e| to_error(e, None))?;
         let saved = conn.with_transaction(async |txn| {
             txn.query_params("INSERT INTO project_content(id,project_id,content,created_on) SELECT id,project_id,$3,NOW() FROM media_upload WHERE id=$1 AND project_id=$2 AND status='pending' ON CONFLICT(id) DO NOTHING", &[&id,&project,&content]).await?;
+            if app_core::optimization::enabled() { txn.query_params("SELECT enqueue_media_optimization($1)", &[&id]).await?; }
             let rows = txn.query_params("UPDATE media_upload SET status='complete' WHERE id=$1 AND project_id=$2 AND status='pending' RETURNING id", &[&id,&project]).await?;
             Ok(!rows.into_rows().is_empty())
         }).await.map_err(|e| to_error(e, None))?;

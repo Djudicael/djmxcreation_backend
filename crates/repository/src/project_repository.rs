@@ -170,11 +170,17 @@ impl IProjectRepository for ProjectRepository {
                         column: "id".to_string(),
                     })?;
 
-                ProjectRepository::map_row_to_project_content(&row).map_err(|e| {
+                let entity = ProjectRepository::map_row_to_project_content(&row).map_err(|e| {
                     wasi_pg_client::PgError::TypeConversion(
                         wasi_pg_client::types::Error::Conversion(e.to_string()),
                     )
-                })
+                })?;
+                if app_core::optimization::enabled() {
+                    let id: Uuid = row.get_by_name("id")?;
+                    txn.query_params("SELECT enqueue_media_optimization($1)", &[&id])
+                        .await?;
+                }
+                Ok(entity)
             })
             .await
             .map_err(|e| to_error(e, Some(project_id.to_string())))?;

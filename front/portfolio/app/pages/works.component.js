@@ -1,6 +1,7 @@
 import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-renderer";
 
 import portfolioApi from "../api/portfolio.api.js";
+import { imageUrl } from "../../../shared/src/responsive-image.js";
 import { lerp } from "../utils/helper.js";
 export default class WorksComponent extends TemplateRenderer {
     constructor() {
@@ -268,7 +269,7 @@ export default class WorksComponent extends TemplateRenderer {
 
     getThumbnailImage(imgIndex) {
         const project = this.projects.find((item) => item.id == imgIndex);
-        return project?.thumbnail?.url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="360"%3E%3Crect width="300" height="360" fill="%23d4d6cb"/%3E%3C/svg%3E';
+        return imageUrl(project?.thumbnail,800) || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="360"%3E%3Crect width="300" height="360" fill="%23d4d6cb"/%3E%3C/svg%3E';
     }
 
     animate() {

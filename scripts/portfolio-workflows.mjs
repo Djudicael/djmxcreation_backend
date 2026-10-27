@@ -23,12 +23,15 @@ export async function runPortfolioWorkflows({ browser, state }) {
     projects[1].contents.splice(5, 0, { url: "https://example.com/project.pdf", mimeType: "application/pdf" });
     projects[2].contents = [projects[1].contents[1]];
     projects[3].contents = [];
-    let empty = false, unavailable = false, failNextPage = false;
+    let empty = false, unavailable = false, failNextPage = false, failVariants = false;
+    projects[13].thumbnail.optimization = { status: "ready", width: 1600, height: 2000,
+        sources: [400,800,1600].map(width => ({ url: `${root}/portfolio-test/optimized-${width}.svg`, width, height: width*1.25, mimeType: "image/jpeg" })) };
     let featuredId = "14";
     await context.route("**/api/home/v1", route => route.fulfill(unavailable
         ? { status: 503, json: {} }
         : { json: { introduction: empty ? "" : "<em>Home introduction</em>", featuredProjectId: empty ? null : featuredId } }));
     await context.route("**/portfolio-test/*.svg", route => {
+        if (failVariants && route.request().url().includes("optimized-")) return route.fulfill({ status: 404 });
         const match = route.request().url().match(/gallery-(\d+)\.svg/);
         if (match) {
             const index = Number(match[1]);
@@ -60,6 +63,13 @@ export async function runPortfolioWorkflows({ browser, state }) {
     try {
         await page.goto(root);
         await page.locator(".featured-image img").waitFor();
+        await page.waitForFunction(() => document.querySelector(".featured-image img")?.currentSrc.includes("optimized-"));
+        assert.match(await page.locator(".featured-image img").getAttribute("srcset"), /400w/);
+        failVariants = true;
+        await page.reload();
+        await page.waitForFunction(() => { const img=document.querySelector(".featured-image img"); return img?.complete && img.naturalWidth>0 && img.currentSrc.includes("image-13.svg"); });
+        assert.equal(await page.locator(".featured-image img").getAttribute("srcset"), null);
+        failVariants = false;
         assert.equal(await page.locator(".featured-image").getAttribute("href"), "/works/14", "The chosen project must resolve beyond the first list page");
         assert.equal(await page.locator(".home-summary").innerText(), "<em>Home introduction</em>");
         assert.equal(await page.locator(".home-summary em").count(), 0, "Introduction must render as plain text");

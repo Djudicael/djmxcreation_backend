@@ -1,3 +1,4 @@
+import { imageUrl } from "../../../shared/src/responsive-image.js";
 import { html } from "../utils/template-renderer.js";
 import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
@@ -37,7 +38,7 @@ export class HomeSettingsComponent extends AdminPage {
                 <h2 class="admin-home-section">Featured project</h2>
                 <p id="featured-help" class="admin-muted">Choose a published project with an image cover. Adult projects are excluded. Changes apply when you save.</p>
                 <div class="home-project-selection" aria-live="polite">
-                    ${selectedProject ? html`<img src=${selectedProject.thumbnail.url} alt=""><div><span class="admin-muted">Selected project</span><strong>${selectedProject.metadata?.title || "Untitled project"}</strong><span>${selectedProject.metadata?.client || ""}</span></div>` : html`<div><strong>${unavailable ? "Selected project unavailable" : "No featured project"}</strong><span class="admin-muted">${unavailable ? "Choose another project or remove the selection." : "Home will display the abstract visual."}</span></div>`}
+                    ${selectedProject ? html`<img src=${imageUrl(selectedProject.thumbnail,400)} alt=""><div><span class="admin-muted">Selected project</span><strong>${selectedProject.metadata?.title || "Untitled project"}</strong><span>${selectedProject.metadata?.client || ""}</span></div>` : html`<div><strong>${unavailable ? "Selected project unavailable" : "No featured project"}</strong><span class="admin-muted">${unavailable ? "Choose another project or remove the selection." : "Home will display the abstract visual."}</span></div>`}
                     ${selected ? html`<button type="button" class="admin-button secondary" @click=${() => this.selectProject(null)}>Remove selection</button>` : ""}
                 </div>
                 <label for="home-project-search">Search projects</label>
@@ -45,7 +46,7 @@ export class HomeSettingsComponent extends AdminPage {
                 <p class="admin-muted" role="status">${matches.length ? `Showing ${Math.min(this.resultLimit, matches.length)} of ${matches.length} projects` : "No matching projects."}</p>
                 <div class="home-project-results" role="group" aria-label="Choose a featured project">
                     ${matches.slice(0, this.resultLimit).map(project => html`<button type="button" class="home-project-option" aria-pressed=${selected === project.id ? "true" : "false"} @click=${() => this.selectProject(project.id)}>
-                        <img src=${project.thumbnail.url} alt="" loading="lazy">
+                        <img src=${imageUrl(project.thumbnail,400)} alt="" loading="lazy">
                         <span><strong>${project.metadata?.title || "Untitled project"}</strong><span>${project.metadata?.client || ""}</span><span class="home-project-choice">${selected === project.id ? "Selected" : "Select project"}</span></span>
                     </button>`)}
                 </div>

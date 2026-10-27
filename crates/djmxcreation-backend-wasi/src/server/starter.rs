@@ -141,6 +141,9 @@ pub fn build_router_with_auth(config: Config, auth: crate::auth::OidcVerifier) -
             crate::auth::authenticate,
         ))
         .merge(ObservabilityRouter::new_router())
+        .merge(crate::router::media_router::maintenance_router(
+            service_register.clone(),
+        ))
         .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .layer(if config.cors_origins.is_empty() {

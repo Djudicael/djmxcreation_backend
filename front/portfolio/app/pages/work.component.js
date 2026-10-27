@@ -2,6 +2,7 @@ import { TemplateRenderer, html, safeHTML, LoadState } from "../utils/template-r
 import portfolioApi from "../api/portfolio.api.js";
 import { htmlDescription } from "../utils/helper.js";
 import { mediaKind } from "../../../shared/src/media-kind.js";
+import { responsiveImage, imageUrl } from "../../../shared/src/responsive-image.js";
 
 export default class WorkComponent extends TemplateRenderer {
     get api() { return portfolioApi; }
@@ -34,7 +35,7 @@ export default class WorkComponent extends TemplateRenderer {
             </figure>`;
             if (kind === "file") return html`<a class="action-link file-link project-file" href=${content.url}>Open project file <span aria-hidden="true">↗</span></a>`;
             const imageIndex = this.images.indexOf(content);
-            return html`<figure class="project-media project-photo" data-image-index=${imageIndex}><button class="gallery-image" aria-label=${`Enlarge ${content.alt || this.projectTitle} — image ${imageIndex + 1}`} @click=${event => this.openImage(imageIndex, event.currentTarget)}><img class="pro-image" src=${content.url} alt=${content.alt || `${this.projectTitle} — image ${imageIndex + 1}`} loading=${imageIndex === 0 ? "eager" : "lazy"} fetchpriority=${imageIndex === 0 ? "high" : "auto"} @load=${() => this.arrangeGallery()}><span class="image-open" aria-hidden="true">↗</span></button><figcaption>${content.caption || String(imageIndex + 1).padStart(2, "0")}</figcaption></figure>`;
+            return html`<figure class="project-media project-photo" data-image-index=${imageIndex}><button class="gallery-image" aria-label=${`Enlarge ${content.alt || this.projectTitle} — image ${imageIndex + 1}`} @click=${event => this.openImage(imageIndex, event.currentTarget)}>${responsiveImage(content,{className:"pro-image",alt:content.alt || `${this.projectTitle} — image ${imageIndex + 1}`,loading:imageIndex===0?"eager":"lazy",priority:imageIndex===0?"high":"auto",sizes:"(max-width: 760px) 100vw, 80vw",onLoad:()=>this.arrangeGallery()})}<span class="image-open" aria-hidden="true">↗</span></button><figcaption>${content.caption || String(imageIndex + 1).padStart(2, "0")}</figcaption></figure>`;
         })}</div>`;
     }
 
@@ -148,7 +149,8 @@ export default class WorkComponent extends TemplateRenderer {
 
     updateImage() {
         const image = this.querySelector(".overlay-image");
-        image.src = this.images[this.imageIndex].url;
+        image.src = imageUrl(this.images[this.imageIndex],2560);
+        image.onerror=()=>{ const original=this.images[this.imageIndex]?.url; image.onerror=null; if (original && image.src!==new URL(original,image.baseURI).href) image.src=original; };
         image.alt = this.images[this.imageIndex].alt || `${this.projectTitle} — image ${this.imageIndex + 1}`;
         this.querySelector(".lightbox-count").textContent = `${this.imageIndex + 1} / ${this.images.length}`;
         this.querySelector(".lightbox-navigation").hidden = this.images.length < 2;

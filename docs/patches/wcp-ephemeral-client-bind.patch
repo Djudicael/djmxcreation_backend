@@ -1,0 +1,179 @@
+diff --git a/crates/runtime/src/executor/socket_policy.rs b/crates/runtime/src/executor/socket_policy.rs
+index aa2ab60..1ada544 100644
+--- a/crates/runtime/src/executor/socket_policy.rs
++++ b/crates/runtime/src/executor/socket_policy.rs
+@@ -83,6 +83,9 @@ impl SocketPolicyCheck {
+         use_type: SocketAddrUse,
+     ) -> Result<(), &'static str> {
+         match use_type {
++            // WASI TCP clients bind an ephemeral local endpoint before connect.
++            // Listen is checked separately against the assigned service port.
++            SocketAddrUse::TcpBind if addr.port() == 0 && self.allow_outbound_tcp => Ok(()),
+             SocketAddrUse::TcpBind | SocketAddrUse::TcpListen => {
+                 if !self.allow_inbound {
+                     return Err("inbound tcp bind disabled");
+@@ -125,6 +128,9 @@ pub(crate) fn compose_socket_addr_check(
+         let extra_check = extra_check.clone();
+         Box::pin(async move {
+             let reserved_outbound_slot = match use_type {
++                SocketAddrUse::TcpBind if addr.port() == 0 && snapshot_check.allow_outbound_tcp => {
++                    false
++                }
+                 SocketAddrUse::TcpBind | SocketAddrUse::TcpListen => {
+                     match policy_enforcer.check_tcp_bind(addr.port()) {
+                         Ok(()) => false,
+diff --git a/crates/runtime/src/tests.rs b/crates/runtime/src/tests.rs
+index 19c9414..71281d2 100644
+--- a/crates/runtime/src/tests.rs
++++ b/crates/runtime/src/tests.rs
+@@ -446,6 +446,56 @@ fn test_socket_policy_check_separates_bind_from_outbound_tcp() {
+     );
+ }
+ 
++#[tokio::test]
++async fn test_outbound_tcp_ephemeral_bind_keeps_listen_and_destination_restrictions() {
++    let mut policy = base_instance_policy();
++    policy.network.allow_inbound = false;
++    policy.network.allow_outbound_tcp = true;
++    policy.network.allowed_cidrs = vec!["127.0.0.0/8".into()];
++    let enforcer = PolicyEnforcer::new(policy.clone());
++    let check = SocketPolicyCheck::from_instance_policy(&policy);
++    assert!(check
++        .check("0.0.0.0:0".parse().unwrap(), SocketAddrUse::TcpBind)
++        .is_ok());
++    let composed = compose_socket_addr_check(check, enforcer.clone(), None);
++    assert!((composed)("0.0.0.0:0".parse().unwrap(), SocketAddrUse::TcpBind).await);
++    assert!((composed)("[::]:0".parse().unwrap(), SocketAddrUse::TcpBind).await);
++    assert!(!(composed)("0.0.0.0:0".parse().unwrap(), SocketAddrUse::TcpListen).await);
++    assert!(!(composed)("0.0.0.0:49152".parse().unwrap(), SocketAddrUse::TcpListen).await);
++    assert!(!(composed)("0.0.0.0:49152".parse().unwrap(), SocketAddrUse::TcpBind).await);
++    assert!(!(composed)("192.0.2.1:5432".parse().unwrap(), SocketAddrUse::TcpConnect).await);
++    assert_eq!(
++        enforcer
++            .counters
++            .outbound_connections_total
++            .load(Ordering::Relaxed),
++        0
++    );
++    assert!((composed)("127.0.0.1:5432".parse().unwrap(), SocketAddrUse::TcpConnect).await);
++    assert_eq!(
++        enforcer
++            .counters
++            .outbound_connections_total
++            .load(Ordering::Relaxed),
++        1
++    );
++
++    policy.network.allow_outbound_tcp = false;
++    let denied = compose_socket_addr_check(
++        SocketPolicyCheck::from_instance_policy(&policy),
++        PolicyEnforcer::new(policy.clone()),
++        None,
++    );
++    assert!(!(denied)("0.0.0.0:0".parse().unwrap(), SocketAddrUse::TcpBind).await);
++    policy.network.allow_outbound_tcp = true;
++    let denied = compose_socket_addr_check(
++        SocketPolicyCheck::from_instance_policy(&policy),
++        PolicyEnforcer::new(policy),
++        Some(Arc::new(|_, _| Box::pin(async { false }))),
++    );
++    assert!(!(denied)("0.0.0.0:0".parse().unwrap(), SocketAddrUse::TcpBind).await);
++}
++
+ #[test]
+ fn test_socket_policy_check_handles_wasmtime_48_socket_operations() {
+     let policy = base_instance_policy();
+diff --git a/crates/supervisor/src/lib.rs b/crates/supervisor/src/lib.rs
+index 6957a14..584ebac 100644
+--- a/crates/supervisor/src/lib.rs
++++ b/crates/supervisor/src/lib.rs
+@@ -46,6 +46,13 @@ pub(crate) fn is_instance_bind_allowed(
+     allowed_ports.contains(&dest.port()) && dest.ip() == instance_bind_ip
+ }
+ 
++pub(crate) fn is_instance_ephemeral_bind_allowed(
++    dest: std::net::SocketAddr,
++    instance_bind_ip: std::net::IpAddr,
++) -> bool {
++    dest.port() == 0 && (dest.ip().is_unspecified() || dest.ip() == instance_bind_ip)
++}
++
+ /// Get the OS Thread ID (TID) of the current thread.
+ /// This is used for eBPF namespace enforcement registration.
+ #[cfg(target_os = "linux")]
+diff --git a/crates/supervisor/src/spawn_runtime.rs b/crates/supervisor/src/spawn_runtime.rs
+index 95cc69c..db491aa 100644
+--- a/crates/supervisor/src/spawn_runtime.rs
++++ b/crates/supervisor/src/spawn_runtime.rs
+@@ -3,7 +3,7 @@
+ 
+ use crate::{
+     instance::{BillingInfo, ManagedInstance},
+-    is_instance_bind_allowed,
++    is_instance_bind_allowed, is_instance_ephemeral_bind_allowed,
+     network_interceptor::{ConnectDecision, NetworkInterceptor},
+     pool::InstancePool,
+     Supervisor,
+@@ -291,6 +291,14 @@ impl Supervisor {
+                                 true
+                             }
+                         }
++                        // A client must bind before WASI start-connect. Runtime
++                        // policy still checks outbound permission/destination;
++                        // TcpListen remains restricted to assigned service ports.
++                        SocketAddrUse::TcpBind
++                            if is_instance_ephemeral_bind_allowed(dest, instance_bind_ip) =>
++                        {
++                            true
++                        }
+                         SocketAddrUse::TcpBind
+                         | SocketAddrUse::TcpListen
+                         | SocketAddrUse::UdpBind => {
+diff --git a/crates/supervisor/src/tests.rs b/crates/supervisor/src/tests.rs
+index eb3c6f9..af382f3 100644
+--- a/crates/supervisor/src/tests.rs
++++ b/crates/supervisor/src/tests.rs
+@@ -1,6 +1,24 @@
+ use crate::instance::wait_for_ready;
+ use crate::instance::{BillingInfo, ManagedInstance, PolicyCounterSnapshot};
+ use crate::is_instance_bind_allowed;
++use crate::is_instance_ephemeral_bind_allowed;
++
++#[test]
++fn ephemeral_client_bind_is_limited_to_local_zero_ports() {
++    let own_ip = "127.0.0.2".parse().unwrap();
++    for address in ["0.0.0.0:0", "[::]:0", "127.0.0.2:0"] {
++        assert!(is_instance_ephemeral_bind_allowed(
++            address.parse().unwrap(),
++            own_ip
++        ));
++    }
++    for address in ["127.0.0.3:0", "127.0.0.2:8080", "0.0.0.0:8080"] {
++        assert!(!is_instance_ephemeral_bind_allowed(
++            address.parse().unwrap(),
++            own_ip
++        ));
++    }
++}
+ use crate::network::LocalServiceRegistry;
+ use crate::pool::InstancePool;
+ use crate::port_alloc::PortAllocator;
+diff --git a/docs/deploying-applications.md b/docs/deploying-applications.md
+index 447c77f..ee58576 100644
+--- a/docs/deploying-applications.md
++++ b/docs/deploying-applications.md
+@@ -862,6 +862,14 @@ This is all handled automatically by the deployment protocol. No manual interven
+ 
+ ## Policy Profiles
+ 
++Outbound WASI TCP clients (including PostgreSQL clients) may bind a local
++ephemeral port (`0`) when `allow_outbound_tcp` is enabled. This does not authorize
++listening on that port: `TcpListen` remains restricted to the assigned service
++port and inbound policy. The supervisor permits an ephemeral client bind only
++on an unspecified address or the instance's own address. Destination CIDRs,
++namespace enforcement, connection limits, and any additional address checker
++still apply when the client connects.
++
+ The platform provides pre-defined WASI policy profiles for common use cases:
+ 
+ | Profile | Use case | Network | Filesystem |

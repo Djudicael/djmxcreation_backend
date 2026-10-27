@@ -13,6 +13,8 @@ pub struct ContentView {
     pub details: crate::media::MediaDetails,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimization: Option<crate::optimization::ImageOptimization>,
 }
 
 impl ContentView {
@@ -23,6 +25,7 @@ impl ContentView {
             url,
             details: Default::default(),
             poster_url: None,
+            optimization: None,
         }
     }
 }

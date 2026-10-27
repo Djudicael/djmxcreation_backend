@@ -7,7 +7,7 @@
         "build": "node build-all.js",
         "build:admin": "npm --prefix admin run build",
         "build:portfolio": "npm --prefix portfolio run build",
-        "test": "npm run test:router && npm run test:http && node --test shared/src/contact-links.test.js shared/src/media-kind.test.js admin/app/utils/direct-upload.test.js",
+        "test": "npm run test:router && npm run test:http && node --test shared/src/contact-links.test.js shared/src/media-kind.test.js shared/src/responsive-image.test.js admin/app/utils/direct-upload.test.js",
         "test:router": "node --test shared/src/router.test.js",
         "test:http": "node --test shared/src/http-base.test.js"
     },

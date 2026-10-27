@@ -10,6 +10,11 @@ and an OpenID Connect identity provider.
 is the tested identity provider; the admin uses its Keycloak-compatible endpoints
 through `keycloak-js`.
 
+An [optional image optimizer](docs/media-optimization.md) generates responsive
+images in a separate HTTP WASI component. Originals remain available when the
+optimizer is disabled, unavailable, or still processing. Video transcoding is
+not required and is not performed by this component.
+
 ## Deployment
 
 The API and frontends can be deployed independently of the identity provider.

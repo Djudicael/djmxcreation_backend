@@ -19,6 +19,7 @@ use repository::{
 
 #[derive(Clone)]
 pub struct ServiceRegister {
+    pub optimization: Arc<repository::optimization_repository::OptimizationRepository>,
     pub media_repository: app_core::media::DynMediaRepository,
     pub home_service: app_core::home::DynIHomeService,
     pub project_service: DynIProjectService,
@@ -37,19 +38,29 @@ impl ServiceRegister {
             client.clone(),
             bucket.clone(),
         ));
+        let optimization = Arc::new(
+            repository::optimization_repository::OptimizationRepository::new(
+                client_db.clone(),
+                client.clone(),
+            ),
+        );
         let storage_repository = Arc::new(StorageRepository::new(client));
 
         Self {
+            optimization: optimization.clone(),
             media_repository,
             home_service: Arc::new(app_service::home_service::HomeService::new(Arc::new(
                 repository::home_repository::HomeRepository::new(client_db.clone()),
             ))),
-            project_service: Arc::new(ProjectService::new(
-                project_repository.clone(),
-                storage_repository.clone(),
-                spotlight_repository.clone(),
-                bucket.clone(),
-            )),
+            project_service: Arc::new(
+                ProjectService::new(
+                    project_repository.clone(),
+                    storage_repository.clone(),
+                    spotlight_repository.clone(),
+                    bucket.clone(),
+                )
+                .with_media_processing(optimization),
+            ),
             about_me_service: Arc::new(AboutMeService::new(
                 about_me_repository.clone(),
                 storage_repository.clone(),

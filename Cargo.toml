@@ -10,6 +10,7 @@ members = [
     "crates/migration",
     "crates/dev-server",
     "crates/frontend-wasi",
+    "crates/media-worker",
 ]
 
 resolver = "3"
@@ -63,6 +64,9 @@ getrandom = "0.4"
 sha2 = "0.11.1"
 base64 = "0.23.1"
 wstd = "0.6.8"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
+fast_image_resize = { version = "6.1.0", default-features = false, features = ["std", "image"] }
+jpeg-encoder = "0.7.1"
 
 # Rust 1.97's wasm-component-ld crashes at linker optimization level O3 for
 # crc-fast. Keep native release settings unchanged and use O2 for WASI builds.

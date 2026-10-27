@@ -25,6 +25,7 @@ pub struct ProjectService {
     pub spotlight_repository: DynISpotlightRepository,
     /// Name of the S3 bucket where all media is stored.
     bucket: String,
+    media_processing: Option<app_core::optimization::DynMediaProcessing>,
 }
 
 impl ProjectService {
@@ -39,6 +40,32 @@ impl ProjectService {
             storage_repository,
             spotlight_repository,
             bucket,
+            media_processing: None,
+        }
+    }
+
+    pub fn with_media_processing(
+        mut self,
+        processing: app_core::optimization::DynMediaProcessing,
+    ) -> Self {
+        self.media_processing = Some(processing);
+        self
+    }
+
+    async fn image_info(
+        &self,
+        id: Option<Uuid>,
+    ) -> Option<app_core::optimization::ImageOptimization> {
+        let processing = self.media_processing.as_ref()?;
+        let id = id?;
+        processing.images(&[id]).await.ok()?.remove(&id)
+    }
+
+    async fn cleanup_media(&self) {
+        if let Some(processing) = &self.media_processing
+            && let Err(error) = processing.cleanup(16).await
+        {
+            warn!(%error,"media cleanup remains queued");
         }
     }
 
@@ -60,7 +87,9 @@ impl ProjectService {
         let thumbnail = match &spotlight.thumbnail {
             Some(photo) => {
                 let url = self.resolve_url(&photo.file_name).await;
-                Some(ContentView::new(photo.id, photo.mime_type.clone(), url))
+                let mut view = ContentView::new(photo.id, photo.mime_type.clone(), url);
+                view.optimization = self.image_info(photo.id).await;
+                Some(view)
             }
             None => None,
         };
@@ -76,6 +105,11 @@ impl ProjectService {
     }
 
     async fn to_contents(&self, project_contents: &[ProjectContentDto]) -> Vec<ContentView> {
+        let ids: Vec<_> = project_contents.iter().filter_map(|item| item.id).collect();
+        let optimizations = match &self.media_processing {
+            Some(processing) => processing.images(&ids).await.unwrap_or_default(),
+            None => Default::default(),
+        };
         let futures: Vec<_> = project_contents
             .iter()
             .filter_map(|dto| {
@@ -84,9 +118,11 @@ impl ProjectService {
                     let mime_type = photo.mime_type.clone();
                     let file_name = photo.file_name.clone();
                     let details = photo.details.clone();
+                    let optimizations = &optimizations;
                     async move {
                         let url = self.resolve_url(&file_name).await;
                         let mut view = ContentView::new(id, mime_type, url);
+                        view.optimization = id.and_then(|id| optimizations.get(&id).cloned());
                         if let Some(poster_id) = details.poster_id
                             && let Some(poster) = project_contents
                                 .iter()
@@ -218,7 +254,11 @@ impl IProjectService for ProjectService {
         let thumbnail = match project_entity.thumbnail {
             Some(ref photo) => {
                 let url = self.resolve_url(&photo.file_name).await;
-                Some(ContentView::new(photo.id, photo.mime_type.clone(), url))
+                {
+                    let mut view = ContentView::new(photo.id, photo.mime_type.clone(), url);
+                    view.optimization = self.image_info(photo.id).await;
+                    Some(view)
+                }
             }
             None => None,
         };
@@ -232,6 +272,10 @@ impl IProjectService for ProjectService {
         let _ = self.project_repository.get_project_by_id(id).await?;
         let project_contents = self.project_repository.get_projects_contents(id).await?;
         self.project_repository.delete_project_by_id(id).await?;
+        if self.media_processing.is_some() {
+            self.cleanup_media().await;
+            return Ok(());
+        }
 
         for content_dto in project_contents {
             if let Some(content) = content_dto.content
@@ -263,6 +307,14 @@ impl IProjectService for ProjectService {
             .get_projects_content_by_id(project_id, content_id)
             .await?
             .ok_or_else(|| Error::EntityNotFound(format!("content {content_id} not found")))?;
+
+        if self.media_processing.is_some() {
+            self.project_repository
+                .delete_project_content_by_id(project_id, content_id)
+                .await?;
+            self.cleanup_media().await;
+            return Ok(());
+        }
 
         if let Some(ref content) = content_dto.content {
             self.storage_repository
@@ -308,7 +360,11 @@ impl IProjectService for ProjectService {
                 let thumbnail_view = match &data.thumbnail {
                     Some(photo) => {
                         let url = self.resolve_url(&photo.file_name).await;
-                        Some(ContentView::new(photo.id, photo.mime_type.clone(), url))
+                        {
+                            let mut view = ContentView::new(photo.id, photo.mime_type.clone(), url);
+                            view.optimization = self.image_info(photo.id).await;
+                            Some(view)
+                        }
                     }
                     None => None,
                 };
@@ -351,7 +407,11 @@ impl IProjectService for ProjectService {
                 let thumbnail_view = match &data.thumbnail {
                     Some(photo) => {
                         let url = self.resolve_url(&photo.file_name).await;
-                        Some(ContentView::new(photo.id, photo.mime_type.clone(), url))
+                        {
+                            let mut view = ContentView::new(photo.id, photo.mime_type.clone(), url);
+                            view.optimization = self.image_info(photo.id).await;
+                            Some(view)
+                        }
                     }
                     None => None,
                 };

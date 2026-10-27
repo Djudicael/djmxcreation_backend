@@ -76,6 +76,12 @@ filesystem access is not required. The same frontend binary serves both apps.
 Native mode uses native application binaries with the same isolated infrastructure,
 realm, URLs, and smoke checks. Stop the running stack before switching modes.
 
+Add `--with-media-worker` to `start` to build and launch the optional image
+optimizer. It runs as a separate WASI component in WASI mode (native binary in
+native mode), listening on port 3010 plus the port offset. Without this flag,
+the portfolio serves originals. See [image optimization](../../docs/media-optimization.md)
+for durable processing, cleanup, and production scheduling requirements.
+
 The launcher installs npm dependencies from lockfiles, builds assets before their
 Rust wrappers, applies migrations to its private databases, and provisions the
 `portfolio` realm, public PKCE client, API audience mapper, admin role, and admin

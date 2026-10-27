@@ -34,10 +34,11 @@ jobs:
       - name: Build backend artifacts
         run: |
           cargo build --locked --release -p djmxcreation-backend-wasi --bin djmxcreation-backend-wasi
-          cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi -p djmxcreation-frontend-wasi --lib
+          cargo build --locked --profile wasi-release --target wasm32-wasip2 -p djmxcreation-backend-wasi -p djmxcreation-frontend-wasi -p djmxcreation-media-worker --lib
           cp target/release/djmxcreation-backend-wasi djmxcreation-backend-linux-x86_64
           cp target/wasm32-wasip2/wasi-release/djmxcreation_backend_wasi.wasm djmxcreation-backend-wasip2.wasm
           cp target/wasm32-wasip2/wasi-release/djmxcreation_frontend_wasi.wasm djmxcreation-frontend-wasip2.wasm
+          cp target/wasm32-wasip2/wasi-release/djmxcreation_media_worker.wasm djmxcreation-media-worker-wasip2.wasm
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,5 +48,6 @@ jobs:
           djmxcreation-backend-linux-x86_64
           djmxcreation-backend-wasip2.wasm
           djmxcreation-frontend-wasip2.wasm
+          djmxcreation-media-worker-wasip2.wasm
           --generate-notes
           --verify-tag
