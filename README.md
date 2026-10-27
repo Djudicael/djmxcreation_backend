@@ -113,7 +113,9 @@ Quill, and `keycloak-js`.
 | **Dashboard** | Open Home, project, profile, and contact management; navigation also works on mobile. |
 | **Home** | Save an optional short introduction (500 characters maximum). Search projects by title/client and select a cover card to feature a published, non-adult project. Use **Remove selection** to retain the abstract visual. |
 | **Projects** | Choose **New project**, enter a title, and create a private draft. Edit the metadata, rich-text description, visibility, and adult-content flag; choose **Save project**. |
-| **Media and cover** | Upload images/videos directly to storage with progress, retry and cancellation. Save each media's caption, alternative text, order, gallery/Behind the scenes section and video poster separately. Select **Set as cover** for an image. |
+| **Media and cover** | Upload images/videos directly to storage with progress, retry and cancellation. Save each media's caption, alternative text, gallery/Behind the scenes section and video poster separately. Select **Set as cover** for an image. |
+| **Media order** | Drag a handle or use **Move up / Move down** within a section. Moves are saved immediately and preserve other media details being edited. |
+| **Private preview** | **Preview project** opens the saved project with the portfolio renderer in a separate admin tab, including drafts. Preview requires authentication; the project remains private. |
 | **Publication** | Enable **Publish on portfolio** and save to publish; disable it and save to hide the project. |
 | **About me** | Save names and biography; upload/remove the profile photo separately. The public About page displays the saved profile. |
 | **Contacts** | Add/edit/remove email, phone, and website/social-link rows and edit the introduction. Choose **Save contacts** to apply changes, including removals. Saved links appear on the public Contact page. |

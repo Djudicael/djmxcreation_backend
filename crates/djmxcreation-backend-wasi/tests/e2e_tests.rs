@@ -10,6 +10,100 @@ use djmxcreation_backend_wasi::server::starter::build_router_with_auth;
 
 static INIT: Once = Once::new();
 
+#[tokio::test]
+async fn media_reorder_is_atomic_scoped_and_rejects_stale_orders() {
+    let (mut server, hub) = test_app_with_identity().await;
+    let created = server
+        .post("/api/portfolio/v1/projects")
+        .json(&json!({"title":"Reorder test"}))
+        .await
+        .json::<serde_json::Value>();
+    let project: uuid::Uuid = created["id"].as_str().unwrap().parse().unwrap();
+    let path = format!("/api/portfolio/v1/projects/{project}");
+    let (config, _) = test_util::shared_harness::shared_postgres().await;
+    let mut conn = config.connect().await.unwrap();
+    let ids: Vec<_> = (0..3).map(|_| uuid::Uuid::new_v4()).collect();
+    for (index, id) in ids.iter().enumerate() {
+        let content = json!({"bucket_name":"portfolio","file_name":format!("order/{id}.png"),"mime_type":"image/png","details":{"caption":"Keep this caption","alt":"Keep this alt","position":0}});
+        conn.execute_params("INSERT INTO project_content(id,project_id,content,created_on) VALUES($1,$2,$3,NOW()+$4::int*INTERVAL '1 second')", &[id,&project,&content,&(index as i32)]).await.unwrap();
+    }
+    let reversed: Vec<_> = ids.iter().copied().rev().collect();
+    let order_path = format!("{path}/media-order");
+    server.clear_headers();
+    server
+        .put(&order_path)
+        .json(&json!({"ids":reversed,"previous":ids}))
+        .await
+        .assert_status_unauthorized();
+    let mut claims = hub.claims();
+    claims["realm_access"] = json!({"roles":[]});
+    server.add_header(
+        "Authorization",
+        format!("Bearer {}", support::sign(&claims, "hub-ed")),
+    );
+    server
+        .put(&order_path)
+        .json(&json!({"ids":reversed,"previous":ids}))
+        .await
+        .assert_status_forbidden();
+    server.clear_headers();
+    server.add_header("Authorization", format!("Bearer {}", hub.token()));
+    for invalid in [
+        vec![ids[0], ids[0], ids[2]],
+        vec![ids[0], ids[1]],
+        vec![ids[0], ids[1], uuid::Uuid::new_v4()],
+    ] {
+        server
+            .put(&order_path)
+            .json(&json!({"ids":invalid,"previous":ids}))
+            .await
+            .assert_status_bad_request();
+    }
+    server
+        .put(&order_path)
+        .json(&json!({"ids":reversed,"previous":ids}))
+        .await
+        .assert_status_ok();
+    server
+        .put(&order_path)
+        .json(&json!({"ids":ids,"previous":ids}))
+        .await
+        .assert_status_bad_request();
+    let current = server.get(&path).await.json::<serde_json::Value>();
+    assert_eq!(
+        current["contents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap().parse().unwrap())
+            .collect::<Vec<uuid::Uuid>>(),
+        reversed
+    );
+    assert!(
+        current["contents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["caption"] == "Keep this caption" && item["alt"] == "Keep this alt")
+    );
+    let alternative = vec![ids[1], ids[2], ids[0]];
+    let first = server
+        .put(&order_path)
+        .json(&json!({"ids":ids,"previous":reversed}));
+    let second = server
+        .put(&order_path)
+        .json(&json!({"ids":alternative,"previous":reversed}));
+    let (first, second) = tokio::join!(first, second);
+    assert_eq!(
+        [first.status_code(), second.status_code()]
+            .iter()
+            .filter(|status| status.is_success())
+            .count(),
+        1
+    );
+    server.delete(&path).await.assert_status_ok();
+}
+
 fn init_tracing() {
     INIT.call_once(|| {
         tracing_subscriber::fmt()

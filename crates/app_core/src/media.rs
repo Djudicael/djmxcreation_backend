@@ -40,8 +40,16 @@ pub struct UploadSession {
 
 pub type DynMediaRepository = Arc<dyn IMediaRepository + Send + Sync>;
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MediaOrder {
+    pub ids: Vec<Uuid>,
+    pub previous: Vec<Uuid>,
+}
+
 #[async_trait]
 pub trait IMediaRepository {
+    async fn reorder(&self, project: Uuid, order: MediaOrder) -> Result<(), Error>;
     async fn begin(&self, project: Uuid, request: UploadRequest) -> Result<UploadSession, Error>;
     async fn part_url(&self, project: Uuid, session: Uuid, part: i32) -> Result<String, Error>;
     async fn complete(&self, project: Uuid, session: Uuid) -> Result<Uuid, Error>;

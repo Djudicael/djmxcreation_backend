@@ -36,6 +36,9 @@ export class PortfolioApiBase {
  * Admin API — full CRUD operations.
  */
 export class AdminPortfolioApi extends PortfolioApiBase {
+    reorderMedia(project, ids, previous) {
+        return this.instance.doPutVoid({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/media-order`, body: { ids, previous } });
+    }
     beginUpload(project, file) {
         return this.instance.doPost({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/uploads`, body: file });
     }

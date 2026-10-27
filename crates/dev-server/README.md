@@ -91,6 +91,8 @@ projects and restore the profile, contact, and Home data.
 Browser checks also send a multipart upload directly to RustFS, inject a failed
 part and retry it, and verify mixed photo/video projects, captions, alternative
 text, ordering, Behind the scenes, poster images, playback and URL renewal.
+They also test keyboard/drag reordering, failed-save preservation, and authenticated
+private previews of drafts, including reloads and mobile layouts.
 The launcher configures CORS for its private bucket's admin/portfolio origins.
 
 ## State, logs and cleanup

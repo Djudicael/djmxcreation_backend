@@ -3,7 +3,8 @@ use crate::{
     error::to_error,
 };
 use app_core::media::{
-    IMediaRepository, MAX_VIDEO_SIZE, MediaDetails, PART_SIZE, UploadRequest, UploadSession,
+    IMediaRepository, MAX_VIDEO_SIZE, MediaDetails, MediaOrder, PART_SIZE, UploadRequest,
+    UploadSession,
 };
 use app_error::Error;
 use async_trait::async_trait;
@@ -31,6 +32,36 @@ struct Session {
 
 #[async_trait]
 impl IMediaRepository for MediaRepository {
+    async fn reorder(&self, project: Uuid, order: MediaOrder) -> Result<(), Error> {
+        use std::collections::HashSet;
+        let ids: HashSet<_> = order.ids.iter().copied().collect();
+        if order.ids.len() > 5000
+            || ids.len() != order.ids.len()
+            || ids != order.previous.iter().copied().collect()
+            || order.ids.len() != order.previous.len()
+        {
+            return Err(invalid(
+                "The order must contain each project media exactly once.",
+            ));
+        }
+        let data = json!(order.ids);
+        let mut conn = self.db.connect().await.map_err(|e| to_error(e, None))?;
+        let saved = conn.with_transaction(async |txn| {
+            let project_rows = txn.query_params("SELECT id FROM project WHERE id=$1 FOR UPDATE", &[&project]).await?;
+            if project_rows.into_rows().is_empty() { return Ok(false); }
+            let rows = txn.query_params("SELECT id FROM project_content WHERE project_id=$1 ORDER BY COALESCE((content->'details'->>'position')::int,0),created_on,id FOR UPDATE", &[&project]).await?;
+            let current: Vec<Uuid> = rows.into_rows().iter().map(|row| row.get_by_name("id")).collect::<Result<_,_>>()?;
+            if current != order.previous { return Ok(false); }
+            txn.query_params("UPDATE project_content pc SET content=jsonb_set(pc.content,'{details}',COALESCE(pc.content->'details','{}'::jsonb)||jsonb_build_object('position',ord.position-1)) FROM jsonb_array_elements_text($2) WITH ORDINALITY AS ord(id,position) WHERE pc.project_id=$1 AND pc.id::text=ord.id", &[&project,&data]).await?;
+            Ok(true)
+        }).await.map_err(|e| to_error(e, None))?;
+        if !saved {
+            return Err(invalid(
+                "Media changed since this page was loaded. Reload before reordering.",
+            ));
+        }
+        Ok(())
+    }
     async fn begin(&self, project: Uuid, request: UploadRequest) -> Result<UploadSession, Error> {
         self.begin_inner(project, request).await
     }

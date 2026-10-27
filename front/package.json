@@ -12,6 +12,7 @@
         "test:http": "node --test shared/src/http-base.test.js"
     },
     "dependencies": {
-        "lit-html": "^3.3.3"
+        "lit-html": "^3.3.3",
+        "quill-delta-to-html": "^0.12.1"
     }
 }

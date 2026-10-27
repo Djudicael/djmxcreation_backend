@@ -2,7 +2,7 @@ use crate::{
     error::error::ApiResult, service::service_register::ServiceRegister,
     validation::validate_file_name,
 };
-use app_core::media::{DynMediaRepository, MediaDetails, UploadRequest, UploadSession};
+use app_core::media::{DynMediaRepository, MediaDetails, MediaOrder, UploadRequest, UploadSession};
 use axum::{
     Extension, Json, Router,
     extract::Path,
@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 pub fn router(services: ServiceRegister) -> Router {
     Router::new()
+        .route("/v1/projects/{project}/media-order", put(reorder))
         .route("/v1/projects/{project}/uploads", post(begin))
         .route(
             "/v1/projects/{project}/uploads/{session}/parts/{part}",
@@ -28,6 +29,14 @@ pub fn router(services: ServiceRegister) -> Router {
         )
         .route("/v1/projects/{project}/media/{content}", put(edit))
         .layer(Extension(services.media_repository))
+}
+
+async fn reorder(
+    Extension(repo): Extension<DynMediaRepository>,
+    Path(project): Path<Uuid>,
+    Json(order): Json<MediaOrder>,
+) -> ApiResult<()> {
+    Ok(repo.reorder(project, order).await?)
 }
 
 async fn begin(

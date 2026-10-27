@@ -4,6 +4,8 @@ import { htmlDescription } from "../utils/helper.js";
 import { mediaKind } from "../../../shared/src/media-kind.js";
 
 export default class WorkComponent extends TemplateRenderer {
+    get api() { return portfolioApi; }
+    get worksUrl() { return "/works"; }
     constructor() {
         super();
         this.noShadow = true;
@@ -42,17 +44,17 @@ export default class WorkComponent extends TemplateRenderer {
         const gated = this.adult && !this.revealed;
         return html`
             <article class="work-page page-shell">
-                <a class="text-link back-link" href="/works"><span aria-hidden="true">←</span> All works</a>
+                <a class="text-link back-link" href=${this.worksUrl}><span aria-hidden="true">←</span> All works</a>
                 <header class="project-heading"><p class="eyebrow">Selected project ${this.adult ? "/ NSFW · 18+" : ""}</p><h1>${this.projectTitle}</h1>${this.subTitle ? html`<p class="project-subtitle">${this.subTitle}</p>` : ""}</header>
                 ${gated ? html`
-                    <section class="adult-notice" aria-labelledby="adult-heading"><span class="eyebrow">Content notice / 18+</span><h2 id="adult-heading">For adult audiences.</h2><p>This project contains sensitive imagery. Choose whether you would like to view it.</p><div class="page-actions"><button class="action-link action-primary" @click=${() => this.setRevealed(true)}>View project <span aria-hidden="true">↗</span></button><a class="text-link" href="/works">Back to works</a></div></section>
+                    <section class="adult-notice" aria-labelledby="adult-heading"><span class="eyebrow">Content notice / 18+</span><h2 id="adult-heading">For adult audiences.</h2><p>This project contains sensitive imagery. Choose whether you would like to view it.</p><div class="page-actions"><button class="action-link action-primary" @click=${() => this.setRevealed(true)}>View project <span aria-hidden="true">↗</span></button><a class="text-link" href=${this.worksUrl}>Back to works</a></div></section>
                 ` : html`
                     <div class="project-intro">${this.client ? html`<div class="project-client"><span class="eyebrow">Client</span><p>${this.client}</p></div>` : ""}<div class="rich-text project-description">${safeHTML(htmlDescription(this.description))}</div></div>
                     ${this.adult ? html`<button class="text-link hide-adult" @click=${() => this.setRevealed(false)}>Hide adult content</button>` : ""}
                     ${this.gallery(this.contents.filter(content => !content.behindScenes))}
                     ${this.hasScenes ? html`<section class="project-scenes" aria-labelledby="scenes-title"><h2 id="scenes-title">Behind the scenes</h2><div class="rich-text scenes-description">${safeHTML(htmlDescription(this.description?.behindScenes))}</div>${this.gallery(this.contents.filter(content => content.behindScenes))}</section>` : ""}
                 `}
-                <footer class="project-footer"><a class="text-link" href="/works">← Back to works</a><a class="action-link" href="/contact">Contact <span aria-hidden="true">↗</span></a></footer>
+                <footer class="project-footer"><a class="text-link" href=${this.worksUrl}>← Back to works</a><a class="action-link" href="/contact">Contact <span aria-hidden="true">↗</span></a></footer>
                 <dialog class="image-lightbox" aria-label="Image preview" @click=${event => { if (event.target === event.currentTarget) event.currentTarget.close(); }} @close=${() => { document.body.classList.remove("lightbox-open"); this.imageTrigger?.focus(); }} @keydown=${event => {
                     if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); this.changeImage(event.key === "ArrowLeft" ? -1 : 1); }
                 }}>
@@ -101,7 +103,7 @@ export default class WorkComponent extends TemplateRenderer {
         const resume = !video.paused;
         video.pause();
         try {
-            const project = await portfolioApi.getProject(this.projectId, { cache: false });
+            const project = await this.api.getProject(this.projectId, { cache: false });
             if (!this.isConnected || !video.isConnected) return;
             if (project.adult && !this.revealed) { this.adult = true; this.render(); return; }
             const fresh = project.contents?.find(item => item.id === content.id);
@@ -156,11 +158,11 @@ export default class WorkComponent extends TemplateRenderer {
         super.connectedCallback();
         this.setLoadState(LoadState.LOADING);
         this.render();
-        const location = await document.querySelector("router-outlet")?.getLocation?.(window.location.pathname);
-        if (!location?.params?.id) return;
-        this.projectId = location.params.id;
+        const location = this.projectId ? null : await document.querySelector("router-outlet")?.getLocation?.(window.location.pathname);
+        this.projectId ||= location?.params?.id;
+        if (!this.projectId) return;
         try {
-            const data = await portfolioApi.getProject(location.params.id);
+            const data = await this.api.getProject(this.projectId, { cache: false });
             if (!this.isConnected) return;
             this.projectTitle = data.metadata?.title || "Untitled project";
             this.subTitle = data.metadata?.subTitle;

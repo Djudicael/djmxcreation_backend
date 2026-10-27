@@ -65,10 +65,22 @@ alongside the admin's real API/persistence checks.
   saving. Saved links appear on the public Contact page. Older description-only
   contact content remains supported; no database migration is needed.
 - **Mixed media**: photos and MP4/WebM videos can share a project. Set each media's
-  caption, photo alternative text, order number and section (**Main gallery** or
+  caption, photo alternative text and section (**Main gallery** or
   **Behind the scenes**), then choose **Save media details**. Set the optional
   Behind the scenes description with **Save project**. Select an uploaded project
   image as a video's poster. Removing that image removes the poster from playback.
+- **Media order**: drag a card's handle onto another media in the same saved section,
+  or use **Move up / Move down** (also usable with a keyboard or on mobile).
+  Moves save immediately as one atomic update. Other unsaved fields remain in place.
+  If another tab changes the order or adds/removes media, the save is rejected;
+  use **Reload media** before trying again. Save section changes before moving cards.
+- **Private preview**: **Preview project** opens `/preview/{id}` on the admin origin
+  in a separate tab, using the public portfolio's project renderer and styles.
+  It shows saved data only, including photos, video, the image viewer and Behind
+  the scenes. Save project/media changes first, then use **Reload preview**.
+  Authentication uses the existing admin OIDC session and API; there are no preview
+  access tokens in URLs and no change to a draft's publication status. Anonymous
+  requests for private project data still return 404. NSFW consent also applies.
 - Direct uploads allow 32 MiB per image and 2 GiB per video, with 8 MiB parts.
   Upload progress, cancellation and retries are supported. Retry retains completed
   parts while the page remains open; leaving/reloading starts a new upload.
@@ -131,6 +143,10 @@ New authenticated endpoints under `/api/portfolio/v1/projects/{id}`:
 - `POST /uploads/{session}/complete`: verify and attach the media, idempotently.
 - `POST /uploads/{session}/abort`: discard unfinished parts.
 - `PUT /media/{content}`: save `caption`, `alt`, `position`, `behindScenes`, `posterId`.
+- `PUT /media-order`: save `ids` (the complete new order) and `previous` (the order
+  originally loaded). The API validates the full membership and previous order
+  under a transaction lock before updating positions. Existing editorial fields
+  are preserved. No additional migration is required for ordering or preview.
 
 Legacy media default to the main gallery with empty captions/alternative text;
 their upload order is preserved. Video posters must be images from the same project.

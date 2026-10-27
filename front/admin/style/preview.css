@@ -1,0 +1,9 @@
+@import "../../portfolio/style/style.css";
+p-private-preview { display:block; }
+.preview-banner { position:static; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; padding:20px clamp(22px,6vw,96px); background:#202822; color:#f3efe7; font:14px/1.6 var(--sans); }
+.preview-banner p { font-size:12px; }
+.preview-banner nav { display:flex; flex-wrap:wrap; align-items:center; gap:20px; }
+.preview-banner .text-link, .preview-banner .action-link { color:inherit; }
+.preview-banner .action-link:hover { background:#355d49; }
+p-private-preview .back-link, p-private-preview .project-footer, p-private-preview .adult-notice a { display:none; }
+p-private-preview .page-shell { padding-top:60px; }

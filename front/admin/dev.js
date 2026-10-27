@@ -5,6 +5,7 @@ import { watchApp } from "../build/build-app.js";
 const port = 3008;
 
 const watcher = await watchApp({
+    extraStyles: { "preview.css": "style/preview.css" },
     minify: false,
     sourcemap: true,
 });

@@ -116,6 +116,7 @@ export async function buildApp({
     minify = true,
     sourcemap = process.env.NODE_ENV !== "production",
     target = ["chrome58"],
+    extraStyles = {},
 } = {}) {
     ensureDir(outDir);
     ensureDir(path.join(outDir, "js"));
@@ -148,6 +149,7 @@ export async function buildApp({
 
     await esbuild.build(buildOptions.js);
     await esbuild.build(buildOptions.css);
+    await Promise.all(Object.entries(extraStyles).map(([name, entry]) => esbuild.build({ ...buildOptions.css, entryPoints: [entry], outfile: path.join(outDir, name) })));
 }
 
 export async function watchApp({
@@ -159,6 +161,7 @@ export async function watchApp({
     minify = false,
     sourcemap = true,
     target = ["chrome58"],
+    extraStyles = {},
 } = {}) {
     ensureDir(outDir);
     ensureDir(path.join(outDir, "js"));
@@ -191,14 +194,17 @@ export async function watchApp({
 
     const jsContext = await esbuild.context(buildOptions.js);
     const cssContext = await esbuild.context(buildOptions.css);
+    const extraContexts = await Promise.all(Object.entries(extraStyles).map(([name, entry]) => esbuild.context({ ...buildOptions.css, entryPoints: [entry], outfile: path.join(outDir, name) })));
 
     await jsContext.watch();
     await cssContext.watch();
+    await Promise.all(extraContexts.map(context => context.watch()));
 
     return {
         async dispose() {
             await jsContext.dispose();
             await cssContext.dispose();
+            await Promise.all(extraContexts.map(context => context.dispose()));
         },
     };
 }

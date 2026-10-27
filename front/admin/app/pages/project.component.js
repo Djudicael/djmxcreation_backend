@@ -1,5 +1,6 @@
 import Quill from "quill";
 import { render } from "lit-html";
+import { repeat } from "lit-html/directives/repeat.js";
 import { html } from "../utils/template-renderer.js";
 import { AdminPage } from "../utils/admin-page.js";
 import portfolioApi from "../api/portfolio.api.js";
@@ -21,6 +22,7 @@ export class ProjectComponent extends AdminPage {
         return html`<section class="content-page admin-page">
             <header class="admin-page-header"><div><a class="admin-back" href="/projects">← All projects</a>
                 <h1 data-project-title>${p.metadata?.title}</h1><p>Save your changes before leaving this page.</p></div>
+                <div><a class="admin-button secondary" href=${`/preview/${this.projectId}`} target="_blank" rel="noopener" aria-describedby="preview-help">Preview project ↗</a><p id="preview-help" class="admin-muted">Preview shows saved changes only.</p></div>
             </header>${this.statusTemplate}
             <form class="admin-panel" @submit=${event => this.save(event)}>
                 <h2>Project details</h2><div class="admin-fields">
@@ -52,9 +54,15 @@ export class ProjectComponent extends AdminPage {
         if (!target) return;
         render(html`
             ${this.project.thumbnail?.url ? html`<div class="admin-current-cover"><img src=${this.project.thumbnail.url} alt="Current cover" /><span>Current cover</span></div>` : html`<p class="admin-muted">No cover selected.</p>`}
-            <p class="admin-muted">Save each media's details separately. Use the order number to arrange the sequence within each section (lower numbers appear first).</p>
-            <div class="admin-media-grid">${(this.project.contents || []).map((content, index) => html`
-                <article class="admin-media-card" data-content-id=${content.id}>
+            <p class="admin-muted">Drag a media handle or use Move up / Move down to arrange its saved section. Moves are saved immediately. Save captions and section changes with Save media details.</p>
+            <button type="button" class="admin-button secondary" @click=${() => this.perform("Media reloaded.", () => this.refreshMedia())}>Reload media</button>
+            <div class="admin-media-grid">${repeat(this.project.contents || [], content => content.id, (content, index) => html`
+                <article class="admin-media-card" data-content-id=${content.id} @dragover=${event => this.dragOver(event, content)} @dragleave=${event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.classList.remove("is-drop-target"); }} @drop=${event => this.dropMedia(event, content)}>
+                    <div class="admin-media-reorder"><span>${content.behindScenes ? "Behind the scenes" : "Main gallery"}</span>
+                        <button type="button" class="admin-drag-handle" draggable="true" data-move="handle" aria-label=${`Drag to reorder media ${index + 1}`} title="Drag to reorder; use the arrow buttons with a keyboard" @dragstart=${event => this.startDrag(event, content)} @dragend=${() => this.endDrag()}>⠿</button>
+                        <button type="button" class="admin-move-button" data-move="up" aria-label=${`Move up media ${index + 1}`} @click=${() => this.moveMedia(content.id, -1)}>↑</button>
+                        <button type="button" class="admin-move-button" data-move="down" aria-label=${`Move down media ${index + 1}`} @click=${() => this.moveMedia(content.id, 1)}>↓</button>
+                    </div>
                     ${mediaKind(content) === "video" ? html`<video src=${content.url} poster=${content.posterUrl || ""} controls playsinline preload="none"></video>` :
                       mediaKind(content) === "image" ? html`<img src=${content.url} alt="Project media" />` :
                       html`<a href=${content.url} target="_blank" rel="noopener noreferrer">Open file</a>`}
@@ -62,7 +70,7 @@ export class ProjectComponent extends AdminPage {
                         <label>Caption<textarea name="caption" rows="2" maxlength="2000">${content.caption || ""}</textarea></label>
                         ${mediaKind(content) === "image" ? html`<label>Alternative text<input name="alt" maxlength="1000" .value=${content.alt || ""}></label>` : ""}
                         <label for=${`media-section-${content.id}`}>Section</label><select id=${`media-section-${content.id}`} name="section"><option value="main" ?selected=${!content.behindScenes}>Main gallery</option><option value="scenes" ?selected=${content.behindScenes}>Behind the scenes</option></select>
-                        <label>Order<input name="position" type="number" min="0" max="100000" required .value=${String(content.position || 0)}></label>
+                        <input type="hidden" name="position" .value=${String(content.position || 0)}>
                         ${mediaKind(content) === "video" ? html`<label for=${`media-poster-${content.id}`}>Video poster</label><select id=${`media-poster-${content.id}`} name="posterId"><option value="">None</option>${(this.project.contents || []).filter(item => mediaKind(item) === "image").map(image => html`<option value=${image.id} ?selected=${image.id === content.posterId}>${image.caption || image.alt || `Image ${(this.project.contents || []).indexOf(image) + 1}`}</option>`)}</select>` : ""}
                         <button type="submit" class="admin-button secondary">Save media details</button>
                     </form>
@@ -72,6 +80,72 @@ export class ProjectComponent extends AdminPage {
                     </div>
                 </article>`)}</div>
         `, target);
+        this.syncMoveButtons();
+    }
+
+    syncMoveButtons() {
+        for (const content of this.project?.contents || []) {
+            const siblings = this.project.contents.filter(item => Boolean(item.behindScenes) === Boolean(content.behindScenes));
+            const index = siblings.findIndex(item => item.id === content.id);
+            const card = this.querySelector(`[data-content-id="${content.id}"]`);
+            if (!card) continue;
+            card.querySelector('[data-move="up"]').disabled = this.busy || index === 0;
+            card.querySelector('[data-move="down"]').disabled = this.busy || index === siblings.length - 1;
+        }
+    }
+
+    async perform(message, operation) {
+        const result = await super.perform(message, operation);
+        this.syncMoveButtons();
+        return result;
+    }
+
+    async moveMedia(id, direction, targetId) {
+        if (this.busy) return;
+        const contents = this.project.contents;
+        const source = contents.find(item => item.id === id);
+        const siblings = contents.filter(item => Boolean(item.behindScenes) === Boolean(source?.behindScenes));
+        const destination = targetId || siblings[siblings.indexOf(source) + direction]?.id;
+        if (!source || !destination || destination === id || !siblings.some(item => item.id === destination)) return;
+        const previous = contents.map(item => item.id);
+        const ids = [...previous];
+        const from = ids.indexOf(id), to = ids.indexOf(destination);
+        ids.splice(from, 1); ids.splice(to, 0, id);
+        const saved = await this.perform("Media order saved.", async () => {
+            await portfolioApi.reorderMedia(this.projectId, ids, previous);
+            await this.refreshMedia();
+        });
+        if (!saved) this.feedback("Could not save the media order. Use Reload media before trying again.", true);
+        const card = this.querySelector(`[data-content-id="${id}"]`);
+        const button = card?.querySelector(`[data-move="${direction < 0 ? "up" : "down"}"]`);
+        (button && !button.disabled ? button : card?.querySelector('[data-move="handle"]'))?.focus();
+    }
+
+    startDrag(event, content) {
+        if (this.busy) { event.preventDefault(); return; }
+        this.draggedId = content.id;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", content.id);
+    }
+
+    dragOver(event, content) {
+        const source = this.project.contents.find(item => item.id === this.draggedId);
+        if (this.busy || !source || source.id === content.id || Boolean(source.behindScenes) !== Boolean(content.behindScenes)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        event.currentTarget.classList.add("is-drop-target");
+    }
+
+    dropMedia(event, content) {
+        event.preventDefault();
+        const id = this.draggedId;
+        this.endDrag();
+        this.moveMedia(id, 0, content.id);
+    }
+
+    endDrag() {
+        this.draggedId = null;
+        this.querySelectorAll(".is-drop-target").forEach(card => card.classList.remove("is-drop-target"));
     }
 
     async save(event) {
@@ -150,9 +224,7 @@ export class ProjectComponent extends AdminPage {
                 caption: data.get("caption").trim(), alt: data.get("alt")?.trim() || "",
                 behindScenes: data.get("section") === "scenes", position: Number(data.get("position")), posterId: data.get("posterId") || null,
             });
-            // Update only the saved card's data; other unsaved media fields stay intact.
-            const fresh = await portfolioApi.getProject(this.projectId, { cache: false });
-            Object.assign(content, fresh.contents.find(item => item.id === content.id));
+            await this.refreshMedia();
         });
     }
 
