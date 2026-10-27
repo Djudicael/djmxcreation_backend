@@ -3,6 +3,8 @@
  * All API paths live here so they're easy to find and update.
  */
 export const API_ROUTES = Object.freeze({
+    HOME: "/api/home/v1",
+    HOME_SETTINGS: "/api/home/v1/settings",
     // About / Me
     ABOUT_ME: "/api/about/v1/me",
     ABOUT_ME_BY_ID: (id) => `/api/about/v1/me/${id}`,

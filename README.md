@@ -110,7 +110,8 @@ Quill, and `keycloak-js`.
 
 | Area | Workflow |
 | --- | --- |
-| **Dashboard** | Open project, profile, and contact management; navigation also works on mobile. |
+| **Dashboard** | Open Home, project, profile, and contact management; navigation also works on mobile. |
+| **Home** | Save an optional short introduction (500 characters maximum). Search projects by title/client and select a cover card to feature a published, non-adult project. Use **Remove selection** to retain the abstract visual. |
 | **Projects** | Choose **New project**, enter a title, and create a private draft. Edit the metadata, rich-text description, visibility, and adult-content flag; choose **Save project**. |
 | **Media and cover** | Upload images/videos, preview files, select **Set as cover**, and delete media. Media actions preserve text edits in the form. |
 | **Publication** | Enable **Publish on portfolio** and save to publish; disable it and save to hide the project. |
@@ -122,6 +123,10 @@ Actions show progress, success, and error feedback. Project/media/photo deletion
 asks for confirmation. Admin uploads allow **32 MiB per file**. The project
 multipart endpoint limits requests to **50 MiB**; the general API body limit is
 **64 MiB**. The admin sends project files in separate requests.
+
+Home settings require migration **V8** and are independent of the About biography.
+If the featured project becomes private/adult or loses its image cover, Home hides
+it; deleting the project clears its selection.
 
 Contact rows are stored in `description.contacts` alongside the existing Quill
 `ops` JSON. Description-only records remain supported; no new migration is needed.
@@ -344,7 +349,7 @@ audience, expiry, subject, issued-at time, and optional not-before time. It requ
 an access-token `scope` claim and rejects sender-constrained tokens without proof
 support. Authentication cannot be disabled by omitting configuration.
 
-All API writes and `GET /api/portfolio/v1/projects` require the configured admin
+All API writes, `GET /api/portfolio/v1/projects`, and `GET /api/home/v1/settings` require the configured admin
 role, either in `realm_access.roles` or in
 `resource_access[OIDC_ADMIN_CLIENT_ID].roles`. Profile/contact reads, visible
 project reads, spotlights, `/ping`, and `/metrics` remain public. Anonymous

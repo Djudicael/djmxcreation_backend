@@ -57,6 +57,23 @@ test("doGet uses json headers and returns parsed payload", async () => {
     }
 });
 
+test("fresh reads bypass stored data and request no-store", async () => {
+    const http = createHttp();
+    const originalFetch = global.fetch;
+    const calls = [];
+    global.fetch = async (_url, options) => {
+        calls.push(options);
+        return { ok: true, json: async () => ({ version: calls.length }) };
+    };
+    try {
+        assert.equal((await http.doGet("/home")).version, 1);
+        assert.equal((await http.doGet("/home")).version, 1);
+        assert.equal((await http.doGet("/home", { cache: false })).version, 2);
+        assert.equal(calls[1].cache, "no-store");
+        assert.equal((await http.doGet("/home", { cache: false })).version, 3);
+    } finally { global.fetch = originalFetch; }
+});
+
 test("authenticated JSON, multipart and GET requests refresh and send the access token", async () => {
     let refreshes = 0;
     const http = new BaseHttp({ rest_url: "http://localhost:8081" }, {

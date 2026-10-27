@@ -1,6 +1,7 @@
 pub mod about_me;
 pub mod contact;
 pub mod dto;
+pub mod home;
 pub mod mapper;
 pub mod project;
 pub mod spotlight;

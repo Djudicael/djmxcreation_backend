@@ -392,8 +392,10 @@ pub async fn authenticate(
     let admin_required = !matches!(
         *request.method(),
         Method::GET | Method::HEAD | Method::OPTIONS
-    ) || request.uri().path().trim_end_matches('/')
-        == "/api/portfolio/v1/projects";
+    ) || matches!(
+        request.uri().path().trim_end_matches('/'),
+        "/api/portfolio/v1/projects" | "/api/home/v1/settings"
+    );
     if admin_required && identity.is_none() {
         return Err(if request.headers().contains_key(header::AUTHORIZATION) {
             AuthError::Forbidden

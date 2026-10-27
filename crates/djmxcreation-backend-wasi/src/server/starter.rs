@@ -121,6 +121,10 @@ pub fn build_router_with_auth(config: Config, auth: crate::auth::OidcVerifier) -
     #[allow(unused_mut)]
     let mut router = Router::new()
         .nest(
+            "/api/home",
+            crate::router::home_router::HomeRouter::new_router(service_register.clone()),
+        )
+        .nest(
             "/api/about",
             AboutMeRouter::new_router(service_register.clone()),
         )

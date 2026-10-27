@@ -246,3 +246,162 @@ async fn wasi_e2e_metrics_endpoint() {
     let response = server.get("/metrics").await;
     response.assert_status_ok();
 }
+
+#[tokio::test]
+async fn home_settings_persist_validate_and_hide_ineligible_projects() {
+    let (mut server, hub) = test_app_with_identity().await;
+    let settings_path = "/api/home/v1/settings";
+    let public_path = "/api/home/v1";
+    server.clear_headers();
+    server.get(public_path).await.assert_status_ok();
+    server.get(settings_path).await.assert_status_unauthorized();
+    server
+        .put(settings_path)
+        .json(&json!({"introduction":"Forbidden", "featuredProjectId":null}))
+        .await
+        .assert_status_unauthorized();
+    let mut claims = hub.claims();
+    claims["realm_access"] = json!({"roles":[]});
+    server.add_header(
+        "Authorization",
+        format!("Bearer {}", support::sign(&claims, "hub-ed")),
+    );
+    server.get(settings_path).await.assert_status_forbidden();
+    server
+        .put(settings_path)
+        .json(&json!({"introduction":"Forbidden", "featuredProjectId":null}))
+        .await
+        .assert_status_forbidden();
+    server.clear_headers();
+    server.add_header("Authorization", format!("Bearer {}", hub.token()));
+
+    let created = server
+        .post("/api/portfolio/v1/projects")
+        .json(&json!({"title":"Home settings test"}))
+        .await;
+    created.assert_status_ok();
+    let id: uuid::Uuid = created.json::<serde_json::Value>()["id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let project_path = format!("/api/portfolio/v1/projects/{id}");
+    let payload = json!({"introduction":"  My introduction.  ", "featuredProjectId":id});
+    server
+        .put(settings_path)
+        .json(&payload)
+        .await
+        .assert_status_bad_request();
+    server
+        .put(&project_path)
+        .json(&json!({"metadata":{"title":"Home settings test"}, "visible":true, "adult":false}))
+        .await
+        .assert_status_ok();
+    // A published project without a cover still cannot be featured.
+    server
+        .put(settings_path)
+        .json(&payload)
+        .await
+        .assert_status_bad_request();
+    let (config, _) = test_util::shared_harness::shared_postgres().await;
+    let mut connection = config.connect().await.unwrap();
+    let thumbnail = json!({"id":uuid::Uuid::new_v4(), "bucket_name":"portfolio", "file_name":"test/home.png", "mime_type":null});
+    connection.execute_params("INSERT INTO project_content_thumbnail (project_id, content, created_on) VALUES ($1,$2,NOW())", &[&id, &thumbnail]).await.unwrap();
+    let saved = server.put(settings_path).json(&payload).await;
+    saved.assert_status_ok();
+    assert_eq!(
+        saved.json::<serde_json::Value>()["introduction"],
+        "My introduction."
+    );
+    assert_eq!(
+        server.get(settings_path).await.json::<serde_json::Value>()["featuredProjectId"],
+        id.to_string()
+    );
+
+    server.clear_headers();
+    assert_eq!(
+        server.get(public_path).await.json::<serde_json::Value>()["featuredProjectId"],
+        id.to_string()
+    );
+    server.add_header("Authorization", format!("Bearer {}", hub.token()));
+    server
+        .put(settings_path)
+        .json(&json!({"introduction":"x".repeat(501), "featuredProjectId":id}))
+        .await
+        .assert_status_bad_request();
+    server
+        .put(settings_path)
+        .json(&json!({"introduction":"Changed", "featuredProjectId":uuid::Uuid::new_v4()}))
+        .await
+        .assert_status_bad_request();
+    assert_eq!(
+        server.get(settings_path).await.json::<serde_json::Value>()["introduction"],
+        "My introduction."
+    );
+
+    for (visible, adult) in [(false, false), (true, true)] {
+        server.put(&project_path).json(&json!({"metadata":{"title":"Home settings test"}, "visible":visible, "adult":adult})).await.assert_status_ok();
+        assert!(
+            server.get(public_path).await.json::<serde_json::Value>()["featuredProjectId"]
+                .is_null()
+        );
+        assert_eq!(
+            server.get(settings_path).await.json::<serde_json::Value>()["featuredProjectId"],
+            id.to_string()
+        );
+        server
+            .put(settings_path)
+            .json(&payload)
+            .await
+            .assert_status_bad_request();
+    }
+    server
+        .put(&project_path)
+        .json(&json!({"metadata":{"title":"Home settings test"}, "visible":true, "adult":false}))
+        .await
+        .assert_status_ok();
+    assert_eq!(
+        server.get(public_path).await.json::<serde_json::Value>()["featuredProjectId"],
+        id.to_string()
+    );
+    // Replacing a cover with a non-image must also stop public featuring.
+    let video = json!({"file_name":"test/home.mp4", "mime_type":"video/mp4"});
+    connection
+        .execute_params(
+            "UPDATE project_content_thumbnail SET content=$1 WHERE project_id=$2",
+            &[&video, &id],
+        )
+        .await
+        .unwrap();
+    assert!(
+        server.get(public_path).await.json::<serde_json::Value>()["featuredProjectId"].is_null()
+    );
+    server
+        .put(settings_path)
+        .json(&payload)
+        .await
+        .assert_status_bad_request();
+    connection
+        .execute_params(
+            "DELETE FROM project_content_thumbnail WHERE project_id=$1",
+            &[&id],
+        )
+        .await
+        .unwrap();
+    assert!(
+        server.get(public_path).await.json::<serde_json::Value>()["featuredProjectId"].is_null()
+    );
+    server.delete(&project_path).await.assert_status_ok();
+    let after_delete = server.get(settings_path).await.json::<serde_json::Value>();
+    assert!(after_delete["featuredProjectId"].is_null());
+    assert_eq!(after_delete["introduction"], "My introduction.");
+    server
+        .put(settings_path)
+        .json(&json!({"introduction":"", "featuredProjectId":null}))
+        .await
+        .assert_status_ok();
+    assert_eq!(
+        server.get(public_path).await.json::<serde_json::Value>(),
+        json!({"introduction":"", "featuredProjectId":null})
+    );
+}

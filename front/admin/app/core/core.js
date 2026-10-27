@@ -1,6 +1,7 @@
 import { ComponentRegistry } from './component-registry.js';
 import { layoutComponents } from '../components/layout/index.js';
 import { HomeComponent } from '../pages/home.component.js';
+import { HomeSettingsComponent } from '../pages/home-settings.component.js';
 import { DragDropComponent } from '../components/c-drag-drop.component.js';
 import { ProjectManagementComponent } from '../pages/projects.component.js';
 import { ServiceComponent } from '../pages/service.component.js';
@@ -31,6 +32,7 @@ export class Core {
 Core.inst = null;
 
 const components = [
+    { tagName: 'p-home-settings', component: HomeSettingsComponent },
     ...layoutComponents,
     {
         tagName: 'c-drag-drop',

@@ -24,6 +24,10 @@ export async function runPortfolioWorkflows({ browser, state }) {
     projects[2].contents = [projects[1].contents[1]];
     projects[3].contents = [];
     let empty = false, unavailable = false, failNextPage = false;
+    let featuredId = "14";
+    await context.route("**/api/home/v1", route => route.fulfill(unavailable
+        ? { status: 503, json: {} }
+        : { json: { introduction: empty ? "" : "<em>Home introduction</em>", featuredProjectId: empty ? null : featuredId } }));
     await context.route("**/portfolio-test/*.svg", route => {
         const match = route.request().url().match(/gallery-(\d+)\.svg/);
         if (match) {
@@ -56,6 +60,9 @@ export async function runPortfolioWorkflows({ browser, state }) {
     try {
         await page.goto(root);
         await page.locator(".featured-image img").waitFor();
+        assert.equal(await page.locator(".featured-image").getAttribute("href"), "/works/14", "The chosen project must resolve beyond the first list page");
+        assert.equal(await page.locator(".home-summary").innerText(), "<em>Home introduction</em>");
+        assert.equal(await page.locator(".home-summary em").count(), 0, "Introduction must render as plain text");
         assert.equal(await page.locator(".home-page a[href='/works/1']").count(), 0, "Adult work leaked onto home");
         await page.locator(".home-intro").getByRole("link", { name: "View works", exact: true }).waitFor();
         await page.screenshot({ path: path.join(stateDir, "portfolio-home-desktop.png"), fullPage: true });
@@ -194,6 +201,17 @@ export async function runPortfolioWorkflows({ browser, state }) {
         await page.getByRole("navigation").getByRole("link", { name: "Contact/" }).click();
         await page.getByRole("heading", { name: "Contact.", exact: true }).waitFor();
         await page.screenshot({ path: path.join(stateDir, "portfolio-contact-mobile.png"), fullPage: true });
+        for (const id of [null, "1"]) {
+            featuredId = id;
+            await page.goto(root);
+            await page.locator(".home-summary").waitFor();
+            assert.equal(await page.locator(".featured-image").count(), 0, "None and adult selections must not automatically feature another project");
+            await page.locator(".visual-study").waitFor();
+        }
+        featuredId = "2";
+        await page.goto(root);
+        await page.locator(".featured-image img").waitFor();
+        assert.equal(await page.locator(".selection-item[href='/works/2']").count(), 0, "Featured work should not be duplicated in the selection");
         empty = true;
         await page.goto(root);
         await page.locator(".visual-study").waitFor();
@@ -208,6 +226,7 @@ export async function runPortfolioWorkflows({ browser, state }) {
         const touchContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
         touchContext.setDefaultTimeout(15000);
         try {
+            await touchContext.route("**/api/home/v1", route => route.fulfill({ json: { introduction: "", featuredProjectId: null } }));
             await touchContext.route("**/api/portfolio/**", route => route.fulfill({ json: route.request().url().includes("/v2/") ? { projects: projects.slice(0, 6), page: 1, size: 6, totalPages: 3 } : projects[0] }));
             const touchPage = await touchContext.newPage();
             await touchPage.goto(`${root}/works`);

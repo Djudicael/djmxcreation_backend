@@ -18,6 +18,14 @@
   width: 100%;
   align-self: stretch;
 }
+.home-summary {
+  max-width: 42ch;
+  margin-top: 24px;
+  color: var(--muted-ink);
+  font: 14px/1.8 var(--sans);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .featured-image,
 .visual-study {
   position: relative;

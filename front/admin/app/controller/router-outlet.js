@@ -32,6 +32,7 @@ export class RouterOutlet extends TemplateRenderer {
 
     router.setRoutes([
       { path: "/", component: "p-home" },
+      { path: "/home", component: "p-home-settings" },
       { path: "/about", component: "p-about" },
       { path: "/contact", component: "p-contact" },
       { path: "/work", component: "p-work" },

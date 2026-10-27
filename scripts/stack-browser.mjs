@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 import { runAdminWorkflows } from "./admin-workflows.mjs";
 import { runPortfolioWorkflows } from "./portfolio-workflows.mjs";
+import { runHomeWorkflows } from "./home-workflows.mjs";
 
 const state = JSON.parse(fs.readFileSync(process.env.DJMX_STACK_STATE, "utf8"));
 const credentials = JSON.parse(fs.readFileSync(process.env.DJMX_STACK_CREDENTIALS, "utf8"));
@@ -53,6 +54,7 @@ try {
     await page.waitForURL(deepUrl);
     await page.locator("router-outlet").waitFor();
     await runAdminWorkflows({ page, state, authorization });
+    await runHomeWorkflows({ page, state, authorization });
     await runPortfolioWorkflows({ browser, state });
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await page.waitForURL(url => url.origin === state.urls.hub && url.pathname.includes("/realms/portfolio/login"));

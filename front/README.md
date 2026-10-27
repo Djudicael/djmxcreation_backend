@@ -15,8 +15,13 @@ Default dev URLs:
 ## Public portfolio
 
 The portfolio keeps its full-screen indexed menu and animated Works list.
-Home features published, non-adult project covers, with an abstract visual when
-no suitable cover is available. About and Contact use the content saved in admin.
+Home uses the introduction and featured project saved in the admin's **Home**
+section. The introduction is optional plain text (up to 500 characters).
+Choose a published, non-adult project with an image cover, or **Remove selection** to keep
+the abstract visual. There is no automatic replacement of the featured project.
+A chosen project stops appearing if it becomes private/adult or loses its cover;
+deleting it clears the selection. Other eligible projects remain in Selected works.
+About and Contact use the content saved in admin.
 
 Adult Works previews remain pixelated and blurred throughout the hover animation.
 Opening an adult project requires choosing **View project**; **Hide adult content**
@@ -40,6 +45,15 @@ alongside the admin's real API/persistence checks.
 
 ## Admin workflows
 
+- **Home**: edit the short introduction, select the featured project, and choose
+  **Save home**. Clear the text to hide it. Settings are stored independently
+  of the About biography and existing project spotlights.
+  Search projects by title or client (case/accent insensitive), identify them by
+  their covers, and select a card. Results appear in groups of 12; the selected
+  project stays visible while searching. The admin fetches the project catalogue
+  once per visit and filters locally. Public Works loads six projects at a time
+  from the API; **Load More** appends the next page.
+
 - **Projects**: choose **New project**, enter a title, and create the draft.
   Edit its description and metadata, import media, choose a cover, then save.
   **Publish on portfolio** controls public visibility; new projects are private.
@@ -55,8 +69,14 @@ alongside the admin's real API/persistence checks.
   Save buttons show progress and success/error feedback; failed actions can be retried.
 
 `cargo run -p dev-server -- test --browser` tests creation, validation, error recovery,
-publishing, media, profile, contacts, deep links, reloads, and mobile navigation on
-the local stack. It removes its test projects and restores the profile/contact data.
+publishing, media, profile, contacts, Home settings, deep links, reloads, and mobile
+navigation on the local stack. It removes its test projects and restores the
+profile, contact, and Home data.
+
+Home settings require database migration **V8**. The local stack applies it on
+startup; deployed installations must apply migrations before serving the updated
+backend. `GET /api/home/v1` exposes the public settings; administrator credentials
+are required for `GET` and `PUT /api/home/v1/settings`.
 
 ## Sign in with OpenID Connect WASI Hub
 

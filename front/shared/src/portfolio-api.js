@@ -19,12 +19,16 @@ export class PortfolioApiBase {
         return this.instance.doGet(API_ROUTES.CONTACT_INFO);
     }
 
+    async getHome() {
+        return this.instance.doGet(API_ROUTES.HOME, { cache: false });
+    }
+
     /**
      * @param {string} projectId
      * @returns {Promise<object>}
      */
-    async getProject(projectId) {
-        return this.instance.doGet(API_ROUTES.PROJECT_BY_ID(projectId));
+    async getProject(projectId, options) {
+        return this.instance.doGet(API_ROUTES.PROJECT_BY_ID(projectId), options);
     }
 }
 
@@ -32,6 +36,13 @@ export class PortfolioApiBase {
  * Admin API — full CRUD operations.
  */
 export class AdminPortfolioApi extends PortfolioApiBase {
+    async getHomeSettings() {
+        return this.instance.doGet(API_ROUTES.HOME_SETTINGS, { cache: false });
+    }
+
+    async saveHomeSettings(settings) {
+        return this.instance.doPut({ path: API_ROUTES.HOME_SETTINGS, body: settings });
+    }
     /**
      * @param {object} metadata
      * @param {string} metadata.title
@@ -94,8 +105,8 @@ export class AdminPortfolioApi extends PortfolioApiBase {
     }
 
     /** @returns {Promise<object[]>} */
-    async getProjects() {
-        return this.instance.doGet(API_ROUTES.PROJECTS_V1);
+    async getProjects({ fresh = false } = {}) {
+        return this.instance.doGet(API_ROUTES.PROJECTS_V1, { cache: !fresh });
     }
 
     /**
@@ -172,9 +183,10 @@ export class PublicPortfolioApi extends PortfolioApiBase {
      * @param {number} params.pageSize
      * @returns {Promise<{totalPages: number, page: number, size: number, projects: object[]}>}
      */
-    async getProjects({ page, pageSize }) {
+    async getProjects({ page, pageSize, fresh = false }) {
         return this.instance.doGet(
-            `${API_ROUTES.PROJECTS_V2}?page=${page}&size=${pageSize}&visible=true`
+            `${API_ROUTES.PROJECTS_V2}?page=${page}&size=${pageSize}&visible=true`,
+            { cache: !fresh }
         );
     }
 }

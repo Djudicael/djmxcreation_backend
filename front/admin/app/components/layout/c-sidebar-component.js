@@ -19,9 +19,10 @@ export class SideBarComponent extends TemplateRenderer {
             <a class="admin-brand" href="/"><span class="admin-brand-mark">D</span><span>DJMXCreation<small>Administration</small></span></a>
             <nav class="nav" aria-label="Main navigation"><ul>
                 <li><a href="/"><span>01</span> Dashboard</a></li>
-                <li><a href="/projects"><span>02</span> Projects</a></li>
-                <li><a href="/about"><span>03</span> About me</a></li>
-                <li><a href="/contact"><span>04</span> Contacts</a></li>
+                <li><a href="/home"><span>02</span> Home</a></li>
+                <li><a href="/projects"><span>03</span> Projects</a></li>
+                <li><a href="/about"><span>04</span> About me</a></li>
+                <li><a href="/contact"><span>05</span> Contacts</a></li>
             </ul></nav><div class="admin-sidebar-footer"><button type="button" @click=${event => {
                 const button = event.currentTarget;
                 button.disabled = true;

@@ -84,8 +84,9 @@ instances. HTTP smoke checks verify public reads, rejected anonymous writes,
 rejected non-admin writes, real Hub login/JWKS validation, project CRUD and refresh.
 Browser checks additionally exercise the actual `keycloak-js` PKCE redirect flow,
 deep links/reloads, project creation and publication, media/cover management,
-profile/photo edits, contact links on the public portfolio, mobile navigation,
-and sign-out. They delete their test projects and restore the profile/contact data.
+profile/photo edits, contact links on the public portfolio, Home introduction and
+featured-project settings, mobile navigation, and sign-out. They delete their test
+projects and restore the profile, contact, and Home data.
 
 ## State, logs and cleanup
 

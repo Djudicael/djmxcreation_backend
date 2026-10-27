@@ -297,8 +297,8 @@ export class BaseHttp {
      * @param {string} path
      * @returns {Promise<*>}
      */
-    async doGet(path) {
-        const cached = this._cache.get(path);
+    async doGet(path, { cache = true } = {}) {
+        const cached = cache ? this._cache.get(path) : undefined;
         if (cached !== undefined) {
             return cached;
         }
@@ -306,11 +306,12 @@ export class BaseHttp {
         const response = await this.fetch(path, {
             headers: this.createJsonHeaders(),
             signal: this._signal,
+            cache: cache ? "default" : "no-store",
         });
 
         this.assertOk(response);
         const data = await response.json();
-        this._cache.set(path, data);
+        if (cache) this._cache.set(path, data);
         return data;
     }
 }
