@@ -83,15 +83,43 @@ impl ProjectService {
                     let id = dto.id;
                     let mime_type = photo.mime_type.clone();
                     let file_name = photo.file_name.clone();
+                    let details = photo.details.clone();
                     async move {
                         let url = self.resolve_url(&file_name).await;
-                        ContentView::new(id, mime_type, url)
+                        let mut view = ContentView::new(id, mime_type, url);
+                        if let Some(poster_id) = details.poster_id
+                            && let Some(poster) = project_contents
+                                .iter()
+                                .find(|item| item.id == Some(poster_id))
+                                .and_then(|item| item.content.as_ref())
+                            && (poster
+                                .mime_type
+                                .as_deref()
+                                .is_some_and(|mime| mime.starts_with("image/"))
+                                || (poster.mime_type.is_none()
+                                    && ["png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "bmp"]
+                                        .contains(
+                                            &poster
+                                                .file_name
+                                                .rsplit('.')
+                                                .next()
+                                                .unwrap_or_default()
+                                                .to_lowercase()
+                                                .as_str(),
+                                        )))
+                        {
+                            view.poster_url = self.resolve_url(&poster.file_name).await;
+                        }
+                        view.details = details;
+                        view
                     }
                 })
             })
             .collect();
 
-        join_all(futures).await
+        let mut contents = join_all(futures).await;
+        contents.sort_by_key(|view| view.details.position);
+        contents
     }
 }
 

@@ -113,16 +113,24 @@ Quill, and `keycloak-js`.
 | **Dashboard** | Open Home, project, profile, and contact management; navigation also works on mobile. |
 | **Home** | Save an optional short introduction (500 characters maximum). Search projects by title/client and select a cover card to feature a published, non-adult project. Use **Remove selection** to retain the abstract visual. |
 | **Projects** | Choose **New project**, enter a title, and create a private draft. Edit the metadata, rich-text description, visibility, and adult-content flag; choose **Save project**. |
-| **Media and cover** | Upload images/videos, preview files, select **Set as cover**, and delete media. Media actions preserve text edits in the form. |
+| **Media and cover** | Upload images/videos directly to storage with progress, retry and cancellation. Save each media's caption, alternative text, order, gallery/Behind the scenes section and video poster separately. Select **Set as cover** for an image. |
 | **Publication** | Enable **Publish on portfolio** and save to publish; disable it and save to hide the project. |
 | **About me** | Save names and biography; upload/remove the profile photo separately. The public About page displays the saved profile. |
 | **Contacts** | Add/edit/remove email, phone, and website/social-link rows and edit the introduction. Choose **Save contacts** to apply changes, including removals. Saved links appear on the public Contact page. |
 | **Session** | Sign in through the Hub; use **Sign out** to end the session. Direct links and reloads preserve the requested path, query, and fragment. |
 
 Actions show progress, success, and error feedback. Project/media/photo deletion
-asks for confirmation. Admin uploads allow **32 MiB per file**. The project
-multipart endpoint limits requests to **50 MiB**; the general API body limit is
-**64 MiB**. The admin sends project files in separate requests.
+asks for confirmation. Direct admin uploads allow **32 MiB per image** and
+**2 GiB per video**, in **8 MiB parts**. Videos must already be encoded for browser
+playback (MP4 or WebM); no conversion or adaptive streaming is performed.
+The legacy project multipart endpoint remains available with a **50 MiB** request
+limit; the general API body limit is **64 MiB**.
+
+Mixed-media projects require migration **V9**. The optional **Behind the scenes**
+section has its own description and media. Images retain their alternative text
+in the gallery/viewer, and video uses a poster, inline controls and no preload.
+Expired playback links can be refreshed without reloading the project.
+See [direct media storage configuration](front/README.md#direct-media-storage).
 
 Home settings require migration **V8** and are independent of the About biography.
 If the featured project becomes private/adult or loses its image cover, Home hides

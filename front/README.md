@@ -64,8 +64,15 @@ alongside the admin's real API/persistence checks.
   text, and choose **Save contacts**. Removing a row is applied when
   saving. Saved links appear on the public Contact page. Older description-only
   contact content remains supported; no database migration is needed.
-- Uploads support files up to 32 MiB each. Project multipart requests allow 50 MiB;
-  the general API request limit is 64 MiB. The admin sends project files separately.
+- **Mixed media**: photos and MP4/WebM videos can share a project. Set each media's
+  caption, photo alternative text, order number and section (**Main gallery** or
+  **Behind the scenes**), then choose **Save media details**. Set the optional
+  Behind the scenes description with **Save project**. Select an uploaded project
+  image as a video's poster. Removing that image removes the poster from playback.
+- Direct uploads allow 32 MiB per image and 2 GiB per video, with 8 MiB parts.
+  Upload progress, cancellation and retries are supported. Retry retains completed
+  parts while the page remains open; leaving/reloading starts a new upload.
+  The legacy multipart endpoint retains its 50 MiB request limit.
   Save buttons show progress and success/error feedback; failed actions can be retried.
 
 `cargo run -p dev-server -- test --browser` tests creation, validation, error recovery,
@@ -77,6 +84,58 @@ Home settings require database migration **V8**. The local stack applies it on
 startup; deployed installations must apply migrations before serving the updated
 backend. `GET /api/home/v1` exposes the public settings; administrator credentials
 are required for `GET` and `PUT /api/home/v1/settings`.
+
+## Direct media storage
+
+Apply migration **V9** before serving the updated API. The admin authenticates
+through the normal OIDC flow; the API creates a project-scoped upload session,
+signs each part and checks the storage-reported part sizes before completion.
+File bytes go from the browser directly to RustFS/S3, never through the API.
+No storage credentials or application bearer tokens are sent with part uploads.
+
+`STORAGE_ENDPOINT` must be reachable from both the API and browsers, using HTTPS
+when the website uses HTTPS. Presigned URLs must retain the host/path/query used
+for signing; rewriting an internal hostname after signing invalidates them.
+The storage endpoint must support multipart operations, HEAD and ranged GET
+(`206 Partial Content`) for seeking during video playback.
+
+Provision the bucket with CORS for the deployed admin/portfolio origins. For example:
+
+```json
+{
+  "CORSRules": [{
+    "AllowedOrigins": ["https://admin.example.com", "https://portfolio.example.com"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Accept-Ranges", "Content-Range"],
+    "MaxAgeSeconds": 3600
+  }]
+}
+```
+
+The local stack configures CORS on its own bucket. Production provisioning must
+configure it separately; API startup does not change a production bucket's policy.
+Configure an **AbortIncompleteMultipartUpload** lifecycle rule (for example after
+one day) to reclaim abandoned parts even when no application traffic is running.
+Sessions expire after 24 hours; part URLs expire after 15 minutes and Retry gets
+fresh URLs. New uploads also perform bounded cleanup of expired pending sessions.
+Completed media use the existing expiring GET URLs. The public player renews the
+URL on an expired-link failure, preserves its playback position and offers Retry
+if renewal/playback still fails. Format/codec compatibility remains the editor's
+responsibility: there is no transcoder or automatic video poster generation.
+
+New authenticated endpoints under `/api/portfolio/v1/projects/{id}`:
+
+- `POST /uploads`: create a session with `fileName`, `mimeType`, `size`.
+- `POST /uploads/{session}/parts/{number}`: obtain a temporary PUT URL.
+- `POST /uploads/{session}/complete`: verify and attach the media, idempotently.
+- `POST /uploads/{session}/abort`: discard unfinished parts.
+- `PUT /media/{content}`: save `caption`, `alt`, `position`, `behindScenes`, `posterId`.
+
+Legacy media default to the main gallery with empty captions/alternative text;
+their upload order is preserved. Video posters must be images from the same project.
+Editorial fields live in each media's `content.details` JSON; the optional section
+description is stored in `project.description.behindScenes` as a Quill delta.
 
 ## Sign in with OpenID Connect WASI Hub
 

@@ -752,6 +752,16 @@ impl Runner {
                 .await
                 .context("create private RustFS bucket")?;
         }
+        repository::config::storage::configure_media_cors(
+            "portfolio",
+            &storage_client,
+            vec![
+                self.state.urls["admin"].clone(),
+                self.state.urls["portfolio"].clone(),
+            ],
+        )
+        .await
+        .context("configure direct media upload CORS")?;
         let db_base = format!(
             "postgresql://postgres:{}@127.0.0.1:{db}",
             credentials.database_password

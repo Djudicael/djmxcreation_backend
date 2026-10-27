@@ -36,6 +36,23 @@ export class PortfolioApiBase {
  * Admin API — full CRUD operations.
  */
 export class AdminPortfolioApi extends PortfolioApiBase {
+    beginUpload(project, file) {
+        return this.instance.doPost({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/uploads`, body: file });
+    }
+    uploadPartUrl(project, session, part) {
+        return this.instance.doPost({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/uploads/${session}/parts/${part}` });
+    }
+    completeUpload(project, session) {
+        return this.instance.doPost({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/uploads/${session}/complete` });
+    }
+    async abortUpload(project, session) {
+        const response = await this.instance.fetch(`${API_ROUTES.PROJECT_BY_ID(project)}/uploads/${session}/abort`, { method: "POST" });
+        if (response.status === 404) return; // Already expired/removed; storage lifecycle reclaims any abandoned parts.
+        this.instance.assertOk(response);
+    }
+    updateMedia(project, content, details) {
+        return this.instance.doPutVoid({ path: `${API_ROUTES.PROJECT_BY_ID(project)}/media/${content}`, body: details });
+    }
     async getHomeSettings() {
         return this.instance.doGet(API_ROUTES.HOME_SETTINGS, { cache: false });
     }

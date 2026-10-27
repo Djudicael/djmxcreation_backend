@@ -34,6 +34,7 @@ impl TestContext {
         let project_id = created_project.id.expect("Project should have an ID");
 
         let content = ContentDto {
+            details: Default::default(),
             id: None,
             bucket_name: "test_bucket".to_string(),
             file_name: "test_file.jpg".to_string(),

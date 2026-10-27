@@ -86,3 +86,40 @@ pub async fn ensure_bucket(bucket_name: &str, client: &StorageClient) -> Result<
         }
     }
 }
+
+/// Call from provisioning, never from a public request. Origins must be explicit.
+pub async fn configure_media_cors(
+    bucket: &str,
+    client: &StorageClient,
+    origins: Vec<String>,
+) -> Result<(), Error> {
+    use aws_sdk_s3::types::{CorsConfiguration, CorsRule};
+    if origins.is_empty() {
+        return Ok(());
+    }
+    let rule = CorsRule::builder()
+        .set_allowed_origins(Some(origins))
+        .allowed_methods("PUT")
+        .allowed_methods("GET")
+        .allowed_methods("HEAD")
+        .allowed_headers("*")
+        .expose_headers("ETag")
+        .expose_headers("Accept-Ranges")
+        .expose_headers("Content-Range")
+        .max_age_seconds(3600)
+        .build()
+        .map_err(|_| Error::StorageUpload)?;
+    let cors = CorsConfiguration::builder()
+        .cors_rules(rule)
+        .build()
+        .map_err(|_| Error::StorageUpload)?;
+    client
+        .inner
+        .put_bucket_cors()
+        .bucket(bucket)
+        .cors_configuration(cors)
+        .send()
+        .await
+        .map_err(|_| Error::StorageUpload)?;
+    Ok(())
+}

@@ -231,7 +231,7 @@ impl IProjectRepository for ProjectRepository {
         p.visible,
         p.adult,
         c.content AS thumbnail_content,
-        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
+        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id) ORDER BY ct.created_on, ct.id) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
     FROM
         project p
     LEFT JOIN
@@ -273,7 +273,7 @@ impl IProjectRepository for ProjectRepository {
         p.visible,
         p.adult,
         c.content AS thumbnail_content,
-        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id)) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
+        COALESCE(json_agg(json_build_object('id', ct.id, 'content', ct.content, 'project_id',ct.project_id) ORDER BY ct.created_on, ct.id) FILTER (WHERE ct.id IS NOT NULL), '[]'::json) AS contents
     FROM
         project p
     LEFT JOIN

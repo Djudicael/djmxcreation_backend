@@ -88,6 +88,11 @@ profile/photo edits, contact links on the public portfolio, Home introduction an
 featured-project settings, mobile navigation, and sign-out. They delete their test
 projects and restore the profile, contact, and Home data.
 
+Browser checks also send a multipart upload directly to RustFS, inject a failed
+part and retry it, and verify mixed photo/video projects, captions, alternative
+text, ordering, Behind the scenes, poster images, playback and URL renewal.
+The launcher configures CORS for its private bucket's admin/portfolio origins.
+
 ## State, logs and cleanup
 
 Both repositories pin `wasi-pg-client` to `0.2.0`: the `0.2.1` transport requires a

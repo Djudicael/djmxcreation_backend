@@ -3,6 +3,7 @@ pub mod contact;
 pub mod dto;
 pub mod home;
 pub mod mapper;
+pub mod media;
 pub mod project;
 pub mod spotlight;
 pub mod storage;

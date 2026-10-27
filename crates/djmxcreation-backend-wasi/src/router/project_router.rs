@@ -61,6 +61,7 @@ pub struct ProjectToAdd {
 impl ProjectRouter {
     pub fn new_router(service_register: ServiceRegister) -> Router {
         Router::new()
+            .merge(super::media_router::router(service_register.clone()))
             .route(
                 "/v1/projects",
                 post(Self::create_project).get(Self::get_projects),

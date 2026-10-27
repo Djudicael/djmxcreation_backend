@@ -85,6 +85,13 @@
   max-height: 85vh;
   background: #202822;
 }
+.project-scenes { margin-top:90px; border-top:1px solid var(--line-color); padding-top:40px; }
+.project-scenes h2 { font-weight:400; font-size:clamp(2rem,4vw,3.5rem); margin-bottom:24px; }
+.scenes-description { max-width:720px; margin-bottom:40px; }
+.project-gallery figcaption { font:14px/1.7 var(--sans); color:var(--muted-ink); white-space:pre-line; }
+.video-status { font:14px/1.7 var(--sans); margin-top:12px; }
+.video-status:empty { display:none; }
+.video-retry[hidden] { display:none; }
 .project-footer {
   display: flex;
   flex-wrap: wrap;

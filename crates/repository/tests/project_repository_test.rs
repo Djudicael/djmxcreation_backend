@@ -107,6 +107,7 @@ async fn test_project_crud_operations() {
 
     // Test 3: Add project content
     let content = ContentDto {
+        details: Default::default(),
         id: None,
         bucket_name: "test_bucket".to_string(),
         file_name: "test_file.jpg".to_string(),
@@ -140,6 +141,7 @@ async fn test_project_crud_operations() {
 
     // Test 4: Add thumbnail
     let thumbnail = ContentDto {
+        details: Default::default(),
         id: None,
         bucket_name: "thumbnails".to_string(),
         file_name: "thumb.jpg".to_string(),
@@ -216,6 +218,7 @@ async fn test_project_complete_lifecycle() {
     );
 
     let content = ContentDto {
+        details: Default::default(),
         id: None,
         bucket_name: "test_bucket".to_string(),
         file_name: "test_file.jpg".to_string(),
@@ -238,6 +241,7 @@ async fn test_project_complete_lifecycle() {
     assert_eq!(content_by_id.id, content_result.id);
 
     let thumbnail = ContentDto {
+        details: Default::default(),
         id: None,
         bucket_name: "thumbnails".to_string(),
         file_name: "thumb.jpg".to_string(),

@@ -7,6 +7,8 @@ pub struct ContentDto {
     pub bucket_name: String,
     pub file_name: String,
     pub mime_type: Option<String>,
+    #[serde(default)]
+    pub details: crate::media::MediaDetails,
 }
 
 impl ContentDto {
@@ -21,6 +23,7 @@ impl ContentDto {
             bucket_name,
             file_name,
             mime_type,
+            details: Default::default(),
         }
     }
 }

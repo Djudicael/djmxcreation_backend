@@ -53,13 +53,13 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         projects.add(project.id);
         const projectUrl = `${root}/projects/${project.id}`;
         await page.waitForURL(projectUrl);
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         console.log("Admin workflow: draft creation and retry passed");
         assert.equal((await page.request.get(`${root}${projectPath}/${project.id}`)).status(), 404, "Drafts are private");
         await page.getByLabel("Title", { exact: true }).fill("Published UI project");
         await page.getByLabel("Subtitle", { exact: true }).fill("Test subtitle");
         await page.getByLabel("Client", { exact: true }).fill("Demo client");
-        await page.locator(".ql-editor").fill("Test description preserved during uploads.");
+        await page.locator("[data-editor] .ql-editor").fill("Test description preserved during uploads.");
         await page.locator("input[name=files]").setInputFiles([
             { name: "validation-cover-one.png", mimeType: "image/png", buffer: Buffer.concat([png, Buffer.alloc(3 * 1024 * 1024)]) },
             { name: "validation-cover-two.png", mimeType: "image/png", buffer: png },
@@ -73,7 +73,7 @@ export async function runAdminWorkflows({ page, state, authorization }) {
             return images.length === 2 && images.every(image => image.complete && image.naturalWidth > 0);
         });
         assert.equal(await page.getByLabel("Title", { exact: true }).inputValue(), "Published UI project");
-        assert.match(await page.locator(".ql-editor").innerText(), /preserved during uploads/);
+        assert.match(await page.locator("[data-editor] .ql-editor").innerText(), /preserved during uploads/);
         for (const index of [0, 1]) {
             await page.getByRole("button", { name: "Set as cover", exact: true }).nth(index).click();
             await status("Cover updated");
@@ -83,7 +83,7 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         await page.getByRole("button", { name: "Save project", exact: true }).click();
         await status("Project saved");
         await page.reload();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         assert.equal(await page.getByLabel("Title", { exact: true }).inputValue(), "Published UI project");
         assert.equal(await page.getByLabel("Publish on portfolio").isChecked(), true);
         assert.equal(await page.getByLabel("Adult content").isChecked(), true);
@@ -126,10 +126,10 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         console.log("Admin workflow: public project view, media deletion, hide and project deletion passed");
 
         await page.getByRole("link", { name: /About me/ }).first().click();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         await page.getByLabel("First name", { exact: true }).fill("Test");
         await page.getByLabel("Last name", { exact: true }).fill("Profile");
-        await page.locator(".ql-editor").fill("Test profile biography.");
+        await page.locator("[data-editor] .ql-editor").fill("Test profile biography.");
         await page.getByRole("button", { name: "Save about me", exact: true }).click();
         await status("About me saved");
         await page.locator("input[name=photo]").setInputFiles({ name: "validation-profile.png", mimeType: "image/png", buffer: png });
@@ -142,9 +142,9 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         await status("Photo deleted");
         assert.equal(await page.getByAltText("Current profile photo").count(), 0);
         await page.reload();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         assert.equal(await page.getByLabel("First name", { exact: true }).inputValue(), "Test");
-        assert.match(await page.locator(".ql-editor").innerText(), /Test profile biography/);
+        assert.match(await page.locator("[data-editor] .ql-editor").innerText(), /Test profile biography/);
         const profilePreview = await page.context().newPage();
         try {
             await profilePreview.goto(`${state.urls.portfolio}/about`);
@@ -155,7 +155,7 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         console.log("Admin workflow: profile text, photo upload/delete and persistence passed");
 
         await page.getByRole("link", { name: /Contacts/ }).first().click();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         await page.getByRole("button", { name: "+ Add contact", exact: true }).click();
         let row = page.locator(".admin-contact-row").last();
         await row.getByLabel("Label", { exact: true }).fill("Test email");
@@ -165,11 +165,11 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         await row.getByRole("combobox").selectOption("url");
         await row.getByLabel("Label", { exact: true }).fill("Test website");
         await row.getByLabel("Contact detail", { exact: true }).fill("https://example.com/validation");
-        await page.locator(".ql-editor").fill("Test contact page text.");
+        await page.locator("[data-editor] .ql-editor").fill("Test contact page text.");
         await page.getByRole("button", { name: "Save contacts", exact: true }).click();
         await status("Contacts saved");
         await page.reload();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         assert.equal(await page.locator(".admin-contact-row").last().getByLabel("Contact detail", { exact: true }).inputValue(), "https://example.com/validation");
         const contactPreview = await page.context().newPage();
         try {
@@ -191,7 +191,7 @@ export async function runAdminWorkflows({ page, state, authorization }) {
         await page.getByRole("heading", { name: "Your creative workspace" }).waitFor();
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Mobile layout overflows");
         await page.getByRole("link", { name: /Contacts/ }).first().click();
-        await page.locator(".ql-editor").waitFor();
+        await page.locator("[data-editor] .ql-editor").waitFor();
         await page.screenshot({ path: path.join(stateDir, "admin-mobile-preview.png"), fullPage: true });
         console.log("PASS: admin create/cancel/validation/error recovery, edit/publish/hide/delete, media upload/cover/delete, profile/photo, contact CRUD/public links, mobile navigation");
     } finally {

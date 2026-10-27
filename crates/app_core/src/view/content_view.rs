@@ -9,11 +9,21 @@ pub struct ContentView {
     id: Option<Uuid>,
     mime_type: Option<String>,
     url: Option<String>,
+    #[serde(flatten)]
+    pub details: crate::media::MediaDetails,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
 }
 
 impl ContentView {
     pub fn new(id: Option<Uuid>, mime_type: Option<String>, url: Option<String>) -> Self {
-        Self { id, mime_type, url }
+        Self {
+            id,
+            mime_type,
+            url,
+            details: Default::default(),
+            poster_url: None,
+        }
     }
 }
 

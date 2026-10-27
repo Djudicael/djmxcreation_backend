@@ -49,6 +49,7 @@ async fn test_about_me_crud_operations() {
     assert_eq!(updated.last_name, "Doe");
 
     let content = ContentDto {
+        details: Default::default(),
         id: None,
         bucket_name: "test_bucket".to_string(),
         file_name: "test_file".to_string(),

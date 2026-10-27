@@ -19,6 +19,7 @@ use repository::{
 
 #[derive(Clone)]
 pub struct ServiceRegister {
+    pub media_repository: app_core::media::DynMediaRepository,
     pub home_service: app_core::home::DynIHomeService,
     pub project_service: DynIProjectService,
     pub about_me_service: DynIAboutMeService,
@@ -31,9 +32,15 @@ impl ServiceRegister {
         let about_me_repository = Arc::new(AboutMeRepository::new(client_db.clone()));
         let contact_repository = Arc::new(ContactRepository::new(client_db.clone()));
         let spotlight_repository = Arc::new(SpotlightRepository::new(client_db.clone()));
+        let media_repository = Arc::new(repository::media_repository::MediaRepository::new(
+            client_db.clone(),
+            client.clone(),
+            bucket.clone(),
+        ));
         let storage_repository = Arc::new(StorageRepository::new(client));
 
         Self {
+            media_repository,
             home_service: Arc::new(app_service::home_service::HomeService::new(Arc::new(
                 repository::home_repository::HomeRepository::new(client_db.clone()),
             ))),
