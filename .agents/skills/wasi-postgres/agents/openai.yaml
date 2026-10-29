@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI PostgreSQL"
+  short_description: "Latest wasi-pg-client repositories and migrations (P3)"
+  default_prompt: "Use $wasi-postgres to write repositories, queries, and migrations."

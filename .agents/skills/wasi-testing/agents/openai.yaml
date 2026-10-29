@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Testing"
+  short_description: "Fakes, Podman harness, P3 runtime, e2e, and verification"
+  default_prompt: "Use $wasi-testing to test and verify this change."

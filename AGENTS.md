@@ -12,6 +12,27 @@ Use the `maintain-djmxcreation` skill for dependency upgrades, Rust toolchain ch
 
 Read the canonical skill completely before doing matching work. Keep the Claude adapter description synchronized if the canonical trigger description changes.
 
+## Architecture skills
+
+For structural work (where code belongs, new features, refactors, crates, the WASI
+P3 entry points, PostgreSQL, object storage, frontends, the dev CLI, and tests),
+start with `wasi-app-architecture`; it routes to the specialised skills:
+
+| Skill | Scope |
+|---|---|
+| `wasi-app-architecture` | target architecture, crate boundaries, library choices, refactor map |
+| `wasi-backend-api` | API server (native or WASI), `app-http` runtime adapters, auth, middleware |
+| `wasi-postgres` | `wasi-pg-client` repositories, transactions, migrations |
+| `wasi-object-storage` | `aws-sdk-s3` on both runtimes, uploads, presigned URLs |
+| `wasi-frontend` | admin and portfolio Web Components + lit-html |
+| `wasi-frontend-packaging` | serving the built frontends from `frontend-server` |
+| `wasi-testing` | test levels, verification checklist, CI |
+| `wasi-dev-stack` | changing the local-environment CLI |
+
+Canonical definitions are in `.agents/skills/<name>/SKILL.md`; Claude Code adapters
+in `.claude/skills/<name>/SKILL.md` point to them. Keep adapter descriptions
+synchronized with the canonical frontmatter.
+
 ## Project conventions
 
 For starting, stopping, inspecting, or testing the complete local stack, use

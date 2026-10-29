@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI App Architecture"
+  short_description: "DJMXCreation crates, boundaries, and library choices (WASI P3)"
+  default_prompt: "Use $wasi-app-architecture to decide where this feature belongs and how to structure it."

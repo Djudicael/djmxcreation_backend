@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Dev Stack CLI"
+  short_description: "dev-server: start, stop, or destroy the full local environment"
+  default_prompt: "Use $wasi-dev-stack to build or change the local environment CLI."

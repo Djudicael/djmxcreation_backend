@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Frontend"
+  short_description: "Admin and portfolio: Web Components + lit-html"
+  default_prompt: "Use $wasi-frontend to add pages, components, routes, or API services."

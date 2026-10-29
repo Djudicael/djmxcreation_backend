@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Backend API"
+  short_description: "app-api axum routes on the wasip3 P3 handler"
+  default_prompt: "Use $wasi-backend-api to add or change API routes, middleware, auth, or a component entry point."

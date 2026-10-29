@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Object Storage"
+  short_description: "aws-sdk-s3 over P3 wasi:http for RustFS/S3"
+  default_prompt: "Use $wasi-object-storage to work with buckets, uploads, presigned URLs, or the S3 connector."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "WASI Frontend Packaging"
+  short_description: "Serve admin and portfolio from frontend-server (P3)"
+  default_prompt: "Use $wasi-frontend-packaging to change how frontend-server embeds and serves the frontends."
