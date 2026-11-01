@@ -21,6 +21,6 @@
     "esbuild": "^0.28.2",
     "keycloak-js": "^26.2.4",
     "lit-html": "^3.3.3",
-    "quill": "2.0.2"
+    "quill": "2.0.3"
   }
 }
